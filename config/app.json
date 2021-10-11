@@ -1,0 +1,14 @@
+{
+  "device" : 
+  {
+    "credentials" : "<device_credentials>",
+    "id" : "<device_id>"
+  },
+  "resources" : {
+    "defaults": true,
+    "interfaces": ["eth0"],
+    "filesystems": ["/"],
+    "drives": ["xvda"]
+  },
+  "user" : "<user_id>"
+}
