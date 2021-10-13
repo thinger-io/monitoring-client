@@ -35,7 +35,7 @@
 #include <thinger.h>
 #include "thinger/thinger_monitor_client.h"
 
-#include <json/json.h>
+#include <jsoncpp/json/json.h>
 #include <httplib.h>
 
 #include <unistd.h>

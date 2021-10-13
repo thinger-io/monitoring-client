@@ -11,7 +11,9 @@ FIND_PATH(JsonCpp_INCLUDE_DIR
     json/json.h
   PATHS
     /usr/local/include
+    /usr/local/include/jsoncpp
     /usr/include
+    /usr/include/jsoncpp
 )
 
 find_library(JsonCpp_LIBRARIES
