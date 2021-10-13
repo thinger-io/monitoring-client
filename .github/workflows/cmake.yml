@@ -19,6 +19,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Install dependencies
+      run: sudo apt install jsoncpp
+      
     - uses: actions/checkout@v2
 
     - name: Configure CMake
