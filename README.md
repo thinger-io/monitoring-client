@@ -1,4 +1,7 @@
 #Linux Monitoring Client
+
+[![CMake](https://github.com/thinger-io/monitoring-client/actions/workflows/cmake.yml/badge.svg)](https://github.com/thinger-io/monitoring-client/actions/workflows/cmake.yml)
+
 The Linux Monitoring Client is  a software module based on the Thinger.io Linux Client that keeps track of different system metrics, and publishes them to the Thinger.io Platform in order to keep track of a server or an embedded Linux device or a fleet of them.
 
 ## Getting Started
