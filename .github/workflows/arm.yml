@@ -27,7 +27,7 @@ jobs:
       id: build_image
       with:
         commands: |
-            sudo apt isntall libjsoncpp1 libjsoncpp-dev
+            sudo apt install libjsoncpp1 libjsoncpp-dev
             cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DRASPBERRY=${{env.RASPBERRY}}
             cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -DRASPBERRY=${{env.RASPBERRY}}
     #- name: Install dependencies
