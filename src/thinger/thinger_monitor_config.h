@@ -279,7 +279,7 @@ private:
         for (auto rs : resources) {
             if (data[rs.c_str()].is_empty()) continue;
 
-            if (data[rs.c_str()].is_boolean()) config[rs] = data[rs.c_str()];
+            if (data[rs.c_str()].is_boolean()) config[rs] = (bool)data[rs.c_str()];
             if (data[rs.c_str()].is_array()) {
                 pson_array& array = data[rs.c_str()];
                 pson_container<pson>::iterator it = array.begin();
