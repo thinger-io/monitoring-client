@@ -27,6 +27,7 @@ jobs:
       id: build_image
       with:
         commands: |
+            sudo apt update && sudo apt -qqy upgrade
             sudo apt install -qqy gcc g++ cmake libssl-dev
             sudo apt install -qqy libjsoncpp1 libjsoncpp-dev
             cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DRASPBERRY=${{env.RASPBERRY}}
