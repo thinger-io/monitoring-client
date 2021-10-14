@@ -1,3 +1,5 @@
+#include "thinger_monitor_config.h"
+
 #include <thinger_client.h>
 
 #include <httplib.h>
@@ -19,7 +21,7 @@ namespace fs = std::filesystem;
 
 #define SECTOR_SIZE 512
 
-/* Conversion constants. */
+// Conversion constants. //
 const long minute = 60;
 const long hour = minute * 60;
 const long day = hour * 24;
@@ -33,59 +35,33 @@ class ThingerMonitor {
 
 public:
 
-    ThingerMonitor(thinger_client& client,
-      std::vector<std::string> filesystems,
-      std::vector<std::string> drives,
-      std::vector<std::string> interfaces,
-      bool defaults = true) :
+    ThingerMonitor(thinger_client& client, ThingerMonitorConfig& config) :
         client_(client),
         monitor_(client["monitor"]),
         reboot_(client["reboot"]),
         update_(client["update"]),
-        defaults_(defaults)
+        config_(config)
     {
 
-            for (auto fs_path : filesystems) {
-                filesystem fs;
-                fs.path = fs_path;
-                filesystems_.push_back(fs);
-            }
-
-            for (auto dv_name : drives) {
-                drive dv;
-                dv.name = dv_name;
-                drives_.push_back(dv);
-            }
-
-            for (auto ifc_name : interfaces) {
-                interface ifc;
-                ifc.name = ifc_name;
-                ifc.internal_ip = getIPAddress(ifc_name);
-                interfaces_.push_back(ifc);
-            }
+            reload_configuration();
 
             // Executed only once
             retrieve_hostname();
             retrieve_os_version();
             retrieve_cpu_cores();
 
-            reboot_ << [this](pson& in) { // TODO: change to execute function =
-                if (in) {
-                    reboot();
-                }
+            reboot_ = [this]() {
+                reboot();
             };
 
-            update_ << [this](pson& in) {
-                if (in) {
-                    update();
-                }
+            update_ = [this]() {
+                update();
             };
 
             monitor_ >> [this](pson& out) {
 
                 unsigned long current_seconds = std::chrono::duration_cast<std::chrono::seconds>(
                     std::chrono::system_clock::now().time_since_epoch()).count();
-                //get_property();
 
                 // Set values at defined intervals
                 if (current_seconds >= (every5s + 5)) {
@@ -114,7 +90,7 @@ public:
                 // Storage
                 for (auto & fs : filesystems_) {
                     std::string name = fs.path;
-                    if ( defaults_ && &fs == &filesystems_.front()) {
+                    if ( config_.get_defaults() && &fs == &filesystems_.front()) {
                         name = "default";
                     }
                     out[("st_"+name+"_capacity").c_str()] = fs.space_info.capacity / btogb;
@@ -127,7 +103,7 @@ public:
                 retrieve_dv_stats();
                 for (auto & dv : drives_) {
                     std::string name = dv.name;
-                    if ( defaults_ && &dv == &drives_.front()) {
+                    if ( config_.get_defaults() && &dv == &drives_.front()) {
                         name = "default";
                     }
 
@@ -151,7 +127,7 @@ public:
                 retrieve_ifc_stats();
                 for (auto & ifc : interfaces_) {
                     std::string name = ifc.name;
-                    if ( defaults_ && &ifc == &interfaces_.front()) {
+                    if ( config_.get_defaults() && &ifc == &interfaces_.front()) {
                         name = "default";
                     }
 
@@ -206,14 +182,33 @@ public:
             };
     }
 
-    /* In case we want configuration by properties
-    void get_property() {
-        pson data;
-        client_.get_property("_monitor", data);
-        std::string filesystem = data["filesytem"];
-        std::cout << filesystem << std::endl;
-    }*/
     virtual ~ThingerMonitor(){
+    }
+
+    void reload_configuration() {
+        interfaces_.clear();
+        filesystems_.clear();
+        drives_.clear();
+
+        for (auto fs_path : config_.get_filesystems()) {
+            filesystem fs;
+            fs.path = fs_path;
+            filesystems_.push_back(fs);
+        }
+
+        for (auto dv_name : config_.get_drives()) {
+            drive dv;
+            dv.name = dv_name;
+            drives_.push_back(dv);
+        }
+
+        for (auto ifc_name : config_.get_interfaces()) {
+            interface ifc;
+            ifc.name = ifc_name;
+            ifc.internal_ip = getIPAddress(ifc_name);
+            interfaces_.push_back(ifc);
+        }
+
     }
 
 protected:
@@ -223,7 +218,7 @@ protected:
     thinger::thinger_resource& reboot_;
     thinger::thinger_resource& update_;
 
-    bool defaults_ = true;
+    ThingerMonitorConfig& config_;
 
     // network
     struct interface {
@@ -272,7 +267,7 @@ protected:
     unsigned long every5m = 0;
     unsigned long every1d = 0;
 
-    /* -- SYSTEM INFO -- */
+    // -- SYSTEM INFO -- //
     void retrieve_updates() {
         // We will use default ubuntu server notifications
         std::ifstream updatesinfo ("/var/lib/update-notifier/updates-available", std::ifstream::in);
@@ -338,7 +333,7 @@ private:
         publicIP = res->body;
     }
 
-    /* -- SYSTEM INFO -- */
+    // -- SYSTEM INFO -- //
     void retrieve_hostname() {
         std::ifstream hostinfo ("/etc/hostname", std::ifstream::in);
         hostinfo >> hostname;
@@ -359,7 +354,7 @@ private:
         }
     }
 
-    /* -- NETWORK -- */
+    // -- NETWORK -- //
     void retrieve_ifc_stats() {
         for (auto & ifc : interfaces_) {
             int j = 0;
@@ -386,14 +381,14 @@ private:
         }
     }
 
-    /* -- STORAGE -- */
+    // -- STORAGE -- //
     void retrieve_fs_stats() {
         for (auto & fs : filesystems_) {
             fs.space_info = std::filesystem::space(fs.path);
         }
     }
 
-    /* -- RAM -- */
+    // -- RAM -- //
     void retrieve_ram() {
 
         std::ifstream raminfo ("/proc/meminfo", std::ifstream::in);
@@ -414,7 +409,7 @@ private:
         }
     }
 
-    /* -- CPU -- */
+    // -- CPU -- //
     void retrieve_cpu_cores() {
         cpu_cores = get_nprocs();
     }
@@ -441,7 +436,7 @@ private:
         }
     }
 
-    /* -- I/O -- */
+    // -- I/O -- //
     void retrieve_dv_stats() {
         for(auto & dv : drives_) {
             int j = 0;

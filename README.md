@@ -14,7 +14,7 @@ In addition to the Linux Client requirements, the monitoring client requires som
 
 To install the additional package execute:
 
-    sudo apt install jsoncpp
+    sudo apt install libjsoncpp1
 
 Note that the compiler must be at least of version C++17.
 
