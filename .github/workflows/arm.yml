@@ -7,7 +7,7 @@ on:
     branches: [ master ]
   workflow_dispatch:
     tags:
-      description: 'Test scenario tags'
+      description: 'Manual run'
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
