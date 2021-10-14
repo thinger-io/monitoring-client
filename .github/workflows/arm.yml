@@ -26,6 +26,7 @@ jobs:
     - uses: pguyot/arm-runner-action@v1
       id: build_image
       with:
+        image_additional_mb: 1048576
         commands: |
             sudo apt update && sudo apt -qqy upgrade
             sudo apt install -qqy gcc g++ cmake libssl-dev
