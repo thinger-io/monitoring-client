@@ -33,6 +33,10 @@
 #include <httplib.h>
 #include <unistd.h>
 
+#include <nlohmann/json.hpp>
+
+using json = nlohmann::json;
+
 #define CONFIG_DELAY 10
 
 //const std::vector<std::string> interfaces = {"eth0"};
@@ -48,17 +52,17 @@ int create_device(std::string token, std::string user, std::string device, std::
         { "Authorization", "Bearer "+token}
     };
 
-    Json::Value body;
+    json body;
     body["device"] = device;
     body["credentials"] = credentials;
     body["name"] = device+" autoprovision";
     body["description"] = "Linux Monitoring autoprovision";
     body["type"] = "Generic";
 
-    Json::StreamWriterBuilder wbuilder;
-    const std::string body_json = Json::writeString(wbuilder, body);
+    //Json::StreamWriterBuilder wbuilder;
+    //kconst std::string body_json = Json::writeString(wbuilder, body);
 
-    auto res = cli.Post(("/v1/users/"+user+"/devices").c_str(), headers, body_json, "application/json");
+    auto res = cli.Post(("/v1/users/"+user+"/devices").c_str(), headers, body.dump(), "application/json");
 
     return res->status;
 }

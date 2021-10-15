@@ -1,11 +1,14 @@
 #include <filesystem>
-#include <jsoncpp/json/json.h>
 #include <fstream>
 #include <random>
 
-#define DF_CONFIG_PATH "/etc/thinger_io/monitor/app.json"
+#include <nlohmann/json.hpp>
+
+using json = nlohmann::json;
 
 namespace fs = std::filesystem;
+
+#define DF_CONFIG_PATH "/etc/thinger_io/monitor/app.json"
 
 using std::filesystem::current_path;
 
@@ -38,9 +41,9 @@ public:
 
     bool update_with_remote(pson& data) {
 
-        Json::Value remote_config = to_json_rs(data);
+        json remote_config = to_json_rs(data);
 
-        if (remote_config.compare(config_["resources"]) != 0) {
+        if (remote_config != config_["resources"]) {
             config_["resources"] = remote_config;
             save_config();
 
@@ -52,15 +55,18 @@ public:
 
     pson in_pson() {
         // TODO: return full config in pson?
-        Json::Value config = config_;
 
         pson data;
-        for (auto rs : config_["resources"].getMemberNames()) {
-            if (config["resources"][rs].isBool()) data[rs.c_str()] = config["resources"][rs].asBool();
+        //for (auto rs : config_["resources"].getMemberNames()) {
+        //for (json::iterator rs = config_["resources"].begin(); rs != config_["resources"].end(); ++rs) {
+        for (auto& rs : config_["resources"].items()) {
+            if (rs.value().is_boolean()) data[rs.key().c_str()] = rs.value().get<bool>();
             else {
-                pson_array& array = data[rs.c_str()];
-                for (auto rs_val : config["resources"][rs]) {
-                    array.add(rs_val.asString());
+                pson_array& array = data[rs.key().c_str()];
+                //for (auto rs_val : config["resources"][rs]) {
+                //for (json::iterator rs_val = config_["resources"][rs].begin(); rs_val != config_["resources"][rs].end(); ++rs_val) {
+                for (auto& rs_val : rs.value()) {
+                    array.add(rs_val.get<std::string>());
                 }
             }
         }
@@ -73,35 +79,35 @@ public:
     //------------------//
 
     bool has_user() {
-        return config_.isMember("user");
+        return config_.contains("user");
     }
 
     bool has_device() {
-        return config_.isMember("device") && has_device_id() && has_device_credentials();
+        return config_.contains("device") && has_device_id() && has_device_credentials();
     }
 
     bool has_device_id() {
-        return config_.isMember("device") && config_["device"].isMember("id");
+        return config_.contains("device") && config_["device"].contains("id");
     }
 
     bool has_device_credentials() {
-        return config_.isMember("device") && config_["device"].isMember("credentials");
+        return config_.contains("device") && config_["device"].contains("credentials");
     }
 
     bool has_filesystems() {
-        return config_.isMember("resources") && config_["resources"].isMember("filesystems");
+        return config_.contains("resources") && config_["resources"].contains("filesystems");
     }
 
     bool has_drives() {
-        return config_.isMember("resources") && config_["resources"].isMember("drives");
+        return config_.contains("resources") && config_["resources"].contains("drives");
     }
 
     bool has_interfaces() {
-        return config_.isMember("resources") && config_["resources"].isMember("interfaces");
+        return config_.contains("resources") && config_["resources"].contains("interfaces");
     }
 
     bool has_defaults() {
-        return config_.isMember("resources") && config_["resources"].isMember("defaults");
+        return config_.contains("resources") && config_["resources"].contains("defaults");
     }
 
     //-------------------//
@@ -116,7 +122,7 @@ public:
             if (config_.empty()) {
                 load_config();
             } else {
-                Json::Value config = config_;
+                json config = config_;
                 load_config();
                 merge_json(config_, config);
                 save_config();
@@ -159,64 +165,58 @@ public:
     //----- Getters -----//
     //-------------------//
 
-    Json::Value get_config() const {
+    json get_config() const {
         return config_;
     }
 
     std::string get_user() const {
-        return config_["user"].asString();
+        return config_["user"].get<std::string>();
     }
 
     std::string get_device_id() const {
-        return config_["device"]["id"].asString();
+        return config_["device"]["id"].get<std::string>();
     }
 
     std::string get_device_credentials() const {
-        return config_["device"]["credentials"].asString();
+        return config_["device"]["credentials"].get<std::string>();
     }
 
     std::vector<std::string> get_filesystems() {
 
-        std::vector<std::string> filesystems;
-
         if (has_filesystems()) {
             for (auto fs : config_["resources"]["filesystems"]) {
-                filesystems.push_back(fs.asString());
+                filesystems_.push_back(fs.get<std::string>());
             }
         }
-        return filesystems;
+        return filesystems_;
     }
 
     std::vector<std::string> get_drives() {
 
-        std::vector<std::string> drives;
-
         if (has_drives()) {
             for (auto dv : config_["resources"]["drives"]) {
-                drives.push_back(dv.asString());
+                drives_.push_back(dv.get<std::string>());
             }
         }
-        return drives;
+        return drives_;
     }
 
     std::vector<std::string> get_interfaces() {
 
-        std::vector<std::string> interfaces;
-
         if (has_interfaces()) {
             for (auto ifc : config_["resources"]["interfaces"]) {
-                interfaces.push_back(ifc.asString());
+                interfaces_.push_back(ifc.get<std::string>());
             }
         }
-        return interfaces;
+        return interfaces_;
     }
 
     bool get_defaults() {
-        return (has_defaults()) ? config_["resources"]["defaults"].asBool() : true;
+        return (has_defaults()) ? config_["resources"]["defaults"].get<bool>() : true;
     }
 
 protected:
-    Json::Value config_;
+    json config_;
     std::string config_path_;
 
     std::vector<std::string> filesystems_;
@@ -227,12 +227,12 @@ protected:
 private:
 
     void load_config(){
-        Json::Value config;
 
         std::filesystem::path f(config_path_);
 
         if (std::filesystem::exists(f)) {
-            std::ifstream config_file(config_path_, std::ifstream::binary);
+            //std::ifstream config_file(config_path_, std::ifstream::binary);
+            std::ifstream config_file(config_path_);
             config_file >> config_;
         }
 
@@ -245,11 +245,12 @@ private:
             std::filesystem::create_directories(f.parent_path());
         }
 
-        Json::StreamWriterBuilder wbuilder;
-        wbuilder["indentation"] = "  ";
-        std::unique_ptr<Json::StreamWriter> writer(wbuilder.newStreamWriter());
+        //Json::StreamWriterBuilder wbuilder;
+        //wbuilder["indentation"] = "  ";
+        //std::unique_ptr<Json::StreamWriter> writer(wbuilder.newStreamWriter());
         std::ofstream file(config_path_);
-        writer->write(config_, &file);
+        //writer->write(config_, &file);
+        file << std::setw(2) << config_ << std::endl;
     }
 
     std::string generate_credentials(std::size_t length) {
@@ -270,9 +271,9 @@ private:
 
     }
 
-    Json::Value to_json_rs(pson& data) {
+    json to_json_rs(pson& data) {
 
-        Json::Value config;
+        json config;
 
         std::vector<std::string> resources = {"defaults", "interfaces", "filesystems", "drives"};
 
@@ -285,7 +286,8 @@ private:
                 pson_container<pson>::iterator it = array.begin();
                 while (it.valid()) {
                     std::string string = it.item();
-                    config[rs].append(string);
+                    //config[rs].append(string);
+                    config[rs].push_back(string);
                     it.next();
                 }
             }
@@ -294,16 +296,28 @@ private:
         return config;
     }
 
-    void merge_json(Json::Value& a, Json::Value& b) {
-        if (!a.isObject() || !b.isObject()) return;
+    void merge_json(json& a, json& b) {
+        if (!a.is_object() || !b.is_object()) return;
 
-        for (const auto& key : b.getMemberNames()) {
-            if (a[key].isObject()) {
+        for (auto& [key, value] : b.items()) {
+            if (a[key].is_object()) {
                 merge_json(a[key], b[key]);
             } else {
-                a[key] = b[key];
+                a[key] = value;
             }
         }
     }
+
+//    void merge_json(json& a, json& b) {
+//        if (!a.isObject() || !b.isObject()) return;
+
+//        for (const auto& key : b.getMemberNames()) {
+//            if (a[key].isObject()) {
+//                merge_json(a[key], b[key]);
+//            } else {
+//                a[key] = b[key];
+//            }
+//        }
+//    }
 
 };

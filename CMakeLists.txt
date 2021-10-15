@@ -21,12 +21,12 @@ OPTION(EDISON "Enable build and install for Intel Edison" OFF)
 OPTION(RASPBERRY "Enable build and isntall for Raspberry Pi" OFF)
 
 # Check for jsoncpp
-find_package(JsonCpp REQUIRED)
-if (JsonCpp_FOUND)
-  list(APPEND ADDITIONAL_LIBS jsoncpp)
-else()
-  message(FATAL_ERROR "Please install jsoncpp before proceeding.")
-endif()
+#find_package(JsonCpp REQUIRED)
+#if (JsonCpp_FOUND)
+#  list(APPEND ADDITIONAL_LIBS jsoncpp)
+#else()
+#  message(FATAL_ERROR "Please install jsoncpp before proceeding.")
+#endif()
 
 # Find OpenSSL
 IF(ENABLE_OPENSSL)
@@ -55,15 +55,19 @@ set(SOURCE_FILES src/main.cpp)
 # set OpenSSL if available
 add_definitions( -DOPEN_SSL=${OPEN_SSL} )
 
-# Support for WiringPi on Raspberry
-if(RASPBERRY)
-    find_package(WiringPi)
-    if(WiringPi_FOUND)
-        include_directories(${WiringPi_INCLUDE_DIR})
-        list(APPEND ADDITIONAL_LIBS ${WiringPi_LIBRARIES})
-    endif()
-endif()
+# json
+include(FetchContent)
+FetchContent_Declare(json
+  GIT_REPOSITORY https://github.com/nlohmann/json.git
+  GIT_TAG v3.10.3
+)
 
+FetchContent_GetProperties(json)
+if(NOT json_POPULATED)
+  FetchContent_Populate(json)
+  add_subdirectory(${json_SOURCE_DIR} ${json_BINARY_DIR} EXCLUDE_FROM_ALL)
+  list(APPEND ADDITIONAL_LIBS nlohmann_json::nlohmann_json)
+endif()
 
 if(DAEMON)
     # daemon service that can be installed as a linux service
@@ -87,7 +91,6 @@ else()
 endif()
 
 # Add thinger libraries
-include(FetchContent)
 FetchContent_Declare(
   thinger
   GIT_REPOSITORY https://github.com/thinger-io/Linux-Client.git
@@ -104,3 +107,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(cpp_httplib)
 target_include_directories(thinger_monitor PRIVATE ${cpp_httplib_SOURCE_DIR})
+
+#target_link_libraries(thinger_monitor PRIVATE nlohmann_json::nlohmann_json)
+
