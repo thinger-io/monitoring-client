@@ -26,6 +26,8 @@ jobs:
       uses: pguyot/arm-runner-action@v1
       with:
         commands: |
+            sudo apt update
+            sudo apt install -qqy gcc g++ cmake libssl-dev
             cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DENABLE_OPENSSL=OFF
             cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -DENABLE_OPENSSL=OFF
 
