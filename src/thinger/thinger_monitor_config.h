@@ -57,14 +57,10 @@ public:
         // TODO: return full config in pson?
 
         pson data;
-        //for (auto rs : config_["resources"].getMemberNames()) {
-        //for (json::iterator rs = config_["resources"].begin(); rs != config_["resources"].end(); ++rs) {
         for (auto& rs : config_["resources"].items()) {
             if (rs.value().is_boolean()) data[rs.key().c_str()] = rs.value().get<bool>();
             else {
                 pson_array& array = data[rs.key().c_str()];
-                //for (auto rs_val : config["resources"][rs]) {
-                //for (json::iterator rs_val = config_["resources"][rs].begin(); rs_val != config_["resources"][rs].end(); ++rs_val) {
                 for (auto& rs_val : rs.value()) {
                     array.add(rs_val.get<std::string>());
                 }
@@ -110,6 +106,18 @@ public:
         return config_.contains("resources") && config_["resources"].contains("defaults");
     }
 
+    bool has_server() {
+        return config_.contains("server");
+    }
+
+    bool has_server_url() {
+        return has_server() && config_["server"].contains("url");
+    }
+
+    bool has_server_secure() {
+        return has_server() && config_["server"].contains("secure");
+    }
+
     //-------------------//
     //----- Setters -----//
     //-------------------//
@@ -141,6 +149,8 @@ public:
             std::string hostname;
             std::ifstream hostinfo ("/etc/hostname", std::ifstream::in);
             hostinfo >> hostname;
+            std::replace(hostname.begin(), hostname.end(),'.','_');
+            std::replace(hostname.begin(), hostname.end(),'-','_');
 
             config_["device"]["id"] = hostname;
         }
@@ -158,6 +168,16 @@ public:
 
     void set_device_credentials() {
         config_["device"]["credentials"] = generate_credentials(16);
+        save_config();
+    }
+
+    void set_server_url(std::string url) {
+        config_["server"]["url"] = url;
+        save_config();
+    }
+
+    void set_server_secure(bool secure) {
+        config_["server"]["secure"] = secure;
         save_config();
     }
 
@@ -215,6 +235,14 @@ public:
         return (has_defaults()) ? config_["resources"]["defaults"].get<bool>() : true;
     }
 
+    std::string get_server_url() {
+        return (has_server_url()) ? config_["server"]["url"].get<std::string>() : THINGER_SERVER;
+    }
+
+    bool get_server_secure() {
+        return (has_server_secure()) ? config_["server"]["secure"].get<bool>() : true;
+    }
+
 protected:
     json config_;
     std::string config_path_;
@@ -231,7 +259,6 @@ private:
         std::filesystem::path f(config_path_);
 
         if (std::filesystem::exists(f)) {
-            //std::ifstream config_file(config_path_, std::ifstream::binary);
             std::ifstream config_file(config_path_);
             config_file >> config_;
         }
@@ -245,11 +272,7 @@ private:
             std::filesystem::create_directories(f.parent_path());
         }
 
-        //Json::StreamWriterBuilder wbuilder;
-        //wbuilder["indentation"] = "  ";
-        //std::unique_ptr<Json::StreamWriter> writer(wbuilder.newStreamWriter());
         std::ofstream file(config_path_);
-        //writer->write(config_, &file);
         file << std::setw(2) << config_ << std::endl;
     }
 
@@ -307,17 +330,5 @@ private:
             }
         }
     }
-
-//    void merge_json(json& a, json& b) {
-//        if (!a.isObject() || !b.isObject()) return;
-
-//        for (const auto& key : b.getMemberNames()) {
-//            if (a[key].isObject()) {
-//                merge_json(a[key], b[key]);
-//            } else {
-//                a[key] = b[key];
-//            }
-//        }
-//    }
 
 };

@@ -94,7 +94,7 @@ endif()
 FetchContent_Declare(
   thinger
   GIT_REPOSITORY https://github.com/thinger-io/Linux-Client.git
-  GIT_TAG 7626d1664d9488f302a9163aa20c4345f6a065c7 # the commit hash for 2021-09-15
+  GIT_TAG 34aa56d34d2de5894654e129b6ee73c5513cfa70 # the commit hash for 2021-10-20
 )
 FetchContent_MakeAvailable(thinger)
 target_include_directories(thinger_monitor PRIVATE ${thinger_SOURCE_DIR}/src/thinger )
@@ -107,6 +107,3 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(cpp_httplib)
 target_include_directories(thinger_monitor PRIVATE ${cpp_httplib_SOURCE_DIR})
-
-#target_link_libraries(thinger_monitor PRIVATE nlohmann_json::nlohmann_json)
-
