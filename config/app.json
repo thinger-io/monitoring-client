@@ -1,14 +1,18 @@
 {
-  "device" : 
+  "user" : "<user_id>",
+  "device" :
   {
     "credentials" : "<device_credentials>",
     "id" : "<device_id>"
+  },
+  "server": {
+    "secure": true,
+    "url": "<thinger server url>"
   },
   "resources" : {
     "defaults": true,
     "interfaces": ["eth0"],
     "filesystems": ["/"],
     "drives": ["xvda"]
-  },
-  "user" : "<user_id>"
+  }
 }
