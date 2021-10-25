@@ -9,7 +9,7 @@ using json = nlohmann::json;
 
 namespace fs = std::filesystem;
 
-#define DF_CONFIG_PATH "/etc/thinger_io/app.json"
+#define DF_CONFIG_PATH "/etc/thinger_io/thinger_monitor.json"
 
 using std::filesystem::current_path;
 
