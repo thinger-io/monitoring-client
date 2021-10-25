@@ -86,6 +86,13 @@ int main(int argc, char *argv[]) {
             config.set_device();
 
             auto status = create_device(thinger_token, config.get_user(), config.get_device_id(), config.get_device_credentials(), config.get_server_url(), config.get_server_secure());
+            if (status == 200) {
+                std::cout << "Device created succesfully! Please run the program without the token" << std::endl;
+                return 0
+            } else {
+                std::cout << "Could not create device, check the connection and make sure it doesn't already exist" << std::endl;
+                return -1
+            }
         }
     }
 
@@ -135,7 +142,6 @@ int main(int argc, char *argv[]) {
 
             delay = current_seconds;
         }
-        
 
     }
 

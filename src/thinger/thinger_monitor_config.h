@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <fstream>
 #include <random>
+#include <regex>
 
 #include <nlohmann/json.hpp>
 
@@ -8,7 +9,7 @@ using json = nlohmann::json;
 
 namespace fs = std::filesystem;
 
-#define DF_CONFIG_PATH "/etc/thinger_io/monitor/app.json"
+#define DF_CONFIG_PATH "/etc/thinger_io/app.json"
 
 using std::filesystem::current_path;
 
@@ -75,19 +76,19 @@ public:
     //------------------//
 
     bool has_user() {
-        return config_.contains("user");
+        return config_.contains("user") && !is_placeholder(get_user());
     }
 
     bool has_device() {
-        return config_.contains("device") && has_device_id() && has_device_credentials();
+        return config_.contains("device");
     }
 
     bool has_device_id() {
-        return config_.contains("device") && config_["device"].contains("id");
+        return has_device() && config_["device"].contains("id") && !is_placeholder(get_device_id());
     }
 
     bool has_device_credentials() {
-        return config_.contains("device") && config_["device"].contains("credentials");
+        return has_device() && config_["device"].contains("credentials") && !is_placeholder(get_device_credentials());
     }
 
     bool has_filesystems() {
@@ -111,7 +112,7 @@ public:
     }
 
     bool has_server_url() {
-        return has_server() && config_["server"].contains("url");
+        return has_server() && config_["server"].contains("url") && !is_placeholder(config_["server"]["url"].get<std::string>());
     }
 
     bool has_server_secure() {
@@ -329,6 +330,10 @@ private:
                 a[key] = value;
             }
         }
+    }
+
+    bool is_placeholder(const std::string& value) {
+        return std::regex_match(value, std::regex("(<.*>)"));
     }
 
 };
