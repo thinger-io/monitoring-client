@@ -3,6 +3,11 @@ project(thinger_monitor)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+
 if(NOT BUILD_VERSION)
     SET(BUILD_VERSION "Not set")
 else()
@@ -24,30 +29,30 @@ else()
 endif()
 
 OPTION(ENABLE_OPENSSL "Enable use of OpenSSL" ON)
-OPTION(DAEMON "Build thinger client as daemon" OFF)
-OPTION(EDISON "Enable build and install for Intel Edison" OFF)
-OPTION(RASPBERRY "Enable build and isntall for Raspberry Pi" OFF)
+OPTION(CROSS_ARM "Enable static ARM coss-compilation" OFF)
 
-# Find OpenSSL
+# OpenSSL
 if(ENABLE_OPENSSL)
-  if(APPLE) # point to the correct OpenSSL path (installed by homebrew)
-      SET(OPEN_SSL 1)
-      include_directories(/usr/local/opt/openssl/include)
-      list(APPEND ADDITIONAL_LIBS /usr/local/opt/openssl/lib/libssl.a)
-      list(APPEND ADDITIONAL_LIBS /usr/local/opt/openssl/lib/libcrypto.a)
-  else()
-      find_package(OpenSSL REQUIRED)
-      if(OPENSSL_FOUND)
-          SET(OPEN_SSL 1)
-          include_directories(${OPENSSL_INCLUDE_DIR})
-          list(APPEND ADDITIONAL_LIBS ${OPENSSL_LIBRARIES})
-          message(STATUS "OpenSSL Version: ${OPENSSL_VERSION}")
-      else()
-          SET(OPEN_SSL 0)
-      endif()
-  endif()
+    SET(OPEN_SSL 1)
+    set(OPENSSL_USE_STATIC_LIBS TRUE)
+    find_package(OpenSSL REQUIRED)
+    if(OPENSSL_FOUND)
+        include_directories(${OPENSSL_INCLUDE_DIR})
+        list(APPEND ADDITIONAL_LIBS OpenSSL::SSL)
+        list(APPEND ADDITIONAL_LIBS OpenSSL::Crypto)
+        message(STATUS "OpenSSL Version: ${OPENSSL_VERSION} ${OPENSSL_INCLUDE_DIR} ${OPENSSL_SSL_LIBRARIES} ${OPENSSL_CRYPTO_LIBRARIES}")
+    endif()
 else()
-  SET(OPEN_SSL 0)
+    SET(OPEN_SSL 0)
+endif()
+
+# generate a static binary
+if(CROSS_ARM)
+  SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static")
+
+  # strip binary for smaller size
+  set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -s")
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
 endif()
 
 set(SOURCE_FILES src/main.cpp)
@@ -69,26 +74,9 @@ if(NOT json_POPULATED)
   list(APPEND ADDITIONAL_LIBS nlohmann_json::nlohmann_json)
 endif()
 
-if(DAEMON)
-    # daemon service that can be installed as a linux service
-    add_executable(thinger_monitor ${SOURCE_FILES})
-    target_link_libraries(thinger_monitor ${ADDITIONAL_LIBS})
-    set_target_properties(thinger_monitor PROPERTIES COMPILE_DEFINITIONS "DAEMON=1")
-
-    if(EDISON)
-        install(TARGETS thinger_monitor RUNTIME DESTINATION bin)
-        install(FILES "${CMAKE_SOURCE_DIR}/install/intel_edison/thinger.service" DESTINATION /lib/systemd/system)
-    elseif(RASPBERRY)
-        install(TARGETS thinger_monitor RUNTIME DESTINATION bin)
-        install(FILES "${CMAKE_SOURCE_DIR}/install/raspberry/thinger" DESTINATION /etc/init.d)
-    elseif(MAC)
-
-    endif()
-else()
-    add_executable(thinger_monitor ${SOURCE_FILES})
-    target_link_libraries(thinger_monitor ${ADDITIONAL_LIBS})
-    set_target_properties(thinger_monitor PROPERTIES COMPILE_DEFINITIONS "DAEMON=0")
-endif()
+add_executable(thinger_monitor ${SOURCE_FILES})
+target_link_libraries(thinger_monitor ${ADDITIONAL_LIBS})
+set_target_properties(thinger_monitor PROPERTIES COMPILE_DEFINITIONS "DAEMON=0")
 
 # Add thinger libraries
 FetchContent_Declare(
