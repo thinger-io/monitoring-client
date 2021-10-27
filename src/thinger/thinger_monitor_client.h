@@ -19,6 +19,14 @@ namespace fs = std::filesystem;
   #define CPPHTTPLIB_OPENSSL_SUPPORT
 #endif
 
+#define STR_(x) #x
+#define STR(x) STR_(x)
+#ifdef BUILD_VERSION
+  #define VERSION STR(BUILD_VERSION)
+#else
+  #define VERSION "Not set"
+#endif
+
 #define SECTOR_SIZE 512
 
 // Conversion constants. //
@@ -178,6 +186,7 @@ public:
                 out["si_normal_updates"] = normal_updates;
                 out["si_security_updates"] = security_updates;
                 out["si_restart"] = system_restart;
+                out["si_sw_version"] = VERSION;
 
             };
     }

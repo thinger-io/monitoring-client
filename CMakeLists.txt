@@ -3,6 +3,14 @@ project(thinger_monitor)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
+if(NOT BUILD_VERSION)
+    SET(BUILD_VERSION "Not set")
+else()
+    add_definitions( -DBUILD_VERSION=${BUILD_VERSION} )
+    #SET(BUILD_VERSION ${BUILD_VERSION})
+  message(STATUS "The compiler version is ${BUILD_VERSION}")
+endif()
+
 # check c++17 or c++20 support
 include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++17" COMPILER_SUPPORTS_CXX17)
@@ -20,16 +28,8 @@ OPTION(DAEMON "Build thinger client as daemon" OFF)
 OPTION(EDISON "Enable build and install for Intel Edison" OFF)
 OPTION(RASPBERRY "Enable build and isntall for Raspberry Pi" OFF)
 
-# Check for jsoncpp
-#find_package(JsonCpp REQUIRED)
-#if (JsonCpp_FOUND)
-#  list(APPEND ADDITIONAL_LIBS jsoncpp)
-#else()
-#  message(FATAL_ERROR "Please install jsoncpp before proceeding.")
-#endif()
-
 # Find OpenSSL
-IF(ENABLE_OPENSSL)
+if(ENABLE_OPENSSL)
   if(APPLE) # point to the correct OpenSSL path (installed by homebrew)
       SET(OPEN_SSL 1)
       include_directories(/usr/local/opt/openssl/include)
@@ -46,9 +46,9 @@ IF(ENABLE_OPENSSL)
           SET(OPEN_SSL 0)
       endif()
   endif()
-ELSE()
+else()
   SET(OPEN_SSL 0)
-ENDIF()
+endif()
 
 set(SOURCE_FILES src/main.cpp)
 
@@ -94,7 +94,7 @@ endif()
 FetchContent_Declare(
   thinger
   GIT_REPOSITORY https://github.com/thinger-io/Linux-Client.git
-  GIT_TAG 34aa56d34d2de5894654e129b6ee73c5513cfa70 # the commit hash for 2021-10-20
+  GIT_TAG d802aa3401bfdd308176e53907b6ccedc1bf0a9f # the commit hash for 2021-10-26
 )
 FetchContent_MakeAvailable(thinger)
 target_include_directories(thinger_monitor PRIVATE ${thinger_SOURCE_DIR}/src/thinger )
