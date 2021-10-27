@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  push:
+    branches: [ master ]
+#  workflow_run:
+#    workflows: ["Build x86_64"]
+#    branches: [ master ]
+#    types:
+#      - completed
+
+jobs:
+  release:
+#    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
+    - name: Get tag version
+      run: | # official regex for semantic version: https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
+        echo "tag_version=`grep -oE '(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?' run.sh | head -1`" >> $GITHUB_ENV
+
+    - name: Check if tag already exists
+      run: |
+        git fetch --prune --unshallow --tags
+        if [ `git tag --list | grep -q ${{ env.tag_version }} -ne 0] exit 1
+
+    - name: Tag repository with version
+    - uses: uses: mathieudutour/github-tag-action@v5.6
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        custom_tag: ${{ env.tag_version }}
+
+    - name: Get changelog body
+      run: |
+        echo "release_body=`awk '/^## \[[0-9]+/ {flag=!flag; next} flag {print}' CHANGELOG.md`" >> $GITHUB_ENV
+
+    - name: Create GitHub release
+      uses: ncipollo/release-action@v1
+      with:
+        tag: ${{ env.tag_version }}
+        name: ${{ env.tag_version }}
+        body: ${{ env.relese_body }}

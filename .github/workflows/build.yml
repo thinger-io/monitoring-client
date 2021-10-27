@@ -1,0 +1,125 @@
+name: Build
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  MODULE: thinger_monitor
+  BUILD_TYPE: Release
+
+jobs:
+
+  build_version:
+    steps:
+      - name: Get tag version ## TODO: might not work
+        run: | # official regex for semantic version: https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
+        echo "build_version=`grep -oE '(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?' run.sh | head -1`" >> $GITHUB_ENV
+
+  build_x86_64:
+    # The CMake configure and build commands are platform agnostic and should work equally
+    # well on Windows or Mac.  You can convert this to a matrix build if you need
+    # cross-platform coverage.
+    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
+    runs-on: ubuntu-latest
+    needs: build_version
+
+    steps:
+
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Configure CMake
+      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
+      # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+      run: cmake -B ${{ github.workspace }}/build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DBUILD_VERSION=
+
+    - name: Build
+      # Build your program with the given configuration
+      run: cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }}
+
+    #- run: mv ${{github.workspace}}/build/${{env.MODULE}} ${{github.workspace}}/build/${{env.arch}}
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v2
+      if: ${{ github.event_name == 'push' }}
+      with:
+        name: ${{ env.MODULE }}.x86_64
+        path: ${{ github.workspace }}/build/${{ env.MODULE }}
+        retention-days: 1
+
+  build_arm:
+    runs-on: ubuntu-latest
+    needs: build_version
+    container:
+      image: bautisflow/toolchain:rm8-plus-toolchain-1-3
+      credentials:
+        username: ${{ secrets.DOCKER_HUB_USERNAME }}
+        password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+    steps:
+
+    - name: Checkout Project
+      uses: actions/checkout@v2
+
+    - name: Configure CMake
+      run: cmake -B ${{ github.workspace }}/build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DBUILD_VERSION=${{ env.build_version }}
+
+    - name: Build
+      run: cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }}
+
+    - name: Upload build artifact
+      if: ${{ github.event_name == 'push' }}
+      uses: actions/upload-artifact@v2
+      with:
+        name: ${{ env.MODULE }}.arm
+        path: ${{ github.workspace }}/build/${{ env.MODULE }}
+        retention-days: 1
+
+  # Install and run
+
+  upload_to_release:
+    if: ${{ github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    needs: [build_x86_64, build_arm]
+
+    steps:
+
+    #- name: Get upload url
+    #  run: |
+    #    upload_url=$(curl -sL https://api.github.com/repos/thinger-io/monitoring-client/releases/latest | jq -r '.upload_url')
+    #    echo UPLOAD_URL=$upload_url >> $GITHUB_ENV
+    #  shell: bash
+    #
+    - name: Download x86_64 binary
+      uses: actions/download-artifact@v2
+      with:
+        name: ${{ env.MODULE }}.x86_64
+
+    - name: Download arm binary
+      uses: actions/download-artifact@v2
+      with:
+        name: ${{ env.MODULE }}.arm
+
+    - name: Upload x86_64 binary to release
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ env.GITHUB_TOKEN }}
+        file: ${{ env.MODULE }}.x86_64
+        tag: ${{ env.build_version }}
+
+    - name: Upload arm binary to release
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ env.GITHUB_TOKEN }}
+        file: ${{ env.MODULE }}.arm
+        tag: ${{ env.build_version }}
+
+
+    #- name: Test
+    #  working-directory: ${{github.workspace}}/build
+      # Execute tests defined by the CMake configuration.  
+      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
+    #  run: ctest -C ${{env.BUILD_TYPE}}
