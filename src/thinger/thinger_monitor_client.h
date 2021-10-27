@@ -11,7 +11,7 @@
 #include <arpa/inet.h>
 #include <filesystem>
 #include <linux/kernel.h>
-#include <sys/sysinfo.h>
+
 
 namespace fs = std::filesystem;
 
@@ -411,14 +411,13 @@ private:
 
     // -- CPU -- //
     void retrieve_cpu_cores() {
-        cpu_cores = get_nprocs();
+        cpu_cores = std::thread::hardware_concurrency();
     }
 
     void retrieve_cpu_loads() {
-        struct sysinfo si;
-        sysinfo (&si);
+        std::ifstream loadinfo ("/proc/loadavg", std::ifstream::in);
         for (auto i = 0; i < 3; i++) {
-            cpu_loads[i] = si.loads[i] * f_load;
+            loadinfo >> cpu_loads[i];
         }
     }
 
