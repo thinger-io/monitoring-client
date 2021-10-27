@@ -108,19 +108,22 @@ int main(int argc, char *argv[]) {
 
     ThingerMonitor monitor(thing, config);
 
-    // Connect once and update property
-    // Align settings between remote and local
-    thing.handle();
-
-    pson data;
-    thing.get_property("_monitor", data);
-    if (!data.is_empty()) {
-        config.update_with_remote(data);
-    } else {
-        thing.handle();
-        pson c_data = config.in_pson();
-        thing.set_property("_monitor", c_data);
-    }
+    // For each reconnection align settings between remote and local
+    thing.set_state_listener([&](thinger_client::THINGER_STATE state) {
+        switch(state) {
+            case thinger_client::THINGER_AUTHENTICATED:
+                pson data;
+                thing.get_property("_monitor", data);
+                if (!data.is_empty()) {
+                    config.update_with_remote(data);
+                } else {
+                    thing.handle();
+                    pson c_data = config.in_pson();
+                    thing.set_property("_monitor", c_data);
+                }
+                break;
+        }
+    });
 
     unsigned long delay = 0;
     while (true) {
