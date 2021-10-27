@@ -1,4 +1,4 @@
-#Linux Monitoring Client
+# Linux Monitoring Client
 
 [![CMake](https://github.com/thinger-io/monitoring-client/actions/workflows/cmake.yml/badge.svg)](https://github.com/thinger-io/monitoring-client/actions/workflows/cmake.yml)
 
@@ -10,11 +10,7 @@ Documentation regarding this software can be found [here](https://docs.thinger.i
 
 ### Prerequisites
 
-In addition to the Linux Client requirements, the monitoring client requires some additional packages in order to work.
-
-To install the additional package execute:
-
-    sudo apt install libjsoncpp1
+There is no additional requirements for the monitoring client besides the ones needed for the Linux Client.
 
 Note that the compiler must be at least of version C++17.
 
