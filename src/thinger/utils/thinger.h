@@ -7,9 +7,11 @@ static int create_device(const std::string &token, const std::string &user, cons
     // TODO: disable certificate verification on on premise and private ip instances
     std::string protocol = secure ? "https://" : "http://";
     httplib::Client cli(protocol+server);
-    if (!secure) {
-        cli.enable_server_certificate_verification(false);
-    }
+    #if OPEN_SSL
+      if (!secure) {
+          cli.enable_server_certificate_verification(false);
+      }
+    #endif
 
     const httplib::Headers headers = {
         { "Authorization", "Bearer "+token}
