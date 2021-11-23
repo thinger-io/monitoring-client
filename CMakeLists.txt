@@ -1,18 +1,13 @@
-cmake_minimum_required(VERSION 2.8.13)
+cmake_minimum_required(VERSION 3.16.0)
 project(thinger_monitor)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
-set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
-set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
-set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
-set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 
 if(NOT BUILD_VERSION)
     SET(BUILD_VERSION "Not set")
 else()
     add_definitions( -DBUILD_VERSION=${BUILD_VERSION} )
-    #SET(BUILD_VERSION ${BUILD_VERSION})
   message(STATUS "The compiler version is ${BUILD_VERSION}")
 endif()
 
@@ -29,12 +24,14 @@ else()
 endif()
 
 OPTION(ENABLE_OPENSSL "Enable use of OpenSSL" ON)
-OPTION(CROSS_ARM "Enable static ARM coss-compilation" OFF)
+OPTION(CROSS "Enable cross compilation and static linkin" OFF)
 
 # OpenSSL
 if(ENABLE_OPENSSL)
     SET(OPEN_SSL 1)
-    set(OPENSSL_USE_STATIC_LIBS TRUE)
+    if(CROSS)
+      set(OPENSSL_USE_STATIC_LIBS TRUE)
+    endif()
     find_package(OpenSSL REQUIRED)
     if(OPENSSL_FOUND)
         include_directories(${OPENSSL_INCLUDE_DIR})
@@ -46,9 +43,14 @@ else()
     SET(OPEN_SSL 0)
 endif()
 
-# generate a static binary
-if(CROSS_ARM)
-  SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static")
+if(CROSS)
+  set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+  set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+  set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+  set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+
+  # generate a static binary
+  SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static -pthread")
 
   # strip binary for smaller size
   set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -s")
