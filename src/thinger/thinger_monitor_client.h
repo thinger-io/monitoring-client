@@ -339,6 +339,10 @@ private:
     void getPublicIPAddress() {
         httplib::Client cli("https://ifconfig.me");
         auto res = cli.Get("/ip");
+        if ( res.error() == httplib::Error::SSLServerVerification ) {
+            httplib::Client cli("http://ifconfig.me");
+            res = cli.Get("/ip");
+        }
         publicIP = res->body;
     }
 
@@ -353,7 +357,7 @@ private:
         std::string line;
 
         std::string pretty_name = "PRETTY_NAME";
-        while(std::getline(osinfo,line, '=')) {
+        while(std::getline(osinfo,line)) {
             if (line.find("PRETTY_NAME") != std::string::npos) {
                 // get text in between "
                 unsigned first_del = line.find('"');

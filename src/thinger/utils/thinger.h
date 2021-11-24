@@ -4,7 +4,7 @@
 using json = nlohmann::json;
 
 static int create_device(const std::string &token, const std::string &user, const std::string &device, const std::string &credentials, const std::string &server = THINGER_SERVER, const bool secure = true) {
-    // TODO: disable certificate verification on on premise and private ip instances
+    // For on premise and private instances set secure to false with option -k
     std::string protocol = secure ? "https://" : "http://";
     httplib::Client cli(protocol+server);
     #if OPEN_SSL

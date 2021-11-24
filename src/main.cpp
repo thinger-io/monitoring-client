@@ -77,7 +77,8 @@ int main(int argc, char *argv[]) {
     if (!thinger_token.empty()) {
 
         json token = JWT::get_payload(thinger_token);
-        //config.set_server(token["srv"]); TODO: implement srv in thinger backend
+        if (token.contains("svr")
+            config.set_server(token["svr"]);
         config.set_user(token["usr"]);
 
         if (config.has_user()) {
@@ -108,22 +109,37 @@ int main(int argc, char *argv[]) {
 
     ThingerMonitor monitor(thing, config);
 
+    // TODO: clean once get property returns empty message instead of hanging onto the connection
     // For each reconnection align settings between remote and local
-    thing.set_state_listener([&](thinger_client::THINGER_STATE state) {
+    /*thing.set_state_listener([&](thinger_client::THINGER_STATE state) {
         switch(state) {
             case thinger_client::THINGER_AUTHENTICATED:
                 pson data;
                 thing.get_property("_monitor", data);
                 if (!data.is_empty()) {
+std::cout << "is empty" << std::endl;
                     config.update_with_remote(data);
                 } else {
-                    thing.handle();
+std::cout << "not empty" << std::endl;
+                    //thing.handle()
                     pson c_data = config.in_pson();
                     thing.set_property("_monitor", c_data);
                 }
                 break;
         }
-    });
+    });*/
+
+   thing.handle();
+
+    pson data;
+    thing.get_property("_monitor", data);
+    if (!data.is_empty()) {
+        config.update_with_remote(data);
+    } else {
+        thing.handle();
+        pson c_data = config.in_pson();
+        thing.set_property("_monitor", c_data);
+    }
 
     unsigned long delay = 0;
     while (true) {
