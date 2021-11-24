@@ -39,7 +39,7 @@ jobs:
 
     - name: Get changelog body
       run: |
-        echo "release_body=`awk '/^## \[[0-9]+/ {flag=!flag; next} flag {print}' CHANGELOG.md`" >> $GITHUB_ENV
+        echo "release_body=\"`awk '/^## \[[0-9]+/ {flag=!flag; next} flag {print}' CHANGELOG.md`\"" >> $GITHUB_ENV
 
     - name: Create GitHub release
       uses: ncipollo/release-action@v1
