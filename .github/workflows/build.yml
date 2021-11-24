@@ -62,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build_version
     container:
-      image: bautisflow/toolchains:musl_ssl_arm
+      image: bautisflow/toolchains:musl_ssl_armv7m_eabi
 
     steps:
 
