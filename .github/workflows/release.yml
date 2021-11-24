@@ -27,7 +27,8 @@ jobs:
 
     - name: Check if tag already exists
       run: |
-        git fetch --prune --unshallow --tags
+        #git fetch --prune --unshallow --tags
+        git fetch --prune --tags
         if [ `git tag --list | grep -q ${{ env.tag_version }} -ne 0] exit 1
 
     - name: Tag repository with version

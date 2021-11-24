@@ -77,8 +77,8 @@ int main(int argc, char *argv[]) {
     if (!thinger_token.empty()) {
 
         json token = JWT::get_payload(thinger_token);
-        if (token.contains("svr")
-            config.set_server(token["svr"]);
+        if (token.contains("svr"))
+            config.set_server_url(token["svr"]);
         config.set_user(token["usr"]);
 
         if (config.has_user()) {
