@@ -1,11 +1,19 @@
 #!/bin/bash
 
-_repo="monitoring_client"
+_repo="monitoring-client"
 _module="thinger_monitor"
 _github_api_url="api.github.com"
 _user_agent="Simple User Agent 1.0"
 
-_arch=`uname -m`
+# archtitecture to download
+case `uname -m` in
+  x86_64)
+    _arch=`uname -m` ;;
+  *arm*)
+    _arch="arm" ;;
+  *aarch64*)
+    _arch="arm" ;;
+esac
 
 usage() {
     echo "usage: install_$_monitor.sh [-h] [-t TOKEN] [-s SERVER] [-k] [-u]"
@@ -24,9 +32,27 @@ usage() {
     exit 0
 }
 
+set_directories() {
+    # Set install directories based on user
+    if [ "$UID" -eq 0 ]; then
+        export bin_dir="/usr/local/bin/"
+        export config_dir="/etc/thinger_io/"
+        service_dir="/etc/systemd/system/"
+        sys_user=""
+    else
+        export bin_dir="$HOME/.local/bin/"
+        export config_dir="$HOME/.config/thinger_io"
+        service_dir="$HOME/.config/systemd/user/"
+        sys_user="--user"
+
+  fi
+}
+
 uninstall() {
     # remove bin, disable and remove service, remove config
-    echo "Uninstalling $_module"
+    #echo "Uninstalling $_module"
+
+    set_directories
 
     rm -f "$bin_dir"/"$_module"
 
@@ -35,6 +61,9 @@ uninstall() {
     rm -f "$service_dir"/"$_module".service
 
     rm -f "$config_dir"/"$_module".json
+
+    echo "Uninstalled thinger_monitor"
+    exit 0
 }
 
 # Parse options
@@ -59,26 +88,14 @@ while [[ "$#" -gt 0 ]]; do case $1 in
     ;;
 esac; shift; done
 
-# Set install directories based on user
-if [ "$UID" -eq 0 ]; then
-    bin_dir="/usr/local/bin/"
-    config_dir="/etc/thinger_io/"
-    service_dir="/etc/systemd/system/"
-    sys_user=""
-else
-    bin_dir="$HOME/.local/bin/"
-    config_dir="$HOME/.config/thinger_io"
-    service_dir="$HOME/.local/systemd/user/"
-    sys_user="--user"
-
-    mkdir -p $bin_dir $config_dir $service_dir
-fi
+set_directories
+mkdir -p $bin_dir $config_dir $service_dir
 
 # Download bin
-last_release_body=`wget --header="Accept: application/vnd.github.v3+json" https://"$_github_api_url"/repos/thinger-io/"$_repo"/releases/latest`
-download_url=`echo "$last_realease_body" | grep "url.*$_arch" | cut -d '"' -f4`
+last_release_body=`wget --quiet -qO- --header="Accept: application/vnd.github.v3+json" https://"$_github_api_url"/repos/thinger-io/"$_repo"/releases/latest`
+download_url=`echo "$last_release_body" | grep "url.*$_arch" | cut -d '"' -f4`
 
-wget --header="Accept: application/octec-stream" "$download_url" -P "$bin_dir" -O "$_module"
+wget -q --header="Accept: application/octec-stream" "$download_url" -O "$bin_dir/$_module"
 chmod +x "$bin_dir"/"$_module"
 
 # Download config (is not actually neccesary)
@@ -86,15 +103,20 @@ chmod +x "$bin_dir"/"$_module"
 #curl -s -O -u "$GITHUB_USER":"$GITHUB_TOKEN" -H "Accept: application/vnd.github.VERSION.raw" "$GITHUB_CONFIG_URL"
 #cd - 1>/dev/null
 
+if [ -n ${SSL_CERT_DIR+x} ]; then
+    export certs_dir="SSL_CERT_DIR=$SSL_CERT_DIR"
+fi
+
 # Download service file
-wget --header="Accept: application/vnd.github.VERSION.raw" https://"$_github_api_url"/repos/thinger-io/"$_repo"/contents/install/"$_module".template -P "$service_dir"
-envsubst < "$service_dir"/"$_module".template > "$service_dir"/"$_module".service
+wget -q --header="Accept: application/vnd.github.VERSION.raw" https://"$_github_api_url"/repos/thinger-io/"$_repo"/contents/install/"$_module".template -P "$service_dir"
+cat "$service_dir"/"$_module".template | envsubst '$certs_dir,$bin_dir,$config_dir' > "$service_dir"/"$_module".service
 rm -f "$service_dir"/"$_module".template
 
 # First run with token for autoprovision
-"$bin_dir"/thinger_monitor -c "$config_dir"/"$_module".json "$token" "$server" "$insecure"
+"$bin_dir"/thinger_monitor -c "$config_dir"/"$_module".json $token $server $insecure
 
 # Start and enable service
+systemctl "$sys_user" daemon-reload
 systemctl "$sys_user" enable "$_module".service
 systemctl "$sys_user" start "$_module".service
 
