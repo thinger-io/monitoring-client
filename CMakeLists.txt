@@ -80,6 +80,12 @@ add_executable(thinger_monitor ${SOURCE_FILES})
 target_link_libraries(thinger_monitor ${ADDITIONAL_LIBS})
 set_target_properties(thinger_monitor PROPERTIES COMPILE_DEFINITIONS "DAEMON=0")
 
+if(BIN_EXTENSION)
+  set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${PROJECT_NAME}.${BIN_EXTENSION}")
+  message(STATUS "Binary name is ${PROJECT_NAME}.${BIN_EXTENSION}")
+endif()
+
+
 # Add thinger libraries
 FetchContent_Declare(
   thinger

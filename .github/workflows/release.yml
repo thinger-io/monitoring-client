@@ -54,5 +54,6 @@ jobs:
       with:
         tag: ${{ env.tag_version }}
         name: ${{ env.tag_version }}
+        artifacts: "install/install_thinger_monitor.sh"
         body: |
           ${{ steps.get_changelog.outputs.RELEASE_BODY }}
