@@ -61,15 +61,16 @@ jobs:
     - name: Check file existence
       run: |
         echo ". directory"
+        pwd
         ls -la .
-        echo "github workspace directory"
-        ls -la ${{ github.workspace }}
+#        echo "github workspace directory"
+#        ls -la ${{ github.workspace }}
         #echo "github workspace+build directory"
         #ls -la ${{ github.workspace }}/build
         #echo "print directory"
         #echo ${{ github.workspace }}/build
         echo "/build directory"
-        ls -la ${{ github.workspace }}/build
+        ls -la /build
 
     #- run: mv ${{github.workspace}}/build/${{env.MODULE}} ${{github.workspace}}/build/${{env.arch}}
     - name: Upload build artifact

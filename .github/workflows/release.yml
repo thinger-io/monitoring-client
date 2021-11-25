@@ -53,4 +53,4 @@ jobs:
         tag: ${{ env.tag_version }}
         name: ${{ env.tag_version }}
         body: |
-          ${{ env.relese_body }}
+          "${{ env.relese_body }}"
