@@ -100,12 +100,13 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: ${{ env.MODULE }}.${{ matrix.architecture }}
+        path: /build
 
     - name: Upload x86_64 binary to release
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: ${{ env.MODULE }}.${{ matrix.architecture }}
+        file: /build/${{ env.MODULE }}.${{ matrix.architecture }}
         tag: ${{ needs.build_version.outputs.version }}
 
     # TODO: if arm change name to arm

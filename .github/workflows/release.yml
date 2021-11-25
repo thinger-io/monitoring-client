@@ -49,20 +49,10 @@ jobs:
         release_body="${release_body//$'\r'/'%0D'}"
         echo "::set-output name=RELEASE_BODY::$release_body"
 
-#    - name: Get changelog body
-#      run: |
-#        release_body=$(cat << EOF
-#        $(awk '/^## \[[0-9]+/ {flag=!flag; next} flag {print}' CHANGELOG.md)
-#        EOF
-#        )
-#        echo "release_body<<EOF" >> $GITHUB_ENV
-#        echo "$release_body" >> $GITHUB_ENV
-#        echo "EOF" >> $GITHUB_ENV
-
     - name: Create GitHub release
       uses: ncipollo/release-action@v1
       with:
         tag: ${{ env.tag_version }}
         name: ${{ env.tag_version }}
         body: |
-          "${{ steps.get_changelog.outputs.RELEASE_BODY }}"
+          ${{ steps.get_changelog.outputs.RELEASE_BODY }}
