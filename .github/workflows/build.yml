@@ -51,11 +51,20 @@ jobs:
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
-      run: cmake -B ${{ github.workspace }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DBUILD_VERSION=${{ needs.build_version.outputs.version }} -DCROSS=ON -DOPENSSL_ROOT_DIR=${{ env.OPENSSL_ROOT_DIR }} -DOPENSSL_LIBRARIES=${{ env.OPENSSL_ROOT_DIR }}
+      run: cmake -B ${{ github.workspace }}/build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DBUILD_VERSION=${{ needs.build_version.outputs.version }} -DCROSS=ON -DOPENSSL_ROOT_DIR=${{ env.OPENSSL_ROOT_DIR }} -DOPENSSL_LIBRARIES=${{ env.OPENSSL_ROOT_DIR }}
 
     - name: Build
       # Build your program with the given configuration
-      run: cmake --build ${{ github.workspace }} --config ${{ env.BUILD_TYPE }}
+      run: cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }}
+
+    - name: Check file existence
+      run: |
+        echo ". directory"
+        ls -la .
+        echo "github workspace directory"
+        ls -la ${{ github.workspace }}
+        echo "github workspace+build directory"
+        ls -la ${{ github.workspace }}/build
 
     #- run: mv ${{github.workspace}}/build/${{env.MODULE}} ${{github.workspace}}/build/${{env.arch}}
     - name: Upload build artifact
@@ -63,8 +72,8 @@ jobs:
       if: ${{ github.event_name == 'push' }}
       with:
         name: ${{ env.MODULE }}.${{ matrix.architecture }}
-        #path: ${{ github.workspace }}/${{ env.MODULE }}
-        path: ${{ github.workspace }}
+        path: ${{ github.workspace }}/build/${{ env.MODULE }}
+        #path: ${{ github.workspace }}
         if-no-files-found: error
         retention-days: 1
 
@@ -94,7 +103,7 @@ jobs:
     - name: Upload x86_64 binary to release
       uses: svenstaro/upload-release-action@v2
       with:
-        repo_token: ${{ env.GITHUB_TOKEN }}
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: ${{ env.MODULE }}.${{ matrix.architecture }}
         tag: ${{ env.build_version }}
 
