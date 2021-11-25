@@ -59,7 +59,6 @@ while [[ "$#" -gt 0 ]]; do case $1 in
     ;;
 esac; shift; done
 
-exit 0
 # Set install directories based on user
 if [ "$UID" -eq 0 ]; then
     bin_dir="/usr/local/bin/"
@@ -76,7 +75,7 @@ else
 fi
 
 # Download bin
-last_release_body=`wget --header="Accept: application/vnd.github.v3+json" https://"$_api_github_url"/repos/thinger-io/"$_repo"/releases/latest`
+last_release_body=`wget --header="Accept: application/vnd.github.v3+json" https://"$_github_api_url"/repos/thinger-io/"$_repo"/releases/latest`
 download_url=`echo "$last_realease_body" | grep "url.*$_arch" | cut -d '"' -f4`
 
 wget --header="Accept: application/octec-stream" "$download_url" -P "$bin_dir" -O "$_module"
@@ -88,7 +87,7 @@ chmod +x "$bin_dir"/"$_module"
 #cd - 1>/dev/null
 
 # Download service file
-wget --header="Accept: application/vnd.github.VERSION.raw" https://"$_api_github_url"/repos/thinger-io/"$_repo"/contents/install/"$_module".template -P "$service_dir"
+wget --header="Accept: application/vnd.github.VERSION.raw" https://"$_github_api_url"/repos/thinger-io/"$_repo"/contents/install/"$_module".template -P "$service_dir"
 envsubst < "$service_dir"/"$_module".template > "$service_dir"/"$_module".service
 rm -f "$service_dir"/"$_module".template
 
