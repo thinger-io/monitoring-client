@@ -68,7 +68,7 @@ jobs:
     needs: [build_version, build]
     strategy:
       matrix:
-        architecture: ["x86_64", "arm"]
+        architecture: ["x86_64", "armv7m_eabi"]
 
     steps:
 
