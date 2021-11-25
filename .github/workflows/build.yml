@@ -63,7 +63,7 @@ jobs:
       uses: actions/upload-artifact@v2
       if: ${{ github.event_name == 'push' }}
       with:
-        #name: ${{ env.MODULE }}.${{ matrix.architecture }}
+        name: ${{ env.MODULE }}.${{ matrix.architecture }}
         path: /build/${{ env.MODULE }}.${{ matrix.architecture }}
         #path: ${{ github.workspace }}/build/${{ env.MODULE }}
         #path: ${{ github.workspace }}
