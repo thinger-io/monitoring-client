@@ -52,4 +52,5 @@ jobs:
       with:
         tag: ${{ env.tag_version }}
         name: ${{ env.tag_version }}
-        body: ${{ env.relese_body }}
+        body: "Testing release body"
+#        body: ${{ env.relese_body }}

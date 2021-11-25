@@ -30,15 +30,18 @@ jobs:
       #run: echo "build_version=`sed -n 's/.*BUILD_VERSION=//p' run.sh | cut -d " " -f1`" >> $GITHUB_ENV
       run: echo "::set-output name=version::`sed -n 's/.*BUILD_VERSION=//p' run.sh | cut -d " " -f1`"
 
-  build_x86_64:
+  build:
     # The CMake configure and build commands are platform agnostic and should work equally
     # well on Windows or Mac.  You can convert this to a matrix build if you need
     # cross-platform coverage.
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     runs-on: ubuntu-latest
     needs: build_version
+    strategy:
+      matrix:
+        architecture: ["x86_64", "armv7m_eabi"]
     container:
-      image: bautisflow/toolchains:musl_ssl_x86_64
+      image: bautisflow/toolchains:musl_ssl_${{ matrix.architecture }}
 
     steps:
 
@@ -59,34 +62,7 @@ jobs:
       uses: actions/upload-artifact@v2
       if: ${{ github.event_name == 'push' }}
       with:
-        name: ${{ env.MODULE }}.x86_64
-        #path: ${{ github.workspace }}/${{ env.MODULE }}
-        path: ${{ github.workspace }}
-        if-no-files-found: error
-        retention-days: 1
-
-  build_arm:
-    runs-on: ubuntu-latest
-    needs: build_version
-    container:
-      image: bautisflow/toolchains:musl_ssl_armv7m_eabi
-
-    steps:
-
-    - name: Checkout Project
-      uses: actions/checkout@v2
-
-    - name: Configure CMake
-      run: cmake -B ${{ github.workspace }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DBUILD_VERSION=${{ needs.build_version.outputs.version }} -DCROSS=ON -DOPENSSL_ROOT_DIR=${{ env.OPENSSL_ROOT_DIR }} -DOPENSSL_LIBRARIES=${{ env.OPENSSL_ROOT_DIR }}
-
-    - name: Build
-      run: cmake --build ${{ github.workspace }} --config ${{ env.BUILD_TYPE }}
-
-    - name: Upload build artifact
-      if: ${{ github.event_name == 'push' }}
-      uses: actions/upload-artifact@v2
-      with:
-        name: ${{ env.MODULE }}.arm
+        name: ${{ env.MODULE }}.${{ matrix.architecture }}
         #path: ${{ github.workspace }}/${{ env.MODULE }}
         path: ${{ github.workspace }}
         if-no-files-found: error
@@ -97,7 +73,10 @@ jobs:
   upload_to_release:
     if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
-    needs: [build_x86_64, build_arm]
+    needs: build
+    strategy:
+      matrix:
+        architecture: ["x86_64", "armv7m_eabi"]
 
     steps:
 
@@ -107,29 +86,19 @@ jobs:
     #    echo UPLOAD_URL=$upload_url >> $GITHUB_ENV
     #  shell: bash
     #
-    - name: Download x86_64 binary
+    - name: Download ${{ matrix.architecture }} binary
       uses: actions/download-artifact@v2
       with:
-        name: ${{ env.MODULE }}.x86_64
-
-    - name: Download arm binary
-      uses: actions/download-artifact@v2
-      with:
-        name: ${{ env.MODULE }}.arm
+        name: ${{ env.MODULE }}.${{ matrix.architecture }}
 
     - name: Upload x86_64 binary to release
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ env.GITHUB_TOKEN }}
-        file: ${{ env.MODULE }}.x86_64
+        file: ${{ env.MODULE }}.${{ matrix.architecture }}
         tag: ${{ env.build_version }}
 
-    - name: Upload arm binary to release
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ env.GITHUB_TOKEN }}
-        file: ${{ env.MODULE }}.arm
-        tag: ${{ env.build_version }}
+    # TODO: if arm change name to arm
 
 
     #- name: Test
