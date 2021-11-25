@@ -3,10 +3,11 @@ Description=Thinger.io monitor client for the Internet of Things
 After=network.target
 
 [Service]
-ExecStart=$certs_dir $bin_dir/thinger_monitor -c $config_dir/thinger_monitor.json
-ExecReload = /bin/kill -s HUP $MAINPID
-ExecStop = /bin/kill -s TERM $MAINPID
+Environment=$certs_dir
+ExecStart=$bin_dir/thinger_monitor -c $config_dir/thinger_monitor.json
+ExecReload=/bin/kill -s HUP $MAINPID
+ExecStop=/bin/kill -s TERM $MAINPID
 
 [Install]
-WantedBy = multi-user.target
+WantedBy=multi-user.target
 
