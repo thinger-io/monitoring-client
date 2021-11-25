@@ -38,14 +38,26 @@ jobs:
         custom_tag: ${{ env.tag_version }}
 
     - name: Get changelog body
+      id: get_changelog
       run: |
         release_body=$(cat << EOF
         $(awk '/^## \[[0-9]+/ {flag=!flag; next} flag {print}' CHANGELOG.md)
         EOF
         )
-        echo "release_body<<EOF" >> $GITHUB_ENV
-        echo "$release_body" >> $GITHUB_ENV
-        echo "EOF" >> $GITHUB_ENV
+        release_body="${release_body//'%'/%25'}"
+        release_body="${release_body//$'\n'/'%0A'}"
+        release_body="${release_body//$'\r'/'%0D'}"
+        echo "::set-output name=RELEASE_BODY::$release_body"
+
+#    - name: Get changelog body
+#      run: |
+#        release_body=$(cat << EOF
+#        $(awk '/^## \[[0-9]+/ {flag=!flag; next} flag {print}' CHANGELOG.md)
+#        EOF
+#        )
+#        echo "release_body<<EOF" >> $GITHUB_ENV
+#        echo "$release_body" >> $GITHUB_ENV
+#        echo "EOF" >> $GITHUB_ENV
 
     - name: Create GitHub release
       uses: ncipollo/release-action@v1
@@ -53,4 +65,4 @@ jobs:
         tag: ${{ env.tag_version }}
         name: ${{ env.tag_version }}
         body: |
-          "${{ env.relese_body }}"
+          "${{ steps.get_changelog.outputs.RELEASE_BODY }}"
