@@ -44,7 +44,7 @@ jobs:
         $(awk '/^## \[[0-9]+/ {flag=!flag; next} flag {print}' CHANGELOG.md)
         EOF
         )
-        release_body="${release_body//'%'/%25'}"
+        release_body="${release_body//'%'/'%25'}"
         release_body="${release_body//$'\n'/'%0A'}"
         release_body="${release_body//$'\r'/'%0D'}"
         echo "::set-output name=RELEASE_BODY::$release_body"

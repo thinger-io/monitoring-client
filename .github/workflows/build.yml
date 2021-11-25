@@ -83,7 +83,7 @@ jobs:
   upload_to_release:
     if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build_version, build]
     strategy:
       matrix:
         architecture: ["x86_64", "armv7m_eabi"]
@@ -106,7 +106,7 @@ jobs:
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: ${{ env.MODULE }}.${{ matrix.architecture }}
-        tag: ${{ env.build_version }}
+        tag: ${{ needs.build_version.outputs.version }}
 
     # TODO: if arm change name to arm
 
