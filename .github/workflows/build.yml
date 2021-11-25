@@ -58,14 +58,6 @@ jobs:
       # Build your program with the given configuration
       run: cmake --build /build --config ${{ env.BUILD_TYPE }}
 
-    - name: Check file existence
-      run: |
-        echo ". directory"
-        pwd
-        ls -la .
-        echo "/build directory"
-        ls -la /build
-
     #- run: mv ${{github.workspace}}/build/${{env.MODULE}} ${{github.workspace}}/build/${{env.arch}}
     - name: Upload build artifact
       uses: actions/upload-artifact@v2
@@ -100,6 +92,15 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: ${{ env.MODULE }}.${{ matrix.architecture }}
+
+    - name: Check file existence
+      run: |
+        echo ". directory"
+        pwd
+        ls -la .
+        echo "github workspace directory"
+        ls -la ${{ github.workspace }}
+
 
     - name: Upload x86_64 binary to release
       uses: svenstaro/upload-release-action@v2
