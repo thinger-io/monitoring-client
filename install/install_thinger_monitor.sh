@@ -98,11 +98,12 @@ download_url=`echo "$last_release_body" | grep "url.*$_arch" | cut -d '"' -f4`
 wget -q --header="Accept: application/octec-stream" "$download_url" -O "$bin_dir/$_module"
 chmod +x "$bin_dir"/"$_module"
 
-# Download config (is not actually neccesary)
-#cd $CONFIG_DIR
-#curl -s -O -u "$GITHUB_USER":"$GITHUB_TOKEN" -H "Accept: application/vnd.github.VERSION.raw" "$GITHUB_CONFIG_URL"
-#cd - 1>/dev/null
+# Download config
+if [ ! -f "$config_dir"/thinger_monitor.json ]; then
+  wget -q --header="Accept: application/vnd.github.VERSION.raw" https://"$_github_api_url"/repos/thinger-io/"$_repo"/contents/config/thinger_monitor.json -P "$config_dir"
+fi
 
+# Set SSL_CERT_DIR if exists
 if [ -n ${SSL_CERT_DIR+x} ]; then
     export certs_dir="SSL_CERT_DIR=$SSL_CERT_DIR"
 fi
