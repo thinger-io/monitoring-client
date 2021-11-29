@@ -9,6 +9,8 @@ _user_agent="Simple User Agent 1.0"
 case `uname -m` in
   x86_64)
     _arch=`uname -m` ;;
+  amd64)
+    _arch="x86_64" ;;
   *arm*)
     _arch="arm" ;;
   *aarch64*)

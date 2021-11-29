@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 - Mount points capacity metrics
 - I/O drives speed and usage metrics
 - Module configuration
+- Execution of commands
 
 [Unreleased]: https://github.com/thinger-io/monitoring-client/HEAD
 

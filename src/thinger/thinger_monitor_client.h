@@ -46,6 +46,7 @@ public:
     ThingerMonitor(thinger_client& client, ThingerMonitorConfig& config) :
         client_(client),
         monitor_(client["monitor"]),
+        cmd_(client["cmd"]),
         reboot_(client["reboot"]),
         update_(client["update"]),
         config_(config)
@@ -57,6 +58,10 @@ public:
             retrieve_hostname();
             retrieve_os_version();
             retrieve_cpu_cores();
+
+            cmd_ = [this](pson& in, pson& out) {
+                out = cmd(in);
+            };
 
             reboot_ = [this]() {
                 reboot();
@@ -224,6 +229,7 @@ protected:
     // thinger resources
     thinger_client& client_;
     thinger::thinger_resource& monitor_;
+    thinger::thinger_resource& cmd_;
     thinger::thinger_resource& reboot_;
     thinger::thinger_resource& update_;
 
@@ -299,6 +305,20 @@ protected:
         } else {
             system_restart = false;
         }
+    }
+
+    std::string cmd(const char *in) {
+        std::array<char, 128> buffer;
+        std::string result;
+        std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(in, "r"), pclose);
+        if (!pipe) {
+            return "Failed to run command\n";
+        }
+
+        while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+            result += buffer.data();
+        }
+        return result;
     }
 
     void reboot() {
