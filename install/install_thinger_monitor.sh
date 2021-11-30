@@ -58,8 +58,8 @@ uninstall() {
 
     rm -f "$bin_dir"/"$_module"
 
-    systemctl "$sys_user" stop "$_module"
-    systemctl "$sys_user" disable "$_module"
+    systemctl $sys_user stop "$_module"
+    systemctl $sys_user disable "$_module"
     rm -f "$service_dir"/"$_module".service
 
     rm -f "$config_dir"/"$_module".json
@@ -121,9 +121,9 @@ if [ -n ${token+x} ]; then
 fi
 
 # Start and enable service
-systemctl "$sys_user" daemon-reload
-systemctl "$sys_user" stop "$_module".service
-systemctl "$sys_user" enable "$_module".service
-systemctl "$sys_user" start "$_module".service
+systemctl $sys_user daemon-reload
+systemctl $sys_user stop "$_module".service
+systemctl $sys_user enable "$_module".service
+systemctl $sys_user start "$_module".service
 
 exit 0
