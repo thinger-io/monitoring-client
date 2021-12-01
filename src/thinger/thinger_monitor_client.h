@@ -63,11 +63,11 @@ public:
                 out["output"] = cmd(in["input"]);
             };
 
-            reboot_ = [this](pson& in, pson& out) { // needs declaration of input output for dashboard button
+            reboot_ << [this](pson& in) { // needs declaration of input for dashboard button
                 reboot();
             };
 
-            update_ = [this](pson& in, pson& out) { // needs declaration of input output for dashboard button
+            update_ << [this](pson& in) { // needs declaration of input for dashboard button
                 update();
             };
 
