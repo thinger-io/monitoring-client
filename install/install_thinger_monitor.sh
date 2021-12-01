@@ -121,7 +121,7 @@ cat "$service_dir"/"$_module".template | envsubst '$certs_dir,$bin_dir,$config_d
 rm -f "$service_dir"/"$_module".template
 
 # First run with token for autoprovision
-if [ -n ${token+x} ]; then
+if [ -n "$token" ]; then
   "$bin_dir"/thinger_monitor -c "$config_dir"/"$_module".json $token $server $insecure
 fi
 
