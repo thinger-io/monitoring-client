@@ -64,11 +64,13 @@ public:
             };
 
             reboot_ << [this](pson& in) { // needs declaration of input for dashboard button
-                reboot();
+                if (in)
+                    reboot();
             };
 
             update_ << [this](pson& in) { // needs declaration of input for dashboard button
-                update();
+                if (in)
+                    update();
             };
 
             monitor_ >> [this](pson& out) {
