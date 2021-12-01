@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ## [0.0.2] - 2021-11-30
+### Added
+- Uptime as system information metric
+
+### Changed
+- Installer takes into account updates
+
 ### Fix
 - System updates not showing
 - Command execution input resource request body as JSON
