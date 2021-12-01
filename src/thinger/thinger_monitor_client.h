@@ -8,8 +8,8 @@
 #include <chrono>
 #include <fstream>
 #include <ifaddrs.h>
-#include <arpa/inet.h>
 #include <filesystem>
+#include <arpa/inet.h>
 #include <linux/kernel.h>
 
 
@@ -60,7 +60,7 @@ public:
             retrieve_cpu_cores();
 
             cmd_ = [this](pson& in, pson& out) {
-                out = cmd(in);
+                out["output"] = cmd(in["input"]);
             };
 
             reboot_ = [this]() {
@@ -84,6 +84,7 @@ public:
                 }
 
                 if (current_seconds >= (every1m + 60)) {
+                    retrieve_uptime();
                     retrieve_cpu_procs();
                     retrieve_fs_stats();
                     every1m = current_seconds;
@@ -186,6 +187,7 @@ public:
                 out["cpu_procs"] = cpu_procs;
 
                 // System information
+                out["si_uptime"] = uptime;
                 out["si_hostname"] = hostname;
                 out["si_os_version"] = os_version;
                 out["si_normal_updates"] = normal_updates;
@@ -263,6 +265,7 @@ protected:
     // system info
     std::string hostname;
     std::string os_version;
+    std::string uptime;
     unsigned short normal_updates = 0, security_updates = 0;
     bool system_restart = false;
 
@@ -285,10 +288,10 @@ protected:
     // -- SYSTEM INFO -- //
     void retrieve_updates() {
         // We will use default ubuntu server notifications
-        std::ifstream updatesinfo ("/var/lib/update-notifier/updates-available", std::ifstream::in);
-        std::string line;
-
-        while(updatesinfo >> line) {
+        fs::path f("/var/lib/update-notifier/updates-available");
+        if (fs::exists(f)) {
+            std::ifstream updatesinfo ("/var/lib/update-notifier/updates-available", std::ifstream::in);
+            std::string line;
             updatesinfo >> normal_updates;
             if(getline(updatesinfo, line)) {
                 updatesinfo >> security_updates;
@@ -384,6 +387,21 @@ private:
                 unsigned last_del = line.find_last_of('"');
                 os_version = line.substr(first_del +1, last_del - first_del -1);
             }
+        }
+    }
+
+    void retrieve_uptime() {
+        std::ifstream uptimeinfo ("/proc/uptime", std::ifstream::in);
+        std::chrono::milliseconds uptime_millis(0u);
+        double uptime_seconds;
+        if (std::ifstream("/proc/uptime", std::ios::in) >> uptime_seconds) {
+            int days = (int)uptime_seconds / (60*60*24);
+            int hours = ((int)uptime_seconds % (60*60*24)) / (60*60);
+            int minutes = (int)uptime_seconds % (days*60*60*24) % (hours*60*60) / 60;
+            uptime =
+                ((days > 0) ? std::to_string(days)+((days == 1) ? " day, ":" days, ") : "") +
+                ((hours > 0) ? std::to_string(hours)+((hours == 1) ? " hour, ":" hours, ") : "") +
+                std::to_string(minutes)+((minutes == 1) ? " minute":" minutes");
         }
     }
 

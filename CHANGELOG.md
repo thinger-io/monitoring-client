@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.0.2] - 2021-11-30
+### Fix
+- System updates not showing
+- Command execution input resource request body as JSON
+
 ## [0.0.1] - 2021-11-25
 ### Added
 - System information metrics
@@ -14,7 +19,6 @@ All notable changes to this project will be documented in this file.
 - Module configuration
 - Execution of commands
 
-[Unreleased]: https://github.com/thinger-io/monitoring-client/HEAD
-
-
-
+[Unreleased]: https://github.com/thinger-io/monitoring-client/0.0.2...HEAD
+[0.0.2]: https://github.com/thinger-io/monitoring-client/compare/0.0.1...0.0.2
+[0.0.1]: https://github.com/thinger-io/monitoring-client/tag/0.0.1

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 mkdir -p build
 cd build
-cmake -DCMAKE_BUILD_TYPE=Release -DENABLE_OPENSSL=ON -DBUILD_VERSION=0.0.1 ../
+cmake -DCMAKE_BUILD_TYPE=Release -DENABLE_OPENSSL=ON -DBUILD_VERSION=0.0.2 ../
 make thinger_monitor
 if [ $THINGER_TOKEN ]; then
     THINGER_TOKEN="-t $THINGER_TOKEN"
