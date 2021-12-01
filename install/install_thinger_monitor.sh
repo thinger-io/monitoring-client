@@ -1,5 +1,7 @@
 #!/bin/bash
 
+trap 'echo "Caught: 90 seconds till SIGKILL' SIGTERM # catches systemctl stop on update
+
 _repo="monitoring-client"
 _module="thinger_monitor"
 _github_api_url="api.github.com"
@@ -97,7 +99,6 @@ mkdir -p $bin_dir $config_dir $service_dir
 if [ -f "$service_dir"/"$_module".service ]; then
     systemctl $sys_user stop "$_module".service
     systemctl $sys_user disable "$_module".service
-    systemctl $sys_user daemon-reload
 fi
 wget -q --header="Accept: application/vnd.github.VERSION.raw" https://"$_github_api_url"/repos/thinger-io/"$_repo"/contents/install/"$_module".template -P "$service_dir"
 cat "$service_dir"/"$_module".template | envsubst '$certs_dir,$bin_dir,$config_dir' > "$service_dir"/"$_module".service
@@ -127,7 +128,6 @@ fi
 
 # Start and enable service
 systemctl $sys_user daemon-reload
-systemctl $sys_user stop "$_module".service
 systemctl $sys_user enable "$_module".service
 systemctl $sys_user start "$_module".service
 

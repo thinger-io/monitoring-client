@@ -8,11 +8,12 @@ All notable changes to this project will be documented in this file.
 - Uptime as system information metric
 
 ### Changed
-- Installer takes into account updates
+- Installer takes into account remote updates
 
 ### Fix
 - System updates not showing
 - Command execution input resource request body as JSON
+- Declared input and output for update and restart resources
 
 ## [0.0.1] - 2021-11-25
 ### Added
