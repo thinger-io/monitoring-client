@@ -111,6 +111,11 @@ if [ -n ${SSL_CERT_DIR+x} ]; then
 fi
 
 # Download service file
+if [ -f "$service_dir"/"$_module".service ]; then
+    systemctl $sys_user stop "$_module".service
+    systemctl $sys_user disable "$_module".service
+    systemctl $sys_user daemon-reload
+fi
 wget -q --header="Accept: application/vnd.github.VERSION.raw" https://"$_github_api_url"/repos/thinger-io/"$_repo"/contents/install/"$_module".template -P "$service_dir"
 cat "$service_dir"/"$_module".template | envsubst '$certs_dir,$bin_dir,$config_dir' > "$service_dir"/"$_module".service
 rm -f "$service_dir"/"$_module".template
