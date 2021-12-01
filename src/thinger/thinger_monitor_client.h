@@ -396,8 +396,8 @@ private:
         double uptime_seconds;
         if (std::ifstream("/proc/uptime", std::ios::in) >> uptime_seconds) {
             int days = (int)uptime_seconds / (60*60*24);
-            int hours = ((int)uptime_seconds % (60*60*24)) / (60*60);
-            int minutes = (int)uptime_seconds % (days*60*60*24) % (hours*60*60) / 60;
+            int hours = ((int)uptime_seconds % (((days > 0) ? days : 1)*60*60*24)) / (60*60);
+            int minutes = (int)uptime_seconds % (((days > 0) ? days : 1)*60*60*24) % (((hours > 0) ? hours: 1)*60*60) / 60;
             uptime =
                 ((days > 0) ? std::to_string(days)+((days == 1) ? " day, ":" days, ") : "") +
                 ((hours > 0) ? std::to_string(hours)+((hours == 1) ? " hour, ":" hours, ") : "") +

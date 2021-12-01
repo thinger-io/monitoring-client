@@ -93,6 +93,16 @@ esac; shift; done
 set_directories
 mkdir -p $bin_dir $config_dir $service_dir
 
+# Download service file -> Before downloading binary
+if [ -f "$service_dir"/"$_module".service ]; then
+    systemctl $sys_user stop "$_module".service
+    systemctl $sys_user disable "$_module".service
+    systemctl $sys_user daemon-reload
+fi
+wget -q --header="Accept: application/vnd.github.VERSION.raw" https://"$_github_api_url"/repos/thinger-io/"$_repo"/contents/install/"$_module".template -P "$service_dir"
+cat "$service_dir"/"$_module".template | envsubst '$certs_dir,$bin_dir,$config_dir' > "$service_dir"/"$_module".service
+rm -f "$service_dir"/"$_module".template
+
 # Download bin
 last_release_body=`wget --quiet -qO- --header="Accept: application/vnd.github.v3+json" https://"$_github_api_url"/repos/thinger-io/"$_repo"/releases/latest`
 download_url=`echo "$last_release_body" | grep "url.*$_arch" | cut -d '"' -f4`
@@ -109,16 +119,6 @@ fi
 if [ -n ${SSL_CERT_DIR+x} ]; then
     export certs_dir="SSL_CERT_DIR=$SSL_CERT_DIR"
 fi
-
-# Download service file
-if [ -f "$service_dir"/"$_module".service ]; then
-    systemctl $sys_user stop "$_module".service
-    systemctl $sys_user disable "$_module".service
-    systemctl $sys_user daemon-reload
-fi
-wget -q --header="Accept: application/vnd.github.VERSION.raw" https://"$_github_api_url"/repos/thinger-io/"$_repo"/contents/install/"$_module".template -P "$service_dir"
-cat "$service_dir"/"$_module".template | envsubst '$certs_dir,$bin_dir,$config_dir' > "$service_dir"/"$_module".service
-rm -f "$service_dir"/"$_module".template
 
 # First run with token for autoprovision
 if [ -n "$token" ]; then
