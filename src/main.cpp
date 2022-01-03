@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
         if (config.has_user()) {
             config.set_device();
 
-            auto status = create_device(thinger_token, config.get_user(), config.get_device_id(), config.get_device_credentials(), config.get_server_url(), config.get_server_secure());
+            auto status = create_device(thinger_token, config.get_user(), config.get_device_id(), config.get_device_credentials(), config.get_device_name(), config.get_server_url(), config.get_server_secure());
             if (status == 200) {
                 std::cout << "Device created succesfully! Please run the program without the token" << std::endl;
                 return 0;

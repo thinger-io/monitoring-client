@@ -3,6 +3,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.0.3] - 2022-01-03
+### Added
+- Backups and restore scripts with S3 as storage backend
+- Device name in configuration file
+- Kernel version as metric
+
+### Changed
+- Device name is set to hostname by default
+
 ## [0.0.2] - 2021-11-30
 ### Added
 - Uptime as system information metric
@@ -26,6 +35,7 @@ All notable changes to this project will be documented in this file.
 - Module configuration
 - Execution of commands
 
-[Unreleased]: https://github.com/thinger-io/monitoring-client/0.0.2...HEAD
+[Unreleased]: https://github.com/thinger-io/monitoring-client/0.0.3...HEAD
+[0.0.3]: https://github.com/thinger-io/monitoring-client/compare/0.0.2...0.0.3
 [0.0.2]: https://github.com/thinger-io/monitoring-client/compare/0.0.1...0.0.2
 [0.0.1]: https://github.com/thinger-io/monitoring-client/tag/0.0.1

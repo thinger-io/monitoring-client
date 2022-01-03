@@ -57,6 +57,7 @@ public:
             // Executed only once
             retrieve_hostname();
             retrieve_os_version();
+            retrieve_kernel_version();
             retrieve_cpu_cores();
 
             cmd_ = [this](pson& in, pson& out) {
@@ -192,6 +193,7 @@ public:
                 out["si_uptime"] = uptime;
                 out["si_hostname"] = hostname;
                 out["si_os_version"] = os_version;
+                out["si_kernel_version"] = kernel_version;
                 out["si_normal_updates"] = normal_updates;
                 out["si_security_updates"] = security_updates;
                 out["si_restart"] = system_restart;
@@ -267,6 +269,7 @@ protected:
     // system info
     std::string hostname;
     std::string os_version;
+    std::string kernel_version;
     std::string uptime;
     unsigned short normal_updates = 0, security_updates = 0;
     bool system_restart = false;
@@ -390,6 +393,17 @@ private:
                 os_version = line.substr(first_del +1, last_del - first_del -1);
             }
         }
+    }
+
+    void retrieve_kernel_version() {
+        std::ifstream kernelinfo ("/proc/version", std::ifstream::in);
+        std::string version;
+
+        kernelinfo >> kernel_version;
+        kernelinfo >> version; // skipping second word
+        kernelinfo >> version;
+
+        kernel_version = kernel_version + " " + version;
     }
 
     void retrieve_uptime() {

@@ -87,6 +87,10 @@ public:
         return has_device() && config_["device"].contains("id") && !is_placeholder(get_device_id());
     }
 
+    bool has_device_name() {
+        return has_device() && config_["device"].contains("name") && !is_placeholder(get_device_name());
+    }
+
     bool has_device_credentials() {
         return has_device() && config_["device"].contains("credentials") && !is_placeholder(get_device_credentials());
     }
@@ -150,9 +154,11 @@ public:
             std::string hostname;
             std::ifstream hostinfo ("/etc/hostname", std::ifstream::in);
             hostinfo >> hostname;
+            if (!has_device_name())
+                config_["device"]["name"] = hostname;
+
             std::replace(hostname.begin(), hostname.end(),'.','_');
             std::replace(hostname.begin(), hostname.end(),'-','_');
-
             config_["device"]["id"] = hostname;
         }
         if (!has_device_credentials()) {
@@ -196,6 +202,10 @@ public:
 
     std::string get_device_id() const {
         return config_["device"]["id"].get<std::string>();
+    }
+
+    std::string get_device_name() const {
+        return config_["device"]["name"].get<std::string>();
     }
 
     std::string get_device_credentials() const {

@@ -3,7 +3,7 @@
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
-static int create_device(const std::string &token, const std::string &user, const std::string &device, const std::string &credentials, const std::string &server = THINGER_SERVER, const bool secure = true) {
+static int create_device(const std::string &token, const std::string &user, const std::string &device, const std::string &credentials, const std::string &name, const std::string &server = THINGER_SERVER, const bool secure = true) {
     // For on premise and private instances set secure to false with option -k
     std::string protocol = secure ? "https://" : "http://";
     httplib::Client cli(protocol+server);
@@ -20,7 +20,7 @@ static int create_device(const std::string &token, const std::string &user, cons
     json body;
     body["device"] = device;
     body["credentials"] = credentials;
-    body["name"] = device+" autoprovision";
+    body["name"] = name;
     body["description"] = "Linux Monitoring autoprovision";
     body["type"] = "Generic";
 
