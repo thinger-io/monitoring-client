@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master,develop ]
 #  workflow_run:
 #    workflows: ["Build x86_64"]
 #    branches: [ master ]
@@ -16,14 +16,30 @@ jobs:
 
     steps:
 
+    - name: Extract branch name
+      shell: bash
+      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+      id: extract_branch
+
     - name: Checkout repository
       uses: actions/checkout@v2
       with:
         fetch-depth: 0
+        ref: ${{ steps.extract_branch.outputs.branch }}
 
     - name: Get tag version
       run: | # official regex for semantic version: https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
-        echo "tag_version=`grep -oE '(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?' run.sh | head -1`" >> $GITHUB_ENV
+        #echo "tag_version=`grep -oE '(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?' run.sh | head -1`" >> $GITHUB_ENV
+        tag_version=`grep -oE '(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?' run.sh | head -1`
+        if [ ${{ steps.extract_branch.outputs.branch == 'develop' }} ]; then
+            for i in {1..100}; do
+                if [ `git tag --list | grep -q "${tag_version}-alpha.${i}"` -eq 0 ]; then
+                    tag_version="${tag_version}-alpha.${i}"
+                    break;
+                fi
+            done
+        fi
+        echo "tag_version=${tag_version}" >> $GITHUB_ENV
 
     - name: Check if tag already exists
       run: |
@@ -49,9 +65,19 @@ jobs:
         release_body="${release_body//$'\r'/'%0D'}"
         echo "::set-output name=RELEASE_BODY::$release_body"
 
+    - name: Set pre-release boolean
+      if: is_prerelease
+      run: |
+        prerelease=false
+        if [ ${{ steps.extract_branch.outputs.branch }} == 'develop' ]; then
+            prerelease=true
+        fi
+        echo "::set-output name=prerelease::$prerelease"
+
     - name: Create GitHub release
       uses: ncipollo/release-action@v1
       with:
+        prerelease: ${{ steps.is_prerelease.outputs.prerelease }}
         tag: ${{ env.tag_version }}
         name: ${{ env.tag_version }}
         artifacts: "install/install_thinger_monitor.sh"

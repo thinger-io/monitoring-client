@@ -3,6 +3,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.0.4] - 2022-01-10
+### Added
+- New configuration options for backup and restore operations
+- Added S3 upload and retrieval capabilities for backups
+
+### Changed
+- Moved backup and restore scritps to thinger resource
+- Superseded base64 class with new one
+- Update and reboot resources only available when executed with root
+
 ## [0.0.3] - 2022-01-03
 ### Added
 - Backups and restore scripts with S3 as storage backend
@@ -35,7 +45,8 @@ All notable changes to this project will be documented in this file.
 - Module configuration
 - Execution of commands
 
-[Unreleased]: https://github.com/thinger-io/monitoring-client/0.0.3...HEAD
+[Unreleased]: https://github.com/thinger-io/monitoring-client/0.0.4...HEAD
+[0.0.4]: https://github.com/thinger-io/monitoring-client/compare/0.0.3...0.0.4
 [0.0.3]: https://github.com/thinger-io/monitoring-client/compare/0.0.2...0.0.3
 [0.0.2]: https://github.com/thinger-io/monitoring-client/compare/0.0.1...0.0.2
 [0.0.1]: https://github.com/thinger-io/monitoring-client/tag/0.0.1

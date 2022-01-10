@@ -11,7 +11,10 @@
 #include <filesystem>
 #include <arpa/inet.h>
 #include <linux/kernel.h>
+#include <unistd.h>
 
+#include "system/platform/backup.h"
+#include "system/platform/restore.h"
 
 namespace fs = std::filesystem;
 
@@ -49,6 +52,8 @@ public:
         cmd_(client["cmd"]),
         reboot_(client["reboot"]),
         update_(client["update"]),
+        backup_(client["backup"]),
+        restore_(client["restore"]),
         config_(config)
     {
 
@@ -64,14 +69,48 @@ public:
                 out["output"] = cmd(in["input"]);
             };
 
-            reboot_ << [this](pson& in) { // needs declaration of input for dashboard button
-                if (in)
-                    reboot();
+            if (geteuid() == 0) { // is_root
+                reboot_ << [this](pson& in) { // needs declaration of input for dashboard button
+                    if (in)
+                        reboot();
+                };
+
+                update_ << [this](pson& in) { // needs declaration of input for dashboard button
+                    if (in)
+                        update();
+                };
+           }
+
+            backup_ = [this](pson& in, pson& out) {
+                out["status"] = "";
+                if (in["backup"]) {
+                    ThingerBackup backup(config_, hostname);
+                    //TODO std::cout << std::fixed << millis()/1000.0 << " ";
+                    std::cout << "[BACKUP] Creating backup" << std::endl;
+                    backup.create_backup();
+                    //TODO std::cout << std::fixed << millis()/1000.0 << " ";
+                    std::cout << "[BACKUP] Uploading backup" << std::endl;
+                    out["status"] = backup.upload_backup();
+                    std::cout << "[BACKUP] Cleaning backup temporary files" << std::endl;
+                    backup.clean_backup();
+                }
+                //out["output"] = in["tag"];
             };
 
-            update_ << [this](pson& in) { // needs declaration of input for dashboard button
-                if (in)
-                    update();
+            restore_ = [this](pson& in, pson& out) {
+                std::string tag = in["tag"];
+                out["status"] = "";
+                if (!tag.empty()) {
+                    ThingerRestore restore(config_, hostname, tag);
+                    //TODO std::cout << std::fixed << millis()/1000.0 << " ";
+                    std::cout << "[__RSTR] Downloading backup" << std::endl;
+                    restore.download_backup();
+                    //TODO std::cout << std::fixed << millis()/1000.0 << " ";
+                    std::cout << "[__RSTR] Restoring backup" << std::endl;
+                    restore.restore_backup();
+                    std::cout << "[__RSTR] Cleaning backup temporary files" << std::endl;
+                    restore.clean_backup();
+                }
             };
 
             monitor_ >> [this](pson& out) {
@@ -169,7 +208,7 @@ public:
                         ifc.total_transfer[0][j] = ifc.total_transfer[1][j];
                     }
                 }
-                out["nw_public_ip"] = publicIP;
+                out["nw_public_ip"] = public_ip;
 
                 // RAM
                 retrieve_ram();
@@ -238,6 +277,8 @@ protected:
     thinger::thinger_resource& cmd_;
     thinger::thinger_resource& reboot_;
     thinger::thinger_resource& update_;
+    thinger::thinger_resource& backup_;
+    thinger::thinger_resource& restore_;
 
     ThingerMonitorConfig& config_;
 
@@ -245,12 +286,11 @@ protected:
     struct interface {
         std::string name;
         std::string internal_ip;
-        //std::string public_ip;
         unsigned long long int total_transfer[2][3]; // before, after; b incoming, b outgoing, 3-> ts
         unsigned long long total_packets[4]; // incoming (total, dropped), outgoing (total, dropped)
     };
     std::vector<interface> interfaces_;
-    std::string publicIP;
+    std::string public_ip;
 
     // storage
     struct filesystem {
@@ -371,7 +411,7 @@ private:
             httplib::Client cli("http://ifconfig.me");
             res = cli.Get("/ip");
         }
-        publicIP = res->body;
+        public_ip = res->body;
     }
 
     // -- SYSTEM INFO -- //
@@ -384,7 +424,6 @@ private:
         std::ifstream osinfo ("/etc/os-release", std::ifstream::in);
         std::string line;
 
-        std::string pretty_name = "PRETTY_NAME";
         while(std::getline(osinfo,line)) {
             if (line.find("PRETTY_NAME") != std::string::npos) {
                 // get text in between "
@@ -407,7 +446,6 @@ private:
     }
 
     void retrieve_uptime() {
-        std::ifstream uptimeinfo ("/proc/uptime", std::ifstream::in);
         std::chrono::milliseconds uptime_millis(0u);
         double uptime_seconds;
         if (std::ifstream("/proc/uptime", std::ios::in) >> uptime_seconds) {
