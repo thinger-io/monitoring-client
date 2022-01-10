@@ -39,7 +39,7 @@ jobs:
         git fetch --prune --tags
         if [ ${{ steps.extract_branch.outputs.branch }} == 'develop' ]; then
             for i in {1..100}; do
-                if [ `git tag --list | grep -q ${{ env.tag_version }}"-alpha.${i}" | wc -l` -eq 0 ]; then
+                if [ `git tag --list | grep ${{ env.tag_version }}"-alpha.${i}" | wc -l` -eq 0 ]; then
                     tag_version=${{ env.tag_version }}"-alpha.${i}"
                     echo "tag_version=${tag_version}" >> $GITHUB_ENV
                     break;
