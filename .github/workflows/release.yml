@@ -29,23 +29,23 @@ jobs:
 
     - name: Get tag version
       run: | # official regex for semantic version: https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
-        #echo "tag_version=`grep -oE '(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?' run.sh | head -1`" >> $GITHUB_ENV
-        tag_version=`grep -oE '(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?' run.sh | head -1`
+        echo "tag_version=`grep -oE '(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?' run.sh | head -1`" >> $GITHUB_ENV
+        #tag_version=`grep -oE '(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?' run.sh | head -1`
+        #echo "tag_version=${tag_version}" >> $GITHUB_ENV
+
+    - name: Check if tag is for develop and if it already exists
+      run: |
+        #git fetch --prune --unshallow --tags
+        git fetch --prune --tags
         if [ ${{ steps.extract_branch.outputs.branch }} == 'develop' ]; then
             for i in {1..100}; do
                 if [ `git tag --list | grep -q "${tag_version}-alpha.${i}" | wc -l` -eq 0 ]; then
                     tag_version="${tag_version}-alpha.${i}"
+                    echo "tag_version=${tag_version}" >> $GITHUB_ENV
                     break;
                 fi
             done
-        fi
-        echo "tag_version=${tag_version}" >> $GITHUB_ENV
-
-    - name: Check if tag already exists
-      run: |
-        #git fetch --prune --unshallow --tags
-        git fetch --prune --tags
-        if [ `git tag --list | grep -q ${{ env.tag_version }}` -ne 0 ]; then exit 1; fi
+        elif [ `git tag --list | grep -q ${{ env.tag_version }}` -ne 0 ]; then exit 1; fi
 
 #    - name: Tag repository with version
 #      uses: mathieudutour/github-tag-action@v5.6
