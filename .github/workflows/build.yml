@@ -1,9 +1,8 @@
 name: Build
 
 on:
-  push:
-    tags: # when tag is created through release workflow
-    - '*'
+  release:
+    types: [published]
   #  branches: [ master ]
   pull_request:
     branches: [ master,develop ]
@@ -30,7 +29,8 @@ jobs:
 #      run: | # official regex for semantic version: https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
 #        echo "build_version=`grep -oE '(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?' run.sh | head -1`" >> $GITHUB_ENV
       #run: echo "build_version=`sed -n 's/.*BUILD_VERSION=//p' run.sh | cut -d " " -f1`" >> $GITHUB_ENV
-      run: echo "::set-output name=version::`sed -n 's/.*BUILD_VERSION=//p' run.sh | cut -d " " -f1`"
+#      run: echo "::set-output name=version::`sed -n 's/.*BUILD_VERSION=//p' run.sh | cut -d " " -f1`"
+      run: echo "::set-output name=version::$(echo ${GITHUB_REF}"
 
   build:
     runs-on: ubuntu-latest
