@@ -3,7 +3,7 @@ name: Build
 on:
   push:
     tags: # when tag is created through release workflow
-    - '**'
+    - '*'
   #  branches: [ master ]
   pull_request:
     branches: [ master,develop ]

@@ -31,7 +31,7 @@ jobs:
       run: | # official regex for semantic version: https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
         #echo "tag_version=`grep -oE '(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?' run.sh | head -1`" >> $GITHUB_ENV
         tag_version=`grep -oE '(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?' run.sh | head -1`
-        if [ ${{ steps.extract_branch.outputs.branch == 'develop' }} ]; then
+        if [ ${{ steps.extract_branch.outputs.branch }} == 'develop' ]; then
             for i in {1..100}; do
                 if [ `git tag --list | grep -q "${tag_version}-alpha.${i}"` -eq 0 ]; then
                     tag_version="${tag_version}-alpha.${i}"
