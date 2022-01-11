@@ -74,8 +74,9 @@ jobs:
       uses: ncipollo/release-action@v1
       with:
         prerelease: ${{ steps.is_prerelease.outputs.prerelease }}
+        commit: ${{ steps.extract_branch.outputs.branch }}
         tag: ${{ env.tag_version }}
-        commit: ${{ env.GITHUB_SHA }}
+        #commit: ${{ env.GITHUB_SHA }}
         name: ${{ env.tag_version }}
         token: ${{ secrets.GH_PAT }} # can't use GITHUB_TOKEN as it will not trigger additional events
         artifacts: "install/install_thinger_monitor.sh"
