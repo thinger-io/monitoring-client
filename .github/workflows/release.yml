@@ -14,8 +14,6 @@ jobs:
 #    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
-    outputs:
-      tag_version: ${{ steps.check_tag.outputs.tag_version }}
     steps:
 
     - name: Extract branch name
@@ -49,7 +47,7 @@ jobs:
                 fi
             done
         elif [ `git tag --list | grep -q ${{ env.tag_version }}` -ne 0 ]; then exit 1; fi
-        echo "::set-output name=tag_version::$(echo ${{ env.tag_version }} )
+#        echo "::set-output name=tag_version::$(echo ${{ env.tag_version }} )"
 
     - name: Get changelog body
       id: get_changelog
