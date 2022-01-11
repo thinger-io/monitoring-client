@@ -75,6 +75,7 @@ jobs:
       with:
         prerelease: ${{ steps.is_prerelease.outputs.prerelease }}
         tag: ${{ env.tag_version }}
+        commit: $GITHUB_SHA
         name: ${{ env.tag_version }}
         token: ${{ secrets.GH_PAT }} # can't use GITHUB_TOKEN as it will not trigger additional events
         artifacts: "install/install_thinger_monitor.sh"
