@@ -85,6 +85,6 @@ jobs:
 
     # We need to call it manually, as when using GITHUB_TOKEN it will not trigger additional events
   call_build:
-    uses: thinger-io/monitoring-client/.github/workflows/build.yml@${{ needs.release.outputs.branch }}
+    uses: thinger-io/monitoring-client/.github/workflows/build.yml@${{needs.release.outputs.branch}}
     with:
       tag: ${{ needs.release.outputs.tag_version }}
