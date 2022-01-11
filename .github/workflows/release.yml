@@ -14,6 +14,9 @@ jobs:
 #    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
+    outputs:
+      branch: ${{ steps.extract_branch.outputs.branch }}
+      tag_version: ${{ steps.check_tag.outputs.tag_version }}
     steps:
 
     - name: Extract branch name
@@ -34,6 +37,7 @@ jobs:
         #echo "tag_version=${tag_version}" >> $GITHUB_ENV
 
     - name: Check if tag is for develop and if it already exists
+      id: check_tag
       run: |
         #git fetch --prune --unshallow --tags
         git fetch --prune --tags
@@ -46,6 +50,7 @@ jobs:
                 fi
             done
         elif [ `git tag --list | grep -q ${{ env.tag_version }}` -ne 0 ]; then exit 1; fi
+        echo "::set-output name=tag_version::$(echo ${{ env.tag_version }} )
 
     - name: Get changelog body
       id: get_changelog
@@ -79,7 +84,7 @@ jobs:
           ${{ steps.get_changelog.outputs.RELEASE_BODY }}
 
     # We need to call it manually, as when using GITHUB_TOKEN it will not trigger additional events
-    - name: Call build workflow
-      uses: thinger-io/monitoring-client/.github/workflows/build.yml@${{ steps.extract_branch.outputs.branch }}
-      with:
-        tag: ${{ env.tag_version }}
+  call_build:
+    uses: thinger-io/monitoring-client/.github/workflows/build.yml@${{ needs.release.outputs.branch }}
+    with:
+      tag: ${{ needs.release.outputs.tag_version }}
