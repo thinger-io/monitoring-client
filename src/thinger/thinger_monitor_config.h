@@ -123,6 +123,42 @@ public:
         return has_server() && config_["server"].contains("secure");
     }
 
+    bool has_backups() {
+        return config_.contains("backups");
+    }
+
+    bool has_backups_system() {
+        return has_backups() && config_["backups"].contains("system");
+    }
+
+    bool has_backups_storage() {
+        return has_backups() && config_["backups"].contains("storage");
+    }
+
+    bool has_backups_bucket() {
+        return has_backups() && config_["backups"].contains("bucket");
+    }
+
+    bool has_backups_region() {
+        return has_backups() && config_["backups"].contains("region");
+    }
+
+    bool has_backups_access_key() {
+        return has_backups() && config_["backups"].contains("access_key");
+    }
+
+    bool has_backups_secret_key() {
+        return has_backups() && config_["backups"].contains("secret_key");
+    }
+
+    bool has_backups_data_path() {
+        return has_backups() && config_["backups"].contains("data_path");
+    }
+
+    bool has_backups_compose_path() {
+        return has_backups() && config_["backups"].contains("compose_path");
+    }
+
     //-------------------//
     //----- Setters -----//
     //-------------------//
@@ -252,6 +288,39 @@ public:
 
     bool get_server_secure() {
         return (has_server_secure()) ? config_["server"]["secure"].get<bool>() : true;
+    }
+
+    // -- BACKUPS -- //
+    std::string get_backups_system() {
+        return (has_backups_system()) ? config_["backups"]["system"].get<std::string>() : "";
+    }
+
+    std::string get_backups_storage() {
+        return (has_backups_storage()) ? config_["backups"]["storage"].get<std::string>() : "";
+    }
+
+    std::string get_backups_bucket() {
+        return (has_backups_bucket()) ? config_["backups"]["bucket"].get<std::string>() : "";
+    }
+
+    std::string get_backups_region() {
+        return (has_backups_region()) ? config_["backups"]["region"].get<std::string>() : "";
+    }
+
+    std::string get_backups_access_key() {
+        return (has_backups_access_key()) ? config_["backups"]["access_key"].get<std::string>() : "";
+    }
+
+    std::string get_backups_secret_key() {
+        return (has_backups_secret_key()) ? config_["backups"]["secret_key"].get<std::string>() : "";
+    }
+
+    std::string get_backups_data_path() {
+        return (has_backups_data_path()) ? config_["backups"]["data_path"].get<std::string>() : "/data";
+    }
+
+    std::string get_backups_compose_path() {
+        return (has_backups_compose_path()) ? config_["backups"]["compose_path"].get<std::string>() : "/";
     }
 
 protected:

@@ -12,6 +12,13 @@ There is no additional requirements for the monitoring client besides the ones n
 
 Note that the compiler must be at least of version C++17.
 
+## Backups
+
+The software contains the ability to backup and restore backups for different environments. Currently the following are available:
+- Thinger.io Platform
+
+This backup and restore capabilities can be executed in standalone mode by executing the bash scripts directly or through the thinger monitor client
+
 ## License
 
 <img align="right" src="http://opensource.org/trademarks/opensource/OSI-Approved-License-100x137.png">

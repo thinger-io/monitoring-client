@@ -1,10 +1,12 @@
 name: Build
 
 on:
-  push:
-    branches: [ master ]
+  release:
+    types: [ published ] # when a release is created, build and publish bins
+  #push:
+  #  branches: [ master,develop ]
   pull_request:
-    branches: [ master ]
+    branches: [ master,develop ] # when a pull request is opened only build
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
@@ -15,6 +17,7 @@ env:
 jobs:
 
   build_version:
+    if: ${{ github.event_name == 'release' }}
     runs-on: ubuntu-latest
 
     outputs:
@@ -28,7 +31,9 @@ jobs:
 #      run: | # official regex for semantic version: https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
 #        echo "build_version=`grep -oE '(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?' run.sh | head -1`" >> $GITHUB_ENV
       #run: echo "build_version=`sed -n 's/.*BUILD_VERSION=//p' run.sh | cut -d " " -f1`" >> $GITHUB_ENV
-      run: echo "::set-output name=version::`sed -n 's/.*BUILD_VERSION=//p' run.sh | cut -d " " -f1`"
+#      run: echo "::set-output name=version::`sed -n 's/.*BUILD_VERSION=//p' run.sh | cut -d " " -f1`"
+      run: |
+        echo "::set-output name=version::$(echo ${GITHUB_REF}"
 
   build:
     runs-on: ubuntu-latest
@@ -41,8 +46,16 @@ jobs:
 
     steps:
 
+    - name: Extract branch name
+      shell: bash
+      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+      id: extract_branch
+
     - name: Checkout repository
       uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+        ref: ${{ steps.extract_branch.outputs.branch }}
 
     - name: Configure CMake
       run: cmake -B /build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DBUILD_VERSION=${{ needs.build_version.outputs.version }} -DCROSS=ON -DOPENSSL_ROOT_DIR=${{ env.OPENSSL_ROOT_DIR }} -DOPENSSL_LIBRARIES=${{ env.OPENSSL_ROOT_DIR }} -DBIN_EXTENSION=${{ matrix.architecture }}
@@ -53,7 +66,7 @@ jobs:
 
     - name: Upload build artifact
       uses: actions/upload-artifact@v2
-      if: ${{ github.event_name == 'push' }}
+      if: ${{ github.event_name == 'release' }}
       with:
         name: ${{ env.MODULE }}.${{ matrix.architecture }}
         path: /build/${{ env.MODULE }}.${{ matrix.architecture }}
@@ -62,8 +75,8 @@ jobs:
 
   # TODO: Install and run
 
-  upload_to_release:
-    if: ${{ github.event_name == 'push' }}
+  upload_to_release: # when tag is created
+    if: ${{ github.event_name == 'release' }}
     runs-on: ubuntu-latest
     needs: [build_version, build]
     strategy:
