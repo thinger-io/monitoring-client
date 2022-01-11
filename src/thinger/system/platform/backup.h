@@ -108,21 +108,21 @@ std::cout << command << std::endl;
         }
 
         // TODO: execute mongodump and copy through docker REST API
-        system(("docker exec -it mongodb mongodump -u \"thinger\" -p \""+mongo_password+"\" >> /dev/null").c_str());
+        system(("docker exec mongodb mongodump -u \"thinger\" -p \""+mongo_password+"\" >> /dev/null").c_str());
         system(("docker cp mongodb:dump "+backup_folder+"/mongodbdump-"+backup_date+" >> /dev/null").c_str());
     }
 
     void backup_influxdb() {
         // TODO: execute influxd backup and copy through docker REST API
-        system("docker exec -it influxdb influxd backup --portable /dump >> /dev/null");
+        system("docker exec influxdb influxd backup --portable /dump >> /dev/null");
         system(("docker cp mongodb:dump "+backup_folder+"/influxdbdump-"+backup_date+" >> /dev/null").c_str());
     }
 
     void clean_thinger() {
         std::filesystem::remove_all(backup_folder);
         // TODO: clean inside docker containers through docker REST API
-        system("docker exec -it mongodb rm -rf /dump");
-        system("docker exec -it influxdb rm -rf /dump");
+        system("docker exec mongodb rm -rf /dump");
+        system("docker exec influxdb rm -rf /dump");
     }
 
 };

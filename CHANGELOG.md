@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 - New configuration options for backup and restore operations
 - Added S3 upload and retrieval capabilities for backups
+- Installer now allows installation of a specific version
 
 ### Changed
 - Moved backup and restore scritps to thinger resource

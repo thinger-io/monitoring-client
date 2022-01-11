@@ -35,7 +35,7 @@ jobs:
       run: |
         #echo "::set-output name=version::$(echo ${GITHUB_REF})"
         if [ ${{ github.event_name }} == 'release' ]; then
-          echo "##[set-output name=version;]$(echo ${GITHUB_REF})"
+          echo "##[set-output name=version;]$(echo ${GITHUB_REF#refs/tags/})"
         elif [ ${{ github.event_name }} == 'pull_request' ]; then
           echo "##[set-output name=version;]$(echo ${GITHUB_REF#refs/heads/})"
         fi
