@@ -33,7 +33,7 @@ jobs:
       #run: echo "build_version=`sed -n 's/.*BUILD_VERSION=//p' run.sh | cut -d " " -f1`" >> $GITHUB_ENV
 #      run: echo "::set-output name=version::`sed -n 's/.*BUILD_VERSION=//p' run.sh | cut -d " " -f1`"
       run: |
-        echo "::set-output name=version::$(echo ${GITHUB_REF}"
+        echo "::set-output name=version::$(echo ${GITHUB_REF})"
 
   build:
     runs-on: ubuntu-latest
