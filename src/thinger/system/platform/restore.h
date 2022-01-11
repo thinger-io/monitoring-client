@@ -111,12 +111,12 @@ private:
 
         // TODO: execute mongodump and copy through docker REST API
         system(("docker cp "+backup_folder+"/mongodbdump-"+tag_+" mongodb:/dump >> /dev/null").c_str());
-        system(("docker exec mongodb mongorestore  /dump -u \"thinger\" -p \""+mongo_password+"\" >> /dev/null").c_str());
+        system(("docker exec mongodb mongorestore /dump -u \"thinger\" -p \""+mongo_password+"\" >> /dev/null").c_str());
     }
 
     void restore_influxdb() {
         // TODO: execute influxd backup and copy through docker REST API
-        system(("docker cp "+backup_folder+"/influxdbdump-"+tag_+" mongodb:dump >> /dev/null").c_str());
+        system(("docker cp "+backup_folder+"/influxdbdump-"+tag_+" influxdb:/dump >> /dev/null").c_str());
         system("docker exec influxdb influxd restore --portable /dump >> /dev/null");
     }
 
