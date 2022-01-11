@@ -128,7 +128,7 @@ private:
     }
 
     void restart_platform() {
-        system("docker-compose -f "+config_.get_backups_compose_path()+"/docker-compose.yml restart");
+        system(("docker-compose -f "+config_.get_backups_compose_path()+"/docker-compose.yml restart").c_str());
     }
 
 };
