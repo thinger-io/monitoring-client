@@ -5,11 +5,6 @@ on:
     types: [published] # when a release is created, build and publish bins
   pull_request:
     branches: [ master,develop ] # when a pull request is opened only build
-  workflow_call:
-    inputs:
-      tag:
-        required: true
-        type: string
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
@@ -20,7 +15,7 @@ env:
 jobs:
 
   build_version:
-    if: ${{ github.event_name == 'release' }} || ${{ github.event_name == 'workflow_call' }}
+    if: ${{ github.event_name == 'release' }}
     runs-on: ubuntu-latest
 
     outputs:
@@ -36,11 +31,7 @@ jobs:
       #run: echo "build_version=`sed -n 's/.*BUILD_VERSION=//p' run.sh | cut -d " " -f1`" >> $GITHUB_ENV
 #      run: echo "::set-output name=version::`sed -n 's/.*BUILD_VERSION=//p' run.sh | cut -d " " -f1`"
       run: |
-        if [ ${{ github.event_name }} == 'release' ]; then
-          echo "::set-output name=version::$(echo ${GITHUB_REF}"
-        elif [ ${{ github.event_name }} == 'workflow_call' ]; then
-          echo "::set-output name=version::$(echo ${tag}"
-        fi
+        echo "::set-output name=version::$(echo ${GITHUB_REF}"
 
   build:
     runs-on: ubuntu-latest
@@ -73,7 +64,7 @@ jobs:
 
     - name: Upload build artifact
       uses: actions/upload-artifact@v2
-      if: ${{ github.event_name == 'release' }} || ${{ github.event_name == 'workflow_call' }}
+      if: ${{ github.event_name == 'release' }}
       with:
         name: ${{ env.MODULE }}.${{ matrix.architecture }}
         path: /build/${{ env.MODULE }}.${{ matrix.architecture }}
@@ -83,7 +74,7 @@ jobs:
   # TODO: Install and run
 
   upload_to_release: # when tag is created
-    if: ${{ github.event_name == 'release' }} || ${{ github.event_name == 'workflow_call' }}
+    if: ${{ github.event_name == 'release' }}
     runs-on: ubuntu-latest
     needs: [build_version, build]
     strategy:

@@ -15,7 +15,6 @@ jobs:
     runs-on: ubuntu-latest
 
     outputs:
-      branch: ${{ steps.extract_branch.outputs.branch }}
       tag_version: ${{ steps.check_tag.outputs.tag_version }}
     steps:
 
@@ -79,12 +78,8 @@ jobs:
         prerelease: ${{ steps.is_prerelease.outputs.prerelease }}
         tag: ${{ env.tag_version }}
         name: ${{ env.tag_version }}
+        token: ${{ secrets.GH_PAT }} # can't use GITHUB_TOKEN as it will not trigger additional events
         artifacts: "install/install_thinger_monitor.sh"
         body: |
           ${{ steps.get_changelog.outputs.RELEASE_BODY }}
 
-    # We need to call it manually, as when using GITHUB_TOKEN it will not trigger additional events
-  call_build:
-    uses: thinger-io/monitoring-client/.github/workflows/build.yml@${{needs.release.outputs.branch}}
-    with:
-      tag: ${{ needs.release.outputs.tag_version }}
