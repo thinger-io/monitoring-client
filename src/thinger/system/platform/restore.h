@@ -32,6 +32,7 @@ public:
     void restore_backup() {
 
         if ( system_app == "platform" ) {
+            // TODO: Stop, all containers, remove data folders, restart, wait until it pings and launch restore
             decompress_backup();
             restore_thinger();
             restore_mongodb();
