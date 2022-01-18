@@ -76,6 +76,7 @@ public:
         return res->status;
     }
 
+    // It seems that the path has to be relative to the access point
     static int copy_from_container(const std::string container_id, const std::string source_path, const std::string dest_path) {
         // https://docs.docker.com/engine/api/v1.41/#operation/ContainerArchive
         httplib::Client cli("unix:/var/run/docker.sock");
@@ -113,8 +114,8 @@ public:
           body.str(), "application/octec-stream");
           //body.str(), "application/x-compressed-tar");
 
-        std::cout << res->body << std::endl;
-        std::cout << res->status << std::endl;
+//        std::cout << res->body << std::endl;
+//        std::cout << res->status << std::endl;
 
 
         // TODO: content provider
