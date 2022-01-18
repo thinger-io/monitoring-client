@@ -9,7 +9,8 @@
 
 #include "../../utils/date.h"
 #include "../../utils/aws.h"
-
+#include "../../utils/tar.h"
+#include "../../utils/tar.h"
 
 class ThingerRestore {
 
@@ -76,23 +77,20 @@ protected:
 
 private:
     void create_backup_folder() {
-        std::filesystem::remove_all(backup_folder);
-        std::filesystem::create_directories(backup_folder);
+//        std::filesystem::remove_all(backup_folder);
+        std::filesystem::create_directories(backup_folder+"/"+tag_);
     }
 
-    void decompress_backup() { // TODO: use some tar library?
-        std::string command = "tar xfz "+backup_folder+"/"+file_to_download+" -C "+backup_folder+" --same-owner";
-        system(command.c_str());
+    void decompress_backup() {
+        Tar::extract(backup_folder+"/"+file_to_download);
     }
 
     // -- PLATFORM -- //
     void restore_thinger() {
-        // TODO: user docker REST API
-        system("docker stop thinger");
+        Docker::stop("thinger");
         std::filesystem::remove_all(config_.get_backups_data_path()+"/thinger/users");
         std::filesystem::create_directories(config_.get_backups_data_path()+"/thinger/users");
-        std::filesystem::copy(backup_folder+"/thinger-"+tag_+"/users",config_.get_backups_data_path()+"/thinger/users", std::filesystem::copy_options::recursive);
-        //std::filesystem::copy(config_.get_backups_data_path()+"/thinger/users", backup_folder+"/thinger-"+backup_date);
+        std::filesystem::copy(backup_folder+"/"+tag_+"/thinger-"+tag_+"/users",config_.get_backups_data_path()+"/thinger/users", std::filesystem::copy_options::recursive);
     }
 
     void restore_mongodb() {
@@ -110,26 +108,25 @@ private:
             }
         }
 
-        // TODO: execute mongodump and copy through docker REST API
-        system(("docker cp "+backup_folder+"/mongodbdump-"+tag_+" mongodb:/dump >> /dev/null").c_str());
-        system(("docker exec mongodb mongorestore /dump -u \"thinger\" -p \""+mongo_password+"\" >> /dev/null").c_str());
+        Docker::copy_to_container("mongodb", backup_folder+"/"+tag_+"/mongodbdump-"+tag_+".tar", "/");
+        Docker::exec("mongodb", "mongorestore /dump -u thinger -p "+mongo_password);
     }
 
     void restore_influxdb() {
-        // TODO: execute influxd backup and copy through docker REST API
-        system(("docker cp "+backup_folder+"/influxdbdump-"+tag_+" influxdb:/dump >> /dev/null").c_str());
-        system("docker exec influxdb influxd restore --portable /dump >> /dev/null");
+        Docker::copy_to_container("influxdb", backup_folder+"/"+tag_+"/influxdbdump-"+tag_+".tar", "/");
+        Docker::exec("influxdb", "influxd restore --portable /dump");
     }
 
     void clean_thinger() {
-        std::filesystem::remove_all(backup_folder);
-        // TODO: clean inside docker containers through docker REST API
-        system("docker exec mongodb rm -rf /dump");
-        system("docker exec influxdb rm -rf /dump");
+        std::filesystem::remove_all(backup_folder+"/"+file_to_download);
+        Docker::exec("mongodb", "rm -rf /dump");
+        Docker::exec("influxdb", "rm -rf /dump");
     }
 
     void restart_platform() {
-        system(("docker-compose -f "+config_.get_backups_compose_path()+"/docker-compose.yml restart").c_str());
+        Docker::restart("mongodb");
+        Docker::restart("influxdb");
+        Docker::restart("thinger");
     }
 
 };

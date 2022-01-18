@@ -77,6 +77,13 @@ if(NOT json_POPULATED)
   list(APPEND ADDITIONAL_LIBS nlohmann_json::nlohmann_json)
 endif()
 
+find_package(LibArchive REQUIRED)
+if (LibArchive_FOUND)
+  include_directories(${LibArchive_INCLUDE_DIRS})
+  list(APPEND ADDITIONAL_LIBS LibArchive::LibArchive)
+  message(STATUS "LibArchive Version: ${LibArchive_VERSION}")
+endif()
+
 add_executable(thinger_monitor ${SOURCE_FILES})
 target_link_libraries(thinger_monitor ${ADDITIONAL_LIBS})
 set_target_properties(thinger_monitor PROPERTIES COMPILE_DEFINITIONS "DAEMON=0")
@@ -97,10 +104,30 @@ FetchContent_MakeAvailable(thinger)
 target_include_directories(thinger_monitor PRIVATE ${thinger_SOURCE_DIR}/src/thinger )
 
 # Add cpp_httplib library
-FetchContent_Declare(
-  cpp_httplib
-  GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
-  GIT_TAG d87d0672a8e0f3695f168ff1f55028f6fbe4aedf # the commit hash for 1.9.4
-)
-FetchContent_MakeAvailable(cpp_httplib)
-target_include_directories(thinger_monitor PRIVATE ${cpp_httplib_SOURCE_DIR})
+# Added localy as an external library until it implements unix sockets
+#FetchContent_Declare(
+#  cpp_httplib
+#  GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
+#  GIT_TAG v0.10.1
+#)
+#FetchContent_MakeAvailable(cpp_httplib)
+#target_include_directories(thinger_monitor PRIVATE ${cpp_httplib_SOURCE_DIR})
+target_include_directories(thinger_monitor PRIVATE ${CMAKE_SOURCE_DIR}/external/cpp-httplib/)
+
+# Add tar library
+#FetchContent_Declare(
+#  tar
+#  GIT_REPOSITORY https://github.com/calccrypto/tar.git
+#  GIT_TAG master
+#)
+#FetchContent_MakeAvailable(tar)
+#target_include_directories(thinger_monitor PRIVATE ${tar_SOURCE_DIR})
+
+# Add cryptopp library
+#FetchContent_Declare(
+#  cryptopp
+#  GIT_REPOSITORY https://github.com/weidai11/cryptopp.git
+#  GIT_TAG CRYPTOPP_8_6_0
+#)
+#FetchContent_MakeAvailable(cryptopp)
+#target_include_directories(thinger_monitor PRIVATE ${cryptopp_SOURCE_DIR})
