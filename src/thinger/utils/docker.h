@@ -19,7 +19,7 @@ namespace Docker {
         // Create exec instance
         httplib::Client cli("unix:/var/run/docker.sock");
         cli.set_default_headers({ { "Host", "localhost" } });
-        cli.set_read_timeout(120, 0) // 120 seconds for commands to execute
+        cli.set_read_timeout(120, 0); // 120 seconds for commands to execute
 
         std::stringstream ss(command);
 
@@ -51,10 +51,10 @@ namespace Docker {
         auto res2 = cli.Post(("/exec/"+res1_json["Id"].get<std::string>()+"/start").c_str(), body2.dump(), "application/json");
 
         if ( res2.error() == httplib::Error::Read ) {
-            std::cout << "[_DOCKER] Error: Timeout waiting for command to execute" << std::endl
+            std::cout << "[_DOCKER] Error: Timeout waiting for command to execute" << std::endl;
             return -1;
         } else if ( res2.error() != httplib::Error::Success ) {
-            std::cout << "[_DOCKER] Request error: " << res2.error() << std::endl
+            std::cout << "[_DOCKER] Request error: " << res2.error() << std::endl;
             return -1;
         }
 
@@ -79,7 +79,7 @@ namespace Docker {
         auto res = cli.Post(("/containers/"+container_id+"/restart").c_str(), "t=0", "application/x-www-form-urlencoded");
 
         if ( res.error() != httplib::Error::Success ) {
-            std::cout << "[_DOCKER] Request error: " << res2.error() << std::endl
+            std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
             return -1;
         }
 
@@ -103,7 +103,7 @@ namespace Docker {
         auto res = cli.Post(("/containers/"+container_id+"/stop").c_str(), "t=0", "application/x-www-form-urlencoded");
 
         if ( res.error() != httplib::Error::Success ) {
-            std::cout << "[_DOCKER] Request error: " << res2.error() << std::endl
+            std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
             return -1;
         }
 
@@ -136,7 +136,7 @@ namespace Docker {
           });
 
         if ( res.error() != httplib::Error::Success ) {
-            std::cout << "[_DOCKER] Request error: " << res2.error() << std::endl
+            std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
             return -1;
         }
 
@@ -173,7 +173,7 @@ namespace Docker {
           body.str(), "application/octec-stream");
 
         if ( res.error() != httplib::Error::Success ) {
-            std::cout << "[_DOCKER] Request error: " << res2.error() << std::endl
+            std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
             return -1;
         }
 
