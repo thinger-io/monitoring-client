@@ -119,6 +119,7 @@ private:
 
     void clean_thinger() {
         std::filesystem::remove_all(backup_folder+"/"+file_to_download);
+        std::filesystem::remove_all(backup_folder+"/"+tag_);
         Docker::exec("mongodb", "rm -rf /dump");
         Docker::exec("influxdb", "rm -rf /dump");
     }

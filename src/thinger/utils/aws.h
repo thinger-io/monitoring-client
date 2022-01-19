@@ -10,11 +10,41 @@
 #include <openssl/sha.h>
 #include <openssl/hmac.h>
 
-class AWS {
+namespace AWS {
 
-public:
+    namespace {
 
-    static int upload_to_s3(const std::string file_path, const std::string bucket, const std::string region, const std::string access_key, const std::string secret_key) {
+        std::string hmac_sha1(std::string key, std::string msg) {
+
+            unsigned char hash[32];
+
+            HMAC_CTX *hmac = HMAC_CTX_new();
+            HMAC_Init_ex(hmac, &key[0], key.length(), EVP_sha1(), NULL);
+            HMAC_Update(hmac, (unsigned char*)&msg[0], msg.length());
+            unsigned int len = 32;
+            HMAC_Final(hmac, hash, &len);
+            HMAC_CTX_free(hmac);
+
+            /* HEX
+            std::stringstream ss;
+            ss << std::hex << std::setfill('0');
+            for (int i = 0; i < len; i++) {
+                ss << std::hex << std::setw(2)  << (unsigned int)hash[i];
+            }
+            */
+
+            std::stringstream ss;
+            ss << std::setfill('0');
+            for (int i = 0; i < len; i++) {
+                ss  << hash[i];
+            }
+
+            return (base64_encode(ss.str()));
+
+        }
+    }
+
+    int upload_to_s3(const std::string file_path, const std::string bucket, const std::string region, const std::string access_key, const std::string secret_key) {
 
         const std::string content_type = "application/x-compressed-tar";
 
@@ -41,14 +71,15 @@ public:
         body << file.rdbuf();
 
         // PUT(path, headers, std::string body, const char content_type)
-        std::cout << "[___AWS] Uploading file "+filename+" to "+bucket+" bucket" << std::endl;
+        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+        std::cout << "[____AWS] Uploading file "+filename+" to "+bucket+" bucket" << std::endl;
         auto res = cli.Put(("/"+filename).c_str(), headers, body.str(), content_type.c_str());
 
         return res->status;
 
     }
 
-    static int download_from_s3(const std::string file_path, const std::string bucket, const std::string region, const std::string access_key, const std::string secret_key) {
+    int download_from_s3(const std::string file_path, const std::string bucket, const std::string region, const std::string access_key, const std::string secret_key) {
 
         const std::string content_type = "application/x-compressed-tar";
 
@@ -71,7 +102,8 @@ public:
         std::ofstream file(file_path);
 
         // PUT(path, headers, std::string body, const char content_type)
-        std::cout << "[___AWS] Downloading file "+filename+" from "+bucket+" bucket" << std::endl;
+        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+        std::cout << "[____AWS] Downloading file "+filename+" from "+bucket+" bucket" << std::endl;
         cli.set_default_headers(headers);
         auto res = cli.Get(("/"+filename).c_str(),
           [&](const char *data, size_t data_length) {
@@ -80,38 +112,6 @@ public:
           });
 
         return res->status;
-        return 0;
     }
 
-private:
-
-    static std::string hmac_sha1(std::string key, std::string msg) {
-
-        unsigned char hash[32];
-
-        HMAC_CTX *hmac = HMAC_CTX_new();
-        HMAC_Init_ex(hmac, &key[0], key.length(), EVP_sha1(), NULL);
-        HMAC_Update(hmac, (unsigned char*)&msg[0], msg.length());
-        unsigned int len = 32;
-        HMAC_Final(hmac, hash, &len);
-        HMAC_CTX_free(hmac);
-
-        /* HEX
-        std::stringstream ss;
-        ss << std::hex << std::setfill('0');
-        for (int i = 0; i < len; i++) {
-            ss << std::hex << std::setw(2)  << (unsigned int)hash[i];
-        }
-        */
-
-        std::stringstream ss;
-        ss << std::setfill('0');
-        for (int i = 0; i < len; i++) {
-            ss  << hash[i];
-        }
-
-
-        return (base64_encode(ss.str()));
-
-    }
 };
