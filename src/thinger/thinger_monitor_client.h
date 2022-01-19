@@ -84,14 +84,17 @@ public:
             backup_ = [this](pson& in, pson& out) {
                 out["status"] = "";
                 if (in["backup"]) {
+                    in["backup"] = false;
+
                     ThingerBackup backup(config_, hostname);
-                    //TODO std::cout << std::fixed << millis()/1000.0 << " ";
-                    std::cout << "[BACKUP] Creating backup" << std::endl;
+                    std::cout << std::fixed << Date::millis()/1000.0 << " ";
+                    std::cout << "[_BACKUP] Creating backup" << std::endl;
                     backup.create_backup();
-                    //TODO std::cout << std::fixed << millis()/1000.0 << " ";
-                    std::cout << "[BACKUP] Uploading backup" << std::endl;
+                    std::cout << std::fixed << Date::millis()/1000.0 << " ";
+                    std::cout << "[_BACKUP] Uploading backup" << std::endl;
                     out["status"] = backup.upload_backup();
-                    std::cout << "[BACKUP] Cleaning backup temporary files" << std::endl;
+                    std::cout << std::fixed << Date::millis()/1000.0 << " ";
+                    std::cout << "[_BACKUP] Cleaning backup temporary files" << std::endl;
                     backup.clean_backup();
                 }
                 //out["output"] = in["tag"];
@@ -102,13 +105,14 @@ public:
                 out["status"] = "";
                 if (!tag.empty()) {
                     ThingerRestore restore(config_, hostname, tag);
-                    //TODO std::cout << std::fixed << millis()/1000.0 << " ";
-                    std::cout << "[__RSTR] Downloading backup" << std::endl;
+                    std::cout << std::fixed << Date::millis()/1000.0 << " ";
+                    std::cout << "[___RSTR] Downloading backup" << std::endl;
                     restore.download_backup();
-                    //TODO std::cout << std::fixed << millis()/1000.0 << " ";
-                    std::cout << "[__RSTR] Restoring backup" << std::endl;
+                    std::cout << std::fixed << Date::millis()/1000.0 << " ";
+                    std::cout << "[___RSTR] Restoring backup" << std::endl;
                     restore.restore_backup();
-                    std::cout << "[__RSTR] Cleaning backup temporary files" << std::endl;
+                    std::cout << std::fixed << Date::millis()/1000.0 << " ";
+                    std::cout << "[___RSTR] Cleaning backup temporary files" << std::endl;
                     restore.clean_backup();
                 }
             };

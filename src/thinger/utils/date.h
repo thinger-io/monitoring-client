@@ -5,9 +5,7 @@
 #include <sstream> // stringstream
 #include <iomanip> // put_time
 
-class Date {
-
-public:
+namespace Date {
 
     static std::string now_iso8601(const bool extended = false) {
         auto now = std::chrono::system_clock::now();
@@ -32,6 +30,14 @@ public:
         ss << std::put_time(std::localtime(&in_time_t), "%a, %d %b %Y %T %z");
 
         return ss.str();
+    }
+
+    // TODO change this to a monotonic clock implementation. Using c++11?
+    static unsigned long millis() {
+        struct timeval te;
+        gettimeofday(&te, NULL);
+        unsigned long milliseconds = te.tv_sec*1000LL + te.tv_usec/1000;
+        return milliseconds;
     }
 
 };

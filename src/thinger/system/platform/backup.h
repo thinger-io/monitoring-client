@@ -104,12 +104,12 @@ private:
         }
 
         Docker::exec("mongodb", "mongodump -u thinger -p "+mongo_password);
-        Docker::copy_from_container("mongodb", "dump", backup_folder+"/"+backup_date+"/mongodbdump-"+backup_date+".tar");
+        Docker::copy_from_container("mongodb", "/dump", backup_folder+"/"+backup_date+"/mongodbdump-"+backup_date+".tar");
     }
 
     void backup_influxdb() {
         Docker::exec("influxdb", "influxd backup --portable /dump");
-        Docker::copy_from_container("influxdb", "dump", backup_folder+"/"+backup_date+"/influxdbdump-"+backup_date+".tar");
+        Docker::copy_from_container("influxdb", "/dump", backup_folder+"/"+backup_date+"/influxdbdump-"+backup_date+".tar");
     }
 
     void clean_thinger() {

@@ -16,6 +16,9 @@ public:
         // POST request: https://docs.docker.com/engine/api/v1.41/#operation/ContainerExec
         // To exec a command in a container, you first need to create an exec instance, then start it.
 
+        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+        std::cout << "[_DOCKER] Executing command: '" << command << "' in container '" << container_id << "'" << std::endl;
+
         // Create exec instance
         httplib::Client cli("unix:/var/run/docker.sock");
         cli.set_default_headers({ { "Host", "localhost" } });
@@ -32,10 +35,11 @@ public:
         json body1 = {
           {"AttachStdin", false},
           {"AttachStdout", false},
-          {"AttachStderr", false},
+          {"AttachStderr", true}, // will keep the request blocked until it finishes. Not ideal
           {"Tty", false},
           {"Cmd", cmd}
         };
+
 
         auto res1 = cli.Post(("/containers/"+container_id+"/exec").c_str(), body1.dump(), "application/json");
 //std::cout << res1->body << std::endl;
@@ -45,9 +49,10 @@ public:
 
         // Start exec instance
         json body2 = {
-          {"Detach", false}, // block until end of command
+          {"Detach", false}, // Does not seem to work!! block until end of command
           {"Tty", false}
         };
+
         auto res2 = cli.Post(("/exec/"+res1_json["Id"].get<std::string>()+"/start").c_str(), body2.dump(), "application/json");
 //std::cout << res2->body << std::endl;
 //std::cout << res2->status << std::endl;
@@ -57,6 +62,10 @@ public:
     }
 
     static int restart(const std::string container_id) {
+
+        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+        std::cout << "[_DOCKER] Restarting container: '" << container_id << "'" << std::endl;
+
         httplib::Client cli("unix:/var/run/docker.sock");
         cli.set_default_headers({ { "Host", "localhost" } });
 
@@ -67,6 +76,10 @@ public:
     }
 
     static int stop(const std::string container_id) {
+
+        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+        std::cout << "[_DOCKER] Stopping container: '" << container_id << "'" << std::endl;
+
         httplib::Client cli("unix:/var/run/docker.sock");
         cli.set_default_headers({ { "Host", "localhost" } });
 
@@ -78,6 +91,11 @@ public:
 
     // It seems that the path has to be relative to the access point
     static int copy_from_container(const std::string container_id, const std::string source_path, const std::string dest_path) {
+
+        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+        std::cout << "[_DOCKER] Copying from container: '" << container_id << "' path: '" << source_path;
+        std::cout << "' to host path: '" << dest_path << "'" << std::endl;
+
         // https://docs.docker.com/engine/api/v1.41/#operation/ContainerArchive
         httplib::Client cli("unix:/var/run/docker.sock");
         cli.set_default_headers({ { "Host", "localhost" } });
@@ -89,13 +107,18 @@ public:
             file.write(data, data_length);
             return true;
           });
-//std::cout << res->body << std::endl;
-//std::cout << res->status << std::endl;
+std::cout << res->body << std::endl;
+std::cout << res->status << std::endl;
 
         return res->status;
     }
 
     static int copy_to_container(const std::string container_id, const std::string source_path, const std::string dest_path) {
+
+        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+        std::cout << "[_DOCKER] Copying from host path: '" << source_path << "' to container '" << container_id;
+        std::cout << "' to host path: '" << dest_path << "'" << std::endl;
+
         // https://docs.docker.com/engine/api/v1.41/#operation/PutContainerArchive
         httplib::Client cli("unix:/var/run/docker.sock");
         cli.set_default_headers({ { "Host", "localhost" } });
