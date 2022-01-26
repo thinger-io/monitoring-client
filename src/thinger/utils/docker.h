@@ -8,6 +8,87 @@
 // Support from API 1.41
 namespace Docker {
 
+    int inspect(const std::string container_id, const std::string dest_path) {
+
+        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+        std::cout << "[_DOCKER] Inspecting container: '" << container_id;
+        std::cout << "' and saving result to: '" << dest_path+"/"+container_id+".json" << std::endl;
+
+        httplib::Client cli("unix:/var/run/docker.sock");
+        cli.set_default_headers({ { "Host", "localhost" } });
+
+        std::ofstream file(dest_path+"/"+container_id+".json");
+
+        auto res = cli.Get(("/containers/"+container_id+"/json").c_str());//,
+
+        if ( res.error() != httplib::Error::Success ) {
+            std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
+            return -1;
+        }
+
+        auto res_json = json::parse(res->body);
+        file << std::setw(4) << res_json << std::endl;
+        if ( ! file ) {
+            std::cout << std::fixed << Date::millis()/1000.0 << " ";
+            std::cout << "[_DOCKER] There was an error saving result to filesystem" << std::endl;
+            return res->status;
+        }
+
+        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+        if (res->status == 200)
+            std::cout << "[_DOCKER] Succesfully retrieved information" << std::endl;
+        else
+            std::cout << "[_DOCKER] Could not retrieve information" << std::endl;
+
+        return res->status;
+    }
+
+    int create_from_inspect(const std::string source_path) {
+
+        json inspect_json;
+
+        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+        std::cout << "[_DOCKER] Reading docker inspect json from: '" << source_path << "'" << std::endl;
+
+        std::filesystem::path file(source_path);
+        if (std::filesystem::exists(file)) {
+            std::ifstream inspect_file(source_path);
+            inspect_file >> inspect_json;
+        }
+
+        json body = inspect_json["Config"];
+        body["HostConfig"] = inspect_json["HostConfig"];
+        body["NetworkingConfig"]["EndpointsConfig"] = inspect_json["NetworkSettings"]["Networks"];
+
+        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+        std::cout << "[_DOCKER] Creating container: '" << inspect_json["Name"].get<std::string>() << "'" << std::endl;
+
+        httplib::Client cli("unix:/var/run/docker.sock");
+        cli.set_default_headers({ { "Host", "localhost" } });
+        cli.set_read_timeout(120, 0); // 120 seconds for commands to execute
+
+        auto res = cli.Post(("/containers/create?name="+inspect_json["Name"].get<std::string>()).c_str(),
+          body.dump(), "application/json");
+
+        if ( res.error() == httplib::Error::Read ) {
+            std::cout << "[_DOCKER] Error: Timeout waiting for command to execute" << std::endl;
+            return -1;
+        } else if ( res.error() != httplib::Error::Success ) {
+            std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
+            return -1;
+        }
+
+        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+        if (res->status == 201)
+            std::cout << "[_DOCKER] Succesfully executed" << std::endl;
+        else {
+            std::cout << "[_DOCKER] An error occurred while executing" << std::endl;
+            std::cout << "[_DOCKER] Error description: " << res->body << std::endl;
+        }
+
+        return res->status;
+    }
+
     int exec(const std::string container_id, const std::string command) {
 
         // POST request: https://docs.docker.com/engine/api/v1.41/#operation/ContainerExec
@@ -77,6 +158,30 @@ namespace Docker {
         cli.set_default_headers({ { "Host", "localhost" } });
 
         auto res = cli.Post(("/containers/"+container_id+"/restart").c_str(), "t=0", "application/x-www-form-urlencoded");
+
+        if ( res.error() != httplib::Error::Success ) {
+            std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
+            return -1;
+        }
+
+        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+        if (res->status == 204)
+            std::cout << "[_DOCKER] Succesfully restarted" << std::endl;
+        else
+            std::cout << "[_DOCKER] Could not be restarted" << std::endl;
+
+        return res->status;
+    }
+
+    int start(const std::string container_id) {
+
+        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+        std::cout << "[_DOCKER] Starting container: '" << container_id << "'" << std::endl;
+
+        httplib::Client cli("unix:/var/run/docker.sock");
+        cli.set_default_headers({ { "Host", "localhost" } });
+
+        auto res = cli.Post(("/containers/"+container_id+"/start").c_str(), "t=0", "application/x-www-form-urlencoded");
 
         if ( res.error() != httplib::Error::Success ) {
             std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;

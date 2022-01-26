@@ -1,8 +1,3 @@
-// Create backup
-
-// backups mongodb
-
-// backup influxdb
 
 #include <filesystem>
 #include <fstream>
@@ -36,6 +31,7 @@ public:
             backup_thinger();
             backup_mongodb();
             backup_influxdb();
+            get_plugins();
             compress_backup();
         }
         // else if
@@ -84,8 +80,8 @@ private:
 
     // -- PLATFORM -- //
     void backup_thinger() {
-        std::filesystem::create_directories(backup_folder+"/"+backup_date+"/thinger-"+backup_date);
-        std::filesystem::copy(config_.get_backups_data_path()+"/thinger/users", backup_folder+"/"+backup_date+"/thinger-"+backup_date+"/users", std::filesystem::copy_options::recursive);
+        // With tar creation insted of copying to folder we maintain ownership and permissions
+        Tar::create(config_.get_backups_data_path()+"/thinger/users", backup_folder+"/"+backup_date+"/thinger-"+backup_date+".tar");
     }
 
     void backup_mongodb() {
@@ -110,6 +106,16 @@ private:
     void backup_influxdb() {
         Docker::exec("influxdb", "influxd backup --portable /dump");
         Docker::copy_from_container("influxdb", "/dump", backup_folder+"/"+backup_date+"/influxdbdump-"+backup_date+".tar");
+    }
+
+    void get_plugins() {
+
+        for (const auto & p1 : fs::directory_iterator(config_.get_backups_data_path()+"/thinger/users/")) { // users
+            for (const auto & p2 : fs::directory_iterator(p1.path().string()+"/plugins/")) { // plugins
+                std::string container_name = p1.path().filename().string()+"-"+p2.path().filename().string();
+                Docker::inspect(container_name, backup_folder+"/"+backup_date);
+            }
+        }
     }
 
     void clean_thinger() {

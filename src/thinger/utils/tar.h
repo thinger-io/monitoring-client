@@ -6,11 +6,14 @@
 #include <archive.h>
 #include <archive_entry.h>
 
+#include <pwd.h>
+#include <grp.h>
+
 namespace Tar {
 
     namespace {
 
-        void write_archive(const std::string source_path, const std::string outname, const std::vector<std::string> filename) {
+        void write_archive(const std::string source_path, const std::string outname, const std::vector<std::string> filename, const bool compression) {
             struct archive *a;
             struct archive_entry *entry;
             struct stat st;
@@ -19,18 +22,17 @@ namespace Tar {
             int fd;
 
             a = archive_write_new();
-            archive_write_add_filter_gzip(a);
+            if (compression)
+                archive_write_add_filter_gzip(a);
             archive_write_set_format_pax_restricted(a);
             archive_write_open_filename(a, outname.c_str());
             for (std::string f : filename ){
                 stat(f.c_str(), &st);
                 entry = archive_entry_new();
                 //TODO: relative path does not work: https://stackoverflow.com/questions/65100774/how-to-create-a-libarchive-archive-on-a-directory-path-instead-of-a-list-of-file
-                // archive_entry_set_pathname(entry, f.erase(0, source_path.size()+1).c_str());
+                //archive_entry_set_pathname(entry, f.erase(0, source_path.size()+1).c_str());
                 archive_entry_set_pathname(entry, f.c_str());
-                archive_entry_set_size(entry, st.st_size);
-                archive_entry_set_filetype(entry, AE_IFREG);
-                archive_entry_set_perm(entry, 0644);
+                archive_entry_copy_stat(entry, &st); // copies all file attributes
                 archive_write_header(a, entry);
                 fd = open(f.c_str(), O_RDONLY);
                 len = read(fd, buff, sizeof(buff));
@@ -80,10 +82,12 @@ namespace Tar {
             flags |= ARCHIVE_EXTRACT_PERM;
             flags |= ARCHIVE_EXTRACT_ACL;
             flags |= ARCHIVE_EXTRACT_FFLAGS;
+            flags |= ARCHIVE_EXTRACT_OWNER; // TODO: test when user extracts root
 
             a = archive_read_new();
-            archive_read_support_format_all(a);
-            archive_read_support_compression_all(a);
+            archive_read_support_format_tar(a);
+            //archive_read_support_compression_all(a);
+            archive_read_support_filter_gzip(a);
             ext = archive_write_disk_new();
             archive_write_disk_set_options(ext, flags);
             archive_write_disk_set_standard_lookup(ext);
@@ -123,22 +127,24 @@ namespace Tar {
 
     int create(const std::string source_path, const std::string dest_file) {
 
-
-        // TODO: If source path is folder iterate and add every file to the tar
-        // assuming is always a folder and value is full path (for the moment)
-        std::vector<std::string> filename;
-        for(auto& p: fs::recursive_directory_iterator(source_path)) {
-            std::error_code ec; // For using the non-throwing overloads of functions below.
-            if (std::filesystem::is_regular_file(p.path(), ec)) {
-                filename.push_back(p.path());
-            }
-            if ( ec ) {
-                std::cerr << ec.message() << std::endl;
-            }
+        bool compression = false;
+        if (dest_file.substr(dest_file.find_last_of(".") + 1) == "tgz" ||
+            dest_file.substr(dest_file.find_last_of(".") + 1) == "gz")
+        {
+            compression = true;
         }
-        // TODO: else add to the tar
 
-        write_archive(source_path, dest_file, filename);
+        // Add file or recursive directory file given a full path
+        std::vector<std::string> filename;
+        if ( fs::is_directory(source_path) ) {
+            for(auto& p: fs::recursive_directory_iterator(source_path)) {
+                filename.push_back(p.path()); // add directories and regular files
+            }
+        } else {
+            filename.push_back(source_path);
+        }
+
+        write_archive(source_path, dest_file, filename, compression);
 
         return 0;
 
@@ -148,8 +154,6 @@ namespace Tar {
     int extract(const std::string file) {
 
         // TODO: should not need to copy to root folder, but we needed it until the relative path is saved into the file
-        //std::filesystem::copy(filename, "/"+std::filesystem::path(file).filename());
-        //extract("/"+std::filesystem::path(file).filename().str());
         extract_archive(file);
 
         return 0;

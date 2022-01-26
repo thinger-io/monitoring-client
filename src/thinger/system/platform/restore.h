@@ -1,8 +1,3 @@
-// Create backup
-
-// backups mongodb
-
-// backup influxdb
 
 #include <filesystem>
 #include <fstream>
@@ -38,6 +33,7 @@ public:
             restore_thinger();
             restore_mongodb();
             restore_influxdb();
+            restore_plugins();
             restart_platform();
         }
         // else if
@@ -89,8 +85,7 @@ private:
     void restore_thinger() {
         Docker::stop("thinger");
         std::filesystem::remove_all(config_.get_backups_data_path()+"/thinger/users");
-        std::filesystem::create_directories(config_.get_backups_data_path()+"/thinger/users");
-        std::filesystem::copy(backup_folder+"/"+tag_+"/thinger-"+tag_+"/users",config_.get_backups_data_path()+"/thinger/users", std::filesystem::copy_options::recursive);
+        Tar::extract(backup_folder+"/"+tag_+"/thinger-"+tag_+".tar");
     }
 
     void restore_mongodb() {
@@ -115,6 +110,17 @@ private:
     void restore_influxdb() {
         Docker::copy_to_container("influxdb", backup_folder+"/"+tag_+"/influxdbdump-"+tag_+".tar", "/");
         Docker::exec("influxdb", "influxd restore --portable /dump");
+    }
+
+    void restore_plugins() {
+        // Executed after restore_thinger
+        for (const auto & p1 : fs::directory_iterator(config_.get_backups_data_path()+"/thinger/users/")) { // users
+            for (const auto & p2 : fs::directory_iterator(p1.path().string()+"/plugins/")) { // plugins
+                std::string container_name = p1.path().filename().string()+"-"+p2.path().filename().string();
+                Docker::create_from_inspect(backup_folder+"/"+tag_+"/"+container_name+".json");
+                Docker::start(container_name);
+            }
+        }
     }
 
     void clean_thinger() {
