@@ -52,6 +52,7 @@ public:
         cmd_(client["cmd"]),
         reboot_(client["reboot"]),
         update_(client["update"]),
+        update_distro_(client["update_distro"]),
         backup_(client["backup"]),
         restore_(client["restore"]),
         config_(config)
@@ -78,6 +79,11 @@ public:
                 update_ << [this](pson& in) { // needs declaration of input for dashboard button
                     if (in)
                         update();
+                };
+
+                update_distro_ << [this](pson& in) { // needs declaration of input for dashboard button
+                    if (in)
+                        update_distro();
                 };
            }
 
@@ -281,6 +287,7 @@ protected:
     thinger::thinger_resource& cmd_;
     thinger::thinger_resource& reboot_;
     thinger::thinger_resource& update_;
+    thinger::thinger_resource& update_distro_;
     thinger::thinger_resource& backup_;
     thinger::thinger_resource& restore_;
 
@@ -378,7 +385,13 @@ protected:
     }
 
     void update() {
-        system("sudo apt update && sudo apt -qqy upgrade");
+        // System upgrade. By default it does not overwrite config files if a package has a newer version
+        system("sudo apt -y update && sudo DEBIAN_FRONTEND=noninteractive DEBIAN_PRIORITY=critical UCF_FORCE_CONFFOLD=1 apt -qq -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold upgrade");
+    }
+
+    void update_distro() {
+        // Full unattended distro upgrade
+        system("sudo apt -y update && sudo do-release-upgrade -f DistUpgradeViewNonInteractive");
     }
 
 private:

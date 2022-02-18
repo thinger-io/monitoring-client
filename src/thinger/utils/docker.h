@@ -1,6 +1,5 @@
 #include <filesystem>
 #include <vector>
-
 #include <httplib.h>
 
 #include <nlohmann/json.hpp>
@@ -262,56 +261,44 @@ namespace Docker {
 
         // https://docs.docker.com/engine/api/v1.41/#operation/PutContainerArchive
         httplib::Client cli("unix:/var/run/docker.sock");
+        cli.set_write_timeout(120, 0); // 120 seconds
         cli.set_default_headers({ { "Host", "localhost" } });
-
 
         size_t buffer_size = 1<<20; // 1 Megabyte
         char *buffer = new char[buffer_size];
         std::ifstream file(source_path);
 
-
-        // TODO: content provider
+        /* Whitout content provider
         std::stringstream body;
         body << file.rdbuf();
 
         auto res = cli.Put(("/containers/"+container_id+"/archive?path="+dest_path).c_str(),
           body.str(), "application/octec-stream");
 
-        if ( res.error() != httplib::Error::Success ) {
-            std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
-            return -1;
-        }
+        */
 
-        // TODO: content provider
-        // For some reason is not compiling
-        /*unsigned int file_size = std::filesystem::file_size(source_path);
+        unsigned int file_size = std::filesystem::file_size(source_path);
         auto res = cli.Put(("/containers/"+container_id+"/archive?path="+dest_path).c_str(),
           std::filesystem::file_size(source_path),
-          [](size_t offset, size_t length, DataSink &sink) {
+          [&](size_t offset, size_t length, httplib::DataSink &sink) {
 
               file.read(buffer, buffer_size);
               size_t count = file.gcount();
               if (!count) {
                   return false;
               }
-              sink.write(buffer+offset, length);
+              //sink.write(buffer+offset, length);
+              sink.write(buffer, std::min(length, count*sizeof(char)));
               return true;
           },
           "application/octet-stream"
         );
-*/
 
-        // chunks
-/*        auto res = cli.Put(("/containers/"+container_id+"/archive?path="+dest_path).c_str,
-          [](size_t offset, DataSink &sink) {
-              while(fin) {
-                  fin.read(buffer, buffer_size);
-                  size_t count = fin.gcount();
-              }
-          },
-          "application/octet-stream"
-        );
-*/
+        if ( res.error() != httplib::Error::Success ) {
+            std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
+            return -1;
+        }
+
         std::cout << std::fixed << Date::millis()/1000.0 << " ";
         if (res->status == 200)
             std::cout << "[_DOCKER] Succesfully copied" << std::endl;

@@ -28,7 +28,6 @@ public:
     void restore_backup() {
 
         if ( system_app == "platform" ) {
-            // TODO: Stop, all containers, remove data folders, restart, wait until it pings and launch restore
             decompress_backup();
             restore_thinger();
             restore_mongodb();
@@ -117,7 +116,7 @@ private:
         for (const auto & p1 : fs::directory_iterator(config_.get_backups_data_path()+"/thinger/users/")) { // users
             for (const auto & p2 : fs::directory_iterator(p1.path().string()+"/plugins/")) { // plugins
                 std::string container_name = p1.path().filename().string()+"-"+p2.path().filename().string();
-                Docker::create_from_inspect(backup_folder+"/"+tag_+"/"+container_name+".json");
+                Docker::create_from_inspect(backup_folder+"/"+tag_+"/plugins/"+container_name+".json");
                 Docker::start(container_name);
             }
         }

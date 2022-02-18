@@ -8,11 +8,14 @@ All notable changes to this project will be documented in this file.
 - New configuration options for backup and restore operations
 - Added S3 upload and retrieval capabilities for backups
 - Installer now allows installation of a specific version
+- New distro release upgrade resource
 
 ### Changed
 - Moved backup and restore scritps to thinger resource
 - Superseded base64 class with new one
 - Update and reboot resources only available when executed with root
+- Service restarts by its own if it crashes
+- Upload to S3 of backups is done by multipart upload instead of loading full file in memory
 
 ## [0.0.3] - 2022-01-03
 ### Added

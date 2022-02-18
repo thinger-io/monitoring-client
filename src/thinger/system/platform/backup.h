@@ -41,7 +41,8 @@ public:
     int upload_backup()  {
 
         if ( storage == "S3" )
-            return AWS::upload_to_s3(backup_folder+"/"+file_to_upload, bucket, region, access_key, secret_key);
+            return AWS::multipart_upload_to_s3(backup_folder+"/"+file_to_upload, bucket, region, access_key, secret_key);
+            //return AWS::upload_to_s3(backup_folder+"/"+file_to_upload, bucket, region, access_key, secret_key);
         // else if
         return -1;
     }
@@ -110,10 +111,11 @@ private:
 
     void get_plugins() {
 
+        std::filesystem::create_directories(backup_folder+"/"+backup_date+"/plugins");
         for (const auto & p1 : fs::directory_iterator(config_.get_backups_data_path()+"/thinger/users/")) { // users
             for (const auto & p2 : fs::directory_iterator(p1.path().string()+"/plugins/")) { // plugins
                 std::string container_name = p1.path().filename().string()+"-"+p2.path().filename().string();
-                Docker::inspect(container_name, backup_folder+"/"+backup_date);
+                Docker::inspect(container_name, backup_folder+"/"+backup_date+"/plugins");
             }
         }
     }
