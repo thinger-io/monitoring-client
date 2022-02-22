@@ -81,8 +81,9 @@ private:
 
     // -- PLATFORM -- //
     void backup_thinger() {
-        // With tar creation insted of copying to folder we maintain ownership and permissions
-        Tar::create(config_.get_backups_data_path()+"/thinger/users", backup_folder+"/"+backup_date+"/thinger-"+backup_date+".tar");
+        // With tar creation instead of copying to folder we maintain ownership and permissions
+        if (std::filesystem::exists(config_.get_backups_data_path()+"/thinger/users"))
+            Tar::create(config_.get_backups_data_path()+"/thinger/users", backup_folder+"/"+backup_date+"/thinger-"+backup_date+".tar");
     }
 
     void backup_mongodb() {
@@ -113,6 +114,7 @@ private:
 
         std::filesystem::create_directories(backup_folder+"/"+backup_date+"/plugins");
         for (const auto & p1 : fs::directory_iterator(config_.get_backups_data_path()+"/thinger/users/")) { // users
+            if (! std::filesystem::exists(p1.path().string()+"/plugins/")) continue;
             for (const auto & p2 : fs::directory_iterator(p1.path().string()+"/plugins/")) { // plugins
                 std::string container_name = p1.path().filename().string()+"-"+p2.path().filename().string();
                 Docker::inspect(container_name, backup_folder+"/"+backup_date+"/plugins");

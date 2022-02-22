@@ -83,8 +83,10 @@ private:
     // -- PLATFORM -- //
     void restore_thinger() {
         Docker::stop("thinger");
-        std::filesystem::remove_all(config_.get_backups_data_path()+"/thinger/users");
-        Tar::extract(backup_folder+"/"+tag_+"/thinger-"+tag_+".tar");
+        if (std::filesystem::exists(backup_folder+"/"+tag_+"/thinger-"+tag_+".tar")) {
+            std::filesystem::remove_all(config_.get_backups_data_path()+"/thinger/users");
+            Tar::extract(backup_folder+"/"+tag_+"/thinger-"+tag_+".tar");
+        }
     }
 
     void restore_mongodb() {
@@ -114,6 +116,7 @@ private:
     void restore_plugins() {
         // Executed after restore_thinger
         for (const auto & p1 : fs::directory_iterator(config_.get_backups_data_path()+"/thinger/users/")) { // users
+            if (! std::filesystem::exists(p1.path().string()+"/plugins/")) continue;
             for (const auto & p2 : fs::directory_iterator(p1.path().string()+"/plugins/")) { // plugins
                 std::string container_name = p1.path().filename().string()+"-"+p2.path().filename().string();
                 Docker::create_from_inspect(backup_folder+"/"+tag_+"/plugins/"+container_name+".json");
