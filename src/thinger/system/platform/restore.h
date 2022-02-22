@@ -115,6 +115,8 @@ private:
 
     void restore_plugins() {
         // Executed after restore_thinger
+        if (!std::filesystem::exists(config_.get_backups_data_path()+"/thinger/users/")) return;
+
         for (const auto & p1 : fs::directory_iterator(config_.get_backups_data_path()+"/thinger/users/")) { // users
             if (! std::filesystem::exists(p1.path().string()+"/plugins/")) continue;
             for (const auto & p2 : fs::directory_iterator(p1.path().string()+"/plugins/")) { // plugins
