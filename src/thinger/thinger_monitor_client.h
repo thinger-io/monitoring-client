@@ -106,8 +106,12 @@ public:
                     std::cout << "[_BACKUP] Cleaning backup temporary files" << std::endl;
                     backup.clean_backup();
 
-                    if (!endpoint.empty())
-                        Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, "{}"_json, config_.get_server_url(), config_.get_server_secure());
+                    if (!endpoint.empty()) {
+                        json payload;
+                        payload["device"] = config_.get_device_id();
+                        payload["hostname"] = hostname;
+                        Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, payload, config_.get_server_url(), config_.get_server_secure());
+                    }
                 }
                 //out["output"] = in["tag"];
             };
@@ -127,8 +131,12 @@ public:
                     std::cout << std::fixed << Date::millis()/1000.0 << " ";
                     std::cout << "[___RSTR] Cleaning backup temporary files" << std::endl;
                     restore.clean_backup();
-                    if (!endpoint.empty())
-                        Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, "{}"_json, config_.get_server_url(), config_.get_server_secure());
+                    if (!endpoint.empty()) {
+                        json payload;
+                        payload["device"] = config_.get_device_id();
+                        payload["hostname"] = hostname;
+                        Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, payload, config_.get_server_url(), config_.get_server_secure());
+                    }
                 }
             };
 
