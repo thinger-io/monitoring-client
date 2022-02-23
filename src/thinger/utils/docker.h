@@ -264,7 +264,7 @@ namespace Docker {
         cli.set_write_timeout(120, 0); // 120 seconds
         cli.set_default_headers({ { "Host", "localhost" } });
 
-        size_t buffer_size = 1<<20; // 1 Megabyte
+        size_t buffer_size = 10<<20; // 10 Megabyte
         char *buffer = new char[buffer_size];
         std::ifstream file(source_path);
 

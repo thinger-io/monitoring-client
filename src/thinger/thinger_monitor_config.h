@@ -159,6 +159,14 @@ public:
         return has_backups() && config_["backups"].contains("compose_path");
     }
 
+    bool has_backups_endpoints() {
+        return has_backups() && config_["backups"].contains("endpoints");
+    }
+
+    bool has_backups_endpoints_token() {
+        return has_backups_endpoints() && config_["backups"]["endpoints"].contains("token");
+    }
+
     //-------------------//
     //----- Setters -----//
     //-------------------//
@@ -321,6 +329,10 @@ public:
 
     std::string get_backups_compose_path() {
         return (has_backups_compose_path()) ? config_["backups"]["compose_path"].get<std::string>() : "/";
+    }
+
+    std::string get_backups_endpoints_token() {
+        return (has_backups_endpoints_token()) ? config_["backups"]["endpoints"]["token"].get<std::string>() : "";
     }
 
 protected:

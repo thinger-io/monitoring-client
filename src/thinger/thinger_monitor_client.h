@@ -13,6 +13,8 @@
 #include <linux/kernel.h>
 #include <unistd.h>
 
+#include "utils/thinger.h"
+
 #include "system/platform/backup.h"
 #include "system/platform/restore.h"
 
@@ -88,6 +90,7 @@ public:
            }
 
             backup_ = [this](pson& in, pson& out) {
+                std::string endpoint = in["endpoint"];
                 out["status"] = "";
                 if (in["backup"]) {
                     in["backup"] = false;
@@ -102,12 +105,16 @@ public:
                     std::cout << std::fixed << Date::millis()/1000.0 << " ";
                     std::cout << "[_BACKUP] Cleaning backup temporary files" << std::endl;
                     backup.clean_backup();
+
+                    if (!endpoint.empty())
+                        Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, "{}"_json, config_.get_server_url(), config_.get_server_secure());
                 }
                 //out["output"] = in["tag"];
             };
 
             restore_ = [this](pson& in, pson& out) {
                 std::string tag = in["tag"];
+                std::string endpoint = in["endpoint"];
                 out["status"] = "";
                 if (!tag.empty()) {
                     ThingerRestore restore(config_, hostname, tag);
@@ -120,6 +127,8 @@ public:
                     std::cout << std::fixed << Date::millis()/1000.0 << " ";
                     std::cout << "[___RSTR] Cleaning backup temporary files" << std::endl;
                     restore.clean_backup();
+                    if (!endpoint.empty())
+                        Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, "{}"_json, config_.get_server_url(), config_.get_server_secure());
                 }
             };
 

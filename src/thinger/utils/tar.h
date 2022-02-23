@@ -21,6 +21,7 @@ namespace Tar {
             int len;
             int fd;
 
+            // It writes and compresses on disk
             a = archive_write_new();
             if (compression)
                 archive_write_add_filter_gzip(a);
@@ -71,6 +72,9 @@ namespace Tar {
             // I believe extraction happens in the same folder
             // at the moment we are fine as paths inside archive contain
             // full path. See: https://github.com/libarchive/libarchive/issues/1531
+
+            // Decompression is done in disk: https://github.com/libarchive/libarchive/wiki/Examples#a-complete-extractor
+
             struct archive *a;
             struct archive *ext;
             struct archive_entry *entry;
@@ -82,13 +86,13 @@ namespace Tar {
             flags |= ARCHIVE_EXTRACT_PERM;
             flags |= ARCHIVE_EXTRACT_ACL;
             flags |= ARCHIVE_EXTRACT_FFLAGS;
-            flags |= ARCHIVE_EXTRACT_OWNER; // TODO: test when user extracts root
+            flags |= ARCHIVE_EXTRACT_OWNER;
 
-            a = archive_read_new();
+            a = archive_read_new(); // reads file to decompress from disk
             archive_read_support_format_tar(a);
-            //archive_read_support_compression_all(a);
+            //archive_read_support_compression_all(a); makes binary smaller
             archive_read_support_filter_gzip(a);
-            ext = archive_write_disk_new();
+            ext = archive_write_disk_new(); // writes into disk
             archive_write_disk_set_options(ext, flags);
             archive_write_disk_set_standard_lookup(ext);
             if ((r = archive_read_open_filename(a, file.c_str(), 10240)))
