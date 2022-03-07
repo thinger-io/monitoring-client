@@ -1,4 +1,6 @@
 
+#include "../restore.h"
+
 #include <filesystem>
 #include <fstream>
 
@@ -7,39 +9,36 @@
 #include "../../utils/tar.h"
 #include "../../utils/tar.h"
 
-class ThingerRestore {
+class PlatformRestore : public ThingerMonitorRestore {
 
 public:
 
-    ThingerRestore(ThingerMonitorConfig& config, std::string hostname, std::string tag) : config_(config), hostname_(hostname), tag_(tag) {
+    PlatformRestore(ThingerMonitorConfig& config, const std::string hostname, const std::string tag)
+      : ThingerMonitorRestore(config,hostname,tag) {
 
-        system_app = config_.get_backups_system();
         storage = config_.get_backups_storage();
-        bucket = config_.get_backups_bucket();
-        region = config_.get_backups_region();
-        access_key = config_.get_backups_access_key();
-        secret_key = config_.get_backups_secret_key();
+        bucket = config_.get_storage_bucket(storage);
+        region = config_.get_storage_region(storage);
+        access_key = config_.get_storage_access_key(storage);
+        secret_key = config_.get_storage_secret_key(storage);
 
-        file_to_download = hostname_+"_"+tag_+".tar.gz";
+        file_to_download = name_+"_"+tag_+".tar.gz";
 
         create_backup_folder();
     }
 
-    void restore_backup() {
+    void restore() {
 
-        if ( system_app == "platform" ) {
-            decompress_backup();
-            restore_thinger();
-            restore_mongodb();
-            restore_influxdb();
-            restore_plugins();
-            restart_platform();
-        }
-        // else if
+        decompress_backup();
+        restore_thinger();
+        restore_mongodb();
+        restore_influxdb();
+        restore_plugins();
+        restart_platform();
 
     }
 
-    int download_backup()  {
+    int download()  {
 
         if ( storage == "S3" )
             return AWS::download_from_s3(backup_folder+"/"+file_to_download, bucket, region, access_key, secret_key);
@@ -47,22 +46,15 @@ public:
         return -1;
     }
 
-    void clean_backup() {
-        if ( system_app == "platform" ) {
-            clean_thinger();
-        }
+    void clean() {
+        clean_thinger();
     }
 
 protected:
     const std::string backup_folder = "/tmp/backup";
 
-    ThingerMonitorConfig& config_;
-    std::string hostname_;
-    const std::string tag_;
-
     std::string file_to_download;
 
-    std::string system_app;
     std::string storage;
     std::string bucket;
     std::string region;

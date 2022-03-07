@@ -4,68 +4,50 @@
 #include <ctime>   // localtime
 #include <sstream> // stringstream
 #include <iomanip> // put_time
+#include <algorithm>
 
-namespace Date { // TODO: please, think. This file is kind of a mess. Treat it as objects that can undergo format changes maintaining the same reference, and not different objects and static methods each time
+class Date {
 
-    static std::string now_iso8601(const char del = '-', const bool extended = false) {
+public:
+
+    // Intanciates a new Date object with the current time and date
+    Date() {
+
         auto now = std::chrono::system_clock::now();
-        auto in_time_t = std::chrono::system_clock::to_time_t(now);
+        date = std::chrono::system_clock::to_time_t(now);
+    }
 
-        //std::string format = "%Y"%m%d";
-        //std::string format = std::string("%Y").append(&del);//"%m%d";
+    std::string to_iso8601(const char del = '-', const bool extended = false, const std::string timezone = "local") {
+
         std::string format =
-            std::string("%Y").append(&del)+
-            std::string("%m").append(&del)+
+            std::string("%Y").append(std::string(1,del))+
+            std::string("%m").append(std::string(1,del))+
             std::string("%d");
 
         std::stringstream ss;
         if (extended)
             format =
-                std::string("%Y").append(&del)+
-                std::string("%m").append(&del)+
+                std::string("%Y").append(std::string(1,del))+
+                std::string("%m").append(std::string(1,del))+
                 "%dT%H%M%SZ";
-            //ss << std::put_time(std::localtime(&in_time_t), "%Y".append(del)+"%m"+append(del)+"%d");
-        ss << std::put_time(std::localtime(&in_time_t), format.c_str());
-        // TODO: iso8601 extended standard
-        //else
+
+        format.erase(remove(format.begin(), format.end(), '\0'), format.end()); //remove '\0' from string
+
+        if (timezone == "utc" || timezone == "gmt")
+            ss << std::put_time(std::gmtime(&date), format.c_str());
+        else // (timezone == "local")
+            ss << std::put_time(std::localtime(&date), format.c_str());
 
         return ss.str();
     }
 
-    static std::string now_utc_iso8601(const char del = '-', const bool extended = false) {
-        auto now = std::chrono::system_clock::now();
-        auto in_time_t = std::chrono::system_clock::to_time_t(now);
-
-        //std::string format = "%Y"%m%d";
-        //std::string format = std::string("%Y").append(&del);//"%m%d";
-        std::string format =
-            std::string("%Y").append(&del)+
-            std::string("%m").append(&del)+
-            std::string("%d");
+    std::string to_rfc5322() {
 
         std::stringstream ss;
-        if (extended)
-            format =
-                std::string("%Y").append(&del)+
-                std::string("%m").append(&del)+
-                "%dT%H%M%SZ";
-            //ss << std::put_time(std::localtime(&in_time_t), "%Y".append(del)+"%m"+append(del)+"%d");
-        ss << std::put_time(std::gmtime(&in_time_t), format.c_str());
-        // TODO: iso8601 extended standard
-        //else
+        ss << std::put_time(std::localtime(&date), "%a, %d %b %Y %T %z");
 
         return ss.str();
-    }
 
-    static std::string now_rfc5322() {
-
-        auto now = std::chrono::system_clock::now();
-        auto in_time_t = std::chrono::system_clock::to_time_t(now);
-
-        std::stringstream ss;
-        ss << std::put_time(std::localtime(&in_time_t), "%a, %d %b %Y %T %z");
-
-        return ss.str();
     }
 
     // TODO change this to a monotonic clock implementation. Using c++11?
@@ -75,5 +57,8 @@ namespace Date { // TODO: please, think. This file is kind of a mess. Treat it a
         unsigned long milliseconds = te.tv_sec*1000LL + te.tv_usec/1000;
         return milliseconds;
     }
+
+protected:
+    time_t date;
 
 };

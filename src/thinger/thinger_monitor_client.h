@@ -87,58 +87,75 @@ public:
                     if (in)
                         update_distro();
                 };
-           }
+            }
 
-            backup_ = [this](pson& in, pson& out) {
-                std::string endpoint = in["endpoint"];
-                out["status"] = "";
-                if (in["backup"]) {
-                    in["backup"] = false;
+            if (config_.has_backups_system()) {
+                backup_ = [this](pson& in, pson& out) {
+                    std::string endpoint = in["endpoint"];
+                    out["status"] = "";
 
-                    ThingerBackup backup(config_, hostname);
-                    std::cout << std::fixed << Date::millis()/1000.0 << " ";
-                    std::cout << "[_BACKUP] Creating backup" << std::endl;
-                    backup.create_backup();
-                    std::cout << std::fixed << Date::millis()/1000.0 << " ";
-                    std::cout << "[_BACKUP] Uploading backup" << std::endl;
-                    out["status"] = backup.upload_backup();
-                    std::cout << std::fixed << Date::millis()/1000.0 << " ";
-                    std::cout << "[_BACKUP] Cleaning backup temporary files" << std::endl;
-                    backup.clean_backup();
-
-                    if (!endpoint.empty()) {
-                        json payload;
-                        payload["device"] = config_.get_device_id();
-                        payload["hostname"] = hostname;
-                        Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, payload, config_.get_server_url(), config_.get_server_secure());
+                    ThingerMonitorBackup *backup = NULL;
+                    // Add new possible options for backup systems
+                    if (config_.get_backups_system() == "platform") {
+                        backup = new PlatformBackup(config_, hostname);
                     }
-                }
-                //out["output"] = in["tag"];
-            };
 
-            restore_ = [this](pson& in, pson& out) {
-                std::string tag = in["tag"];
-                std::string endpoint = in["endpoint"];
-                out["status"] = "";
-                if (!tag.empty()) {
-                    ThingerRestore restore(config_, hostname, tag);
-                    std::cout << std::fixed << Date::millis()/1000.0 << " ";
-                    std::cout << "[___RSTR] Downloading backup" << std::endl;
-                    restore.download_backup();
-                    std::cout << std::fixed << Date::millis()/1000.0 << " ";
-                    std::cout << "[___RSTR] Restoring backup" << std::endl;
-                    restore.restore_backup();
-                    std::cout << std::fixed << Date::millis()/1000.0 << " ";
-                    std::cout << "[___RSTR] Cleaning backup temporary files" << std::endl;
-                    restore.clean_backup();
-                    if (!endpoint.empty()) {
-                        json payload;
-                        payload["device"] = config_.get_device_id();
-                        payload["hostname"] = hostname;
-                        Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, payload, config_.get_server_url(), config_.get_server_secure());
+                    if (in["backup"]) {
+                        in["backup"] = false;
+
+                        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+                        std::cout << "[_BACKUP] Creating backup" << std::endl;
+                        backup->create();
+                        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+                        std::cout << "[_BACKUP] Uploading backup" << std::endl;
+                        out["status"] = backup->upload();
+                        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+                        std::cout << "[_BACKUP] Cleaning backup temporary files" << std::endl;
+                        backup->clean();
+
+                        if (!endpoint.empty()) {
+                            json payload;
+                            payload["device"] = config_.get_device_id();
+                            payload["hostname"] = hostname;
+                            Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, payload, config_.get_server_url(), config_.get_server_secure());
+                        }
                     }
-                }
-            };
+                    //out["output"] = in["tag"];
+                    delete backup;
+                };
+
+                restore_ = [this](pson& in, pson& out) {
+                    std::string tag = in["tag"];
+                    std::string endpoint = in["endpoint"];
+                    out["status"] = "";
+
+                    ThingerMonitorRestore *restore = NULL;
+                    // Add new possible options for backup systems
+                    if (config_.get_backups_system() == "platform") {
+                        restore = new PlatformRestore(config_, hostname, tag);
+                    }
+
+                    if (!tag.empty()) {
+                        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+                        std::cout << "[___RSTR] Downloading backup" << std::endl;
+                        restore->download();
+                        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+                        std::cout << "[___RSTR] Restoring backup" << std::endl;
+                        restore->restore();
+                        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+                        std::cout << "[___RSTR] Cleaning backup temporary files" << std::endl;
+                        restore->clean();
+                        if (!endpoint.empty()) {
+                            json payload;
+                            payload["device"] = config_.get_device_id();
+                            payload["hostname"] = hostname;
+                            Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, payload, config_.get_server_url(), config_.get_server_secure());
+                        }
+                    }
+
+                    delete restore;
+                };
+            }
 
             monitor_ >> [this](pson& out) {
 
@@ -275,6 +292,8 @@ public:
         interfaces_.clear();
         filesystems_.clear();
         drives_.clear();
+
+        config_.reload_config();
 
         for (auto fs_path : config_.get_filesystems()) {
             filesystem fs;

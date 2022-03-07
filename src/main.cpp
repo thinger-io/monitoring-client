@@ -42,6 +42,7 @@ using json = nlohmann::json;
 //const std::vector<std::string> interfaces = {"eth0"};
 //const std::vector<std::string> filesystems = {"/"};
 //const std::vector<std::string> drives = {"xvda"};
+const std::vector<std::string> properties = {"resources","backups","storage"}; // thinger device config properties
 
 int main(int argc, char *argv[]) {
 
@@ -117,10 +118,8 @@ int main(int argc, char *argv[]) {
                 pson data;
                 thing.get_property("_monitor", data);
                 if (!data.is_empty()) {
-std::cout << "is empty" << std::endl;
                     config.update_with_remote(data);
                 } else {
-std::cout << "not empty" << std::endl;
                     //thing.handle()
                     pson c_data = config.in_pson();
                     thing.set_property("_monitor", c_data);
@@ -131,14 +130,18 @@ std::cout << "not empty" << std::endl;
 
    thing.handle();
 
-    pson data;
-    thing.get_property("_monitor", data);
-    if (!data.is_empty()) {
-        config.update_with_remote(data);
-    } else {
-        thing.handle();
-        pson c_data = config.in_pson();
-        thing.set_property("_monitor", c_data);
+    // On start Check if properties are online and update config file, or viceversa
+    for (auto property : properties) {
+
+        pson data;
+        thing.get_property(property.c_str(), data);
+        if (!data.is_empty()) {
+            config.update_with_remote(property, data);
+        } else {
+            thing.handle();
+            pson c_data = config.in_pson(property);
+            thing.set_property(property.c_str(), c_data);
+        }
     }
 
     unsigned long delay = 0;
@@ -149,13 +152,16 @@ std::cout << "not empty" << std::endl;
             std::chrono::system_clock::now().time_since_epoch()).count();
         if (current_seconds >= (delay+CONFIG_DELAY)) {
             // Retrieve remote property
-            pson r_data;
-            thing.get_property("_monitor", r_data);
-            bool updated = config.update_with_remote(r_data);
+            bool updated = false;
+            for (auto property : properties) {
+                pson r_data;
+                thing.get_property(property.c_str(), r_data);
+                updated = updated || config.update_with_remote(property, r_data);
 
-            if (updated) {
-                monitor.reload_configuration();
             }
+
+            if (updated)
+                 monitor.reload_configuration();
 
             delay = current_seconds;
         }

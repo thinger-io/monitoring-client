@@ -1,4 +1,6 @@
 
+#include "../backup.h"
+
 #include <filesystem>
 #include <fstream>
 
@@ -7,38 +9,34 @@
 #include "../../utils/docker.h"
 #include "../../utils/tar.h"
 
-class ThingerBackup {
+
+class PlatformBackup : public ThingerMonitorBackup {
 
 public:
 
-    ThingerBackup(ThingerMonitorConfig& config, std::string hostname) : config_(config), hostname_(hostname) {
-
-        system_app = config_.get_backups_system();
+    PlatformBackup(ThingerMonitorConfig& config, const std::string& hostname) : ThingerMonitorBackup(config,hostname) {
         storage = config_.get_backups_storage();
-        bucket = config_.get_backups_bucket();
-        region = config_.get_backups_region();
-        access_key = config_.get_backups_access_key();
-        secret_key = config_.get_backups_secret_key();
+        bucket = config_.get_storage_bucket(storage);
+        region = config_.get_storage_region(storage);
+        access_key = config_.get_storage_access_key(storage);
+        secret_key = config_.get_storage_secret_key(storage);
 
-        file_to_upload = hostname_+"_"+backup_date+".tar.gz";
+        file_to_upload = name_+"_"+backup_date+".tar.gz";
 
         create_backup_folder();
     }
 
-    void create_backup() {
+    void create() {
 
-        if ( system_app == "platform" ) {
-            backup_thinger();
-            backup_mongodb();
-            backup_influxdb();
-            get_plugins();
-            compress_backup();
-        }
-        // else if
+        backup_thinger();
+        backup_mongodb();
+        backup_influxdb();
+        get_plugins();
+        compress_backup();
 
     }
 
-    int upload_backup()  {
+    int upload()  {
 
         if ( storage == "S3" )
             return AWS::multipart_upload_to_s3(backup_folder+"/"+file_to_upload, bucket, region, access_key, secret_key);
@@ -47,27 +45,22 @@ public:
         return -1;
     }
 
-    void clean_backup() {
-        if ( system_app == "platform" ) {
-            clean_thinger();
-        }
+    void clean() {
+        clean_thinger();
     }
 
 protected:
     const std::string backup_folder = "/tmp/backup";
-    const std::string backup_date = Date::now_iso8601();
+    Date date = Date();
+    const std::string backup_date = date.to_iso8601();
 
-    ThingerMonitorConfig& config_;
-    std::string hostname_;
-
-    std::string file_to_upload;
-
-    std::string system_app;
     std::string storage;
     std::string bucket;
     std::string region;
     std::string access_key;
     std::string secret_key;
+
+    std::string file_to_upload;
 
 private:
     void create_backup_folder() {
@@ -79,7 +72,6 @@ private:
         Tar::create(backup_folder+"/"+backup_date, backup_folder+"/"+file_to_upload);
     }
 
-    // -- PLATFORM -- //
     void backup_thinger() {
         // With tar creation instead of copying to folder we maintain ownership and permissions
         if (std::filesystem::exists(config_.get_backups_data_path()+"/thinger/users"))

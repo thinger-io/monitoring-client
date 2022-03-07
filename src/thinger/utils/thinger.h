@@ -34,7 +34,7 @@ namespace Thinger {
 
     }
 
-    int call_endpoint(const std::string &token, const std::string &user, const std::string &endpoint, const json payload, const std::string &server = THINGER_SERVER, const bool secure = true) {
+    int call_endpoint(const std::string& token, const std::string& user, const std::string& endpoint, const json& payload, const std::string& server = THINGER_SERVER, const bool secure = true) {
 
         std::string protocol = secure ? "https://" : "http://";
         httplib::Client cli(protocol+server);
