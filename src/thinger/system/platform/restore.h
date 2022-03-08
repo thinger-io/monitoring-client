@@ -74,7 +74,7 @@ private:
 
     // -- PLATFORM -- //
     void restore_thinger() {
-        Docker::stop("thinger");
+        Docker::Container::stop("thinger");
         if (std::filesystem::exists(backup_folder+"/"+tag_+"/thinger-"+tag_+".tar")) {
             std::filesystem::remove_all(config_.get_backups_data_path()+"/thinger/users");
             Tar::extract(backup_folder+"/"+tag_+"/thinger-"+tag_+".tar");
@@ -96,13 +96,13 @@ private:
             }
         }
 
-        Docker::copy_to_container("mongodb", backup_folder+"/"+tag_+"/mongodbdump-"+tag_+".tar", "/");
-        Docker::exec("mongodb", "mongorestore /dump -u thinger -p "+mongo_password);
+        Docker::Container::copy_to_container("mongodb", backup_folder+"/"+tag_+"/mongodbdump-"+tag_+".tar", "/");
+        Docker::Container::exec("mongodb", "mongorestore /dump -u thinger -p "+mongo_password);
     }
 
     void restore_influxdb() {
-        Docker::copy_to_container("influxdb", backup_folder+"/"+tag_+"/influxdbdump-"+tag_+".tar", "/");
-        Docker::exec("influxdb", "influxd restore --portable /dump");
+        Docker::Container::copy_to_container("influxdb", backup_folder+"/"+tag_+"/influxdbdump-"+tag_+".tar", "/");
+        Docker::Container::exec("influxdb", "influxd restore --portable /dump");
     }
 
     void restore_plugins() {
@@ -111,10 +111,17 @@ private:
 
         for (const auto & p1 : fs::directory_iterator(config_.get_backups_data_path()+"/thinger/users/")) { // users
             if (! std::filesystem::exists(p1.path().string()+"/plugins/")) continue;
+
+            std::string user = p1.path().filename().string();
+
+            // restore networks
+            std::string network_id = Docker::Network::create_from_inspect(backup_folder+"/"+tag_+"/plugins/"+user+"-network.json");
+
+            // restore plugins
             for (const auto & p2 : fs::directory_iterator(p1.path().string()+"/plugins/")) { // plugins
-                std::string container_name = p1.path().filename().string()+"-"+p2.path().filename().string();
-                Docker::create_from_inspect(backup_folder+"/"+tag_+"/plugins/"+container_name+".json");
-                Docker::start(container_name);
+                std::string container_name = user+"-"+p2.path().filename().string();
+                Docker::Container::create_from_inspect(backup_folder+"/"+tag_+"/plugins/"+container_name+".json", network_id);
+                Docker::Container::start(container_name);
             }
         }
     }
@@ -122,14 +129,14 @@ private:
     void clean_thinger() {
         std::filesystem::remove_all(backup_folder+"/"+file_to_download);
         std::filesystem::remove_all(backup_folder+"/"+tag_);
-        Docker::exec("mongodb", "rm -rf /dump");
-        Docker::exec("influxdb", "rm -rf /dump");
+        Docker::Container::exec("mongodb", "rm -rf /dump");
+        Docker::Container::exec("influxdb", "rm -rf /dump");
     }
 
     void restart_platform() {
-        Docker::restart("mongodb");
-        Docker::restart("influxdb");
-        Docker::restart("thinger");
+        Docker::Container::restart("mongodb");
+        Docker::Container::restart("influxdb");
+        Docker::Container::restart("thinger");
     }
 
 };
