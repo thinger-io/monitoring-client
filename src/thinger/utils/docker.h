@@ -68,7 +68,7 @@ namespace Docker {
 
             httplib::Client cli("unix:/var/run/docker.sock");
             cli.set_default_headers({ { "Host", "localhost" } });
-            cli.set_read_timeout(120, 0); // 120 seconds for commands to execute
+            cli.set_read_timeout(600, 0); // 10 minutes for commands to execute
 
             auto res = cli.Post(("/containers/create?name="+inspect_json["Name"].get<std::string>()).c_str(),
               body.dump(), "application/json");
@@ -103,7 +103,7 @@ namespace Docker {
             // Create exec instance
             httplib::Client cli("unix:/var/run/docker.sock");
             cli.set_default_headers({ { "Host", "localhost" } });
-            cli.set_read_timeout(120, 0); // 120 seconds for commands to execute
+            cli.set_read_timeout(600, 0); // 10 minutes for commands to execute
 
             std::stringstream ss(command);
 
@@ -265,7 +265,7 @@ namespace Docker {
 
             // https://docs.docker.com/engine/api/v1.41/#operation/PutContainerArchive
             httplib::Client cli("unix:/var/run/docker.sock");
-            cli.set_write_timeout(120, 0); // 120 seconds
+            cli.set_write_timeout(600, 0); // 10 minutes
             cli.set_default_headers({ { "Host", "localhost" } });
 
             size_t buffer_size = 10<<20; // 10 Megabyte
@@ -375,7 +375,7 @@ namespace Docker {
 
             httplib::Client cli("unix:/var/run/docker.sock");
             cli.set_default_headers({ { "Host", "localhost" } });
-            cli.set_read_timeout(120, 0); // 120 seconds for commands to execute
+            cli.set_read_timeout(600, 0); // 10 minutes for commands to execute
 
             auto res = cli.Post("/networks/create", inspect_json.dump(), "application/json");
 
