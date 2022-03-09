@@ -60,8 +60,11 @@ namespace Docker {
             json body = inspect_json["Config"];
             body["HostConfig"] = inspect_json["HostConfig"];
             body["NetworkingConfig"]["EndpointsConfig"] = inspect_json["NetworkSettings"]["Networks"];
-            if (network_id != "")
-                body["NetworkingConfig"]["EndpointsConfig"]["NetworkId"] = network_id;
+            if (network_id != "") {
+                for (auto& el : body["NetworkingConfig"]["EndpointsConfig"].items()) { // Only one network is expected
+                    body["NetworkingConfig"]["EndpointsConfig"][el.key()]["NetworkId"] = network_id;
+                }
+            }
 
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
             std::cout << "[_DOCKER] Creating container: '" << inspect_json["Name"].get<std::string>() << "'" << std::endl;
@@ -159,6 +162,7 @@ namespace Docker {
 
             httplib::Client cli("unix:/var/run/docker.sock");
             cli.set_default_headers({ { "Host", "localhost" } });
+            cli.set_read_timeout(600, 0); // 10 minutes for commands to execute
 
             auto res = cli.Post(("/containers/"+container_id+"/restart").c_str(), "t=0", "application/x-www-form-urlencoded");
 
@@ -183,6 +187,7 @@ namespace Docker {
 
             httplib::Client cli("unix:/var/run/docker.sock");
             cli.set_default_headers({ { "Host", "localhost" } });
+            cli.set_read_timeout(600, 0); // 10 minutes for commands to execute
 
             auto res = cli.Post(("/containers/"+container_id+"/start").c_str(), "t=0", "application/x-www-form-urlencoded");
 
@@ -207,6 +212,7 @@ namespace Docker {
 
             httplib::Client cli("unix:/var/run/docker.sock");
             cli.set_default_headers({ { "Host", "localhost" } });
+            cli.set_read_timeout(600, 0); // 10 minutes for commands to execute
 
             auto res = cli.Post(("/containers/"+container_id+"/stop").c_str(), "t=0", "application/x-www-form-urlencoded");
 
