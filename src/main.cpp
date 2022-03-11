@@ -85,13 +85,28 @@ int main(int argc, char *argv[]) {
         if (config.has_user()) {
             config.set_device();
 
-            auto status = Thinger::create_device(thinger_token, config.get_user(), config.get_device_id(), config.get_device_credentials(), config.get_device_name(), config.get_server_url(), config.get_server_secure());
-            if (status == 200) {
-                std::cout << "Device created succesfully! Please run the program without the token" << std::endl;
-                return 0;
+            if (Thinger::device_exists(thinger_token, config.get_user(), config.get_device_id(), config.get_server_url(), config.get_server_secure())) {
+
+                auto status = Thinger::update_device_credentials(thinger_token, config.get_user(), config.get_device_id(), config.get_device_credentials(), config.get_server_url(), config.get_server_secure());
+                if (status == 200) {
+                    std::cout << "Credentials changed succesfully! Please run the program without the token" << std::endl;
+                    return 0;
+                } else {
+                    std::cout << "Could not change credentials, check the token and its permissions" << std::endl;
+                    return -1;
+                }
+
             } else {
-                std::cout << "Could not create device, check the connection and make sure it doesn't already exist" << std::endl;
-                return -1;
+
+                // TODO: check if device already exists, if not create it
+                auto status = Thinger::create_device(thinger_token, config.get_user(), config.get_device_id(), config.get_device_credentials(), config.get_device_name(), config.get_server_url(), config.get_server_secure());
+                if (status == 200) {
+                    std::cout << "Device created succesfully! Please run the program without the token" << std::endl;
+                    return 0;
+                } else {
+                    std::cout << "Could not create device, check the connection and make sure it doesn't already exist" << std::endl;
+                    return -1;
+                }
             }
         }
     }

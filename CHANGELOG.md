@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - Added S3 upload and retrieval capabilities for backups
 - Installer now allows installation of a specific version
 - New distro release upgrade resource
+- Check on token if device exists and change credentials of the device
 
 ### Changed
 - Moved backup and restore scritps to thinger resource

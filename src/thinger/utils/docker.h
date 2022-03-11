@@ -38,12 +38,18 @@ namespace Docker {
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
             if (res->status == 200)
                 std::cout << "[_DOCKER] Succesfully retrieved information" << std::endl;
-            else
-                std::cout << "[_DOCKER] Could not retrieve information" << std::endl;
+            else {
+                std::cout << "[_DOCKER] Could not retrieve information. Status Code: " << res->status << std::endl;
+
+                std::cout << res->body << std::endl;
+                if ( res.error() != httplib::Error::Success )
+                    std::cout << res.error() << std::endl;
+            }
 
             return res->status;
         }
 
+        // Used only for plugins
         int create_from_inspect(const std::string& source_path, const std::string& network_id = "") {
 
             json inspect_json;
@@ -55,6 +61,29 @@ namespace Docker {
             if (std::filesystem::exists(file)) {
                 std::ifstream inspect_file(source_path);
                 inspect_file >> inspect_json;
+            }
+
+            httplib::Client cli("unix:/var/run/docker.sock");
+            cli.set_default_headers({ { "Host", "localhost" } });
+            cli.set_read_timeout(600, 0); // 10 minutes for commands to execute
+
+            // TODO: move to its own function
+            std::cout << "[_DOCKER] Downloading image: '" << inspect_json["Config"]["Image"].get<std::string>() << "'" << std::endl;
+            auto res = cli.Post(("/images/create?fromImage="+inspect_json["Config"]["Image"].get<std::string>()).c_str());
+            if ( res.error() == httplib::Error::Read ) {
+                std::cout << "[_DOCKER] Error: Timeout waiting for image to download" << std::endl;
+                return -1;
+            } else if ( res.error() != httplib::Error::Success ) {
+                std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
+                return -1;
+            }
+
+            std::cout << std::fixed << Date::millis()/1000.0 << " ";
+            if (res->status == 200)
+                std::cout << "[_DOCKER] Image downloaded succesfully" << std::endl;
+            else {
+                std::cout << "[_DOCKER] An error occurred while downloading the image" << std::endl;
+                std::cout << "[_DOCKER] Error description: " << res->body << std::endl;
             }
 
             json body = inspect_json["Config"];
@@ -69,11 +98,7 @@ namespace Docker {
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
             std::cout << "[_DOCKER] Creating container: '" << inspect_json["Name"].get<std::string>() << "'" << std::endl;
 
-            httplib::Client cli("unix:/var/run/docker.sock");
-            cli.set_default_headers({ { "Host", "localhost" } });
-            cli.set_read_timeout(600, 0); // 10 minutes for commands to execute
-
-            auto res = cli.Post(("/containers/create?name="+inspect_json["Name"].get<std::string>()).c_str(),
+            res = cli.Post(("/containers/create?name="+inspect_json["Name"].get<std::string>()).c_str(),
               body.dump(), "application/json");
 
             if ( res.error() == httplib::Error::Read ) {
@@ -319,7 +344,7 @@ namespace Docker {
         }
     }
 
-    namespace Network { // TODO: could be done with abstract classes
+    namespace Network { // TODO: could this be done with abstract classes?
 
         int inspect(const std::string network_id, const std::string dest_path) {
 
@@ -350,8 +375,13 @@ namespace Docker {
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
             if (res->status == 200)
                 std::cout << "[_DOCKER] Succesfully retrieved information" << std::endl;
-            else
-                std::cout << "[_DOCKER] Could not retrieve information" << std::endl;
+            else {
+                std::cout << "[_DOCKER] Could not retrieve information. Status Code: " << res->status << std::endl;
+
+                std::cout << res->body << std::endl;
+                if ( res.error() != httplib::Error::Success )
+                    std::cout << res.error() << std::endl;
+            }
 
             return res->status;
         }
@@ -375,6 +405,7 @@ namespace Docker {
             inspect_json.erase("Scope");
             inspect_json.erase("Scope");
             inspect_json.erase("Containers");
+            inspect_json.erase("IPAM");
 
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
             std::cout << "[_DOCKER] Creating network: '" << inspect_json["Name"].get<std::string>() << "'" << std::endl;
