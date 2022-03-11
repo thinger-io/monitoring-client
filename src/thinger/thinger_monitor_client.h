@@ -13,6 +13,8 @@
 #include <linux/kernel.h>
 #include <unistd.h>
 
+#include "utils/thinger.h"
+
 #include "system/platform/backup.h"
 #include "system/platform/restore.h"
 
@@ -52,6 +54,7 @@ public:
         cmd_(client["cmd"]),
         reboot_(client["reboot"]),
         update_(client["update"]),
+        update_distro_(client["update_distro"]),
         backup_(client["backup"]),
         restore_(client["restore"]),
         config_(config)
@@ -79,39 +82,80 @@ public:
                     if (in)
                         update();
                 };
-           }
 
-            backup_ = [this](pson& in, pson& out) {
-                out["status"] = "";
-                if (in["backup"]) {
-                    ThingerBackup backup(config_, hostname);
-                    //TODO std::cout << std::fixed << millis()/1000.0 << " ";
-                    std::cout << "[BACKUP] Creating backup" << std::endl;
-                    backup.create_backup();
-                    //TODO std::cout << std::fixed << millis()/1000.0 << " ";
-                    std::cout << "[BACKUP] Uploading backup" << std::endl;
-                    out["status"] = backup.upload_backup();
-                    std::cout << "[BACKUP] Cleaning backup temporary files" << std::endl;
-                    backup.clean_backup();
-                }
-                //out["output"] = in["tag"];
-            };
+                update_distro_ << [this](pson& in) { // needs declaration of input for dashboard button
+                    if (in)
+                        update_distro();
+                };
+            }
 
-            restore_ = [this](pson& in, pson& out) {
-                std::string tag = in["tag"];
-                out["status"] = "";
-                if (!tag.empty()) {
-                    ThingerRestore restore(config_, hostname, tag);
-                    //TODO std::cout << std::fixed << millis()/1000.0 << " ";
-                    std::cout << "[__RSTR] Downloading backup" << std::endl;
-                    restore.download_backup();
-                    //TODO std::cout << std::fixed << millis()/1000.0 << " ";
-                    std::cout << "[__RSTR] Restoring backup" << std::endl;
-                    restore.restore_backup();
-                    std::cout << "[__RSTR] Cleaning backup temporary files" << std::endl;
-                    restore.clean_backup();
-                }
-            };
+            if (config_.has_backups_system()) {
+                backup_ = [this](pson& in, pson& out) {
+                    std::string endpoint = in["endpoint"];
+                    out["status"] = "";
+
+                    ThingerMonitorBackup *backup = NULL;
+                    // Add new possible options for backup systems
+                    if (config_.get_backups_system() == "platform") {
+                        backup = new PlatformBackup(config_, hostname);
+                    }
+
+                    if (in["backup"]) {
+                        in["backup"] = false;
+
+                        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+                        std::cout << "[_BACKUP] Creating backup" << std::endl;
+                        backup->create();
+                        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+                        std::cout << "[_BACKUP] Uploading backup" << std::endl;
+                        out["status"] = backup->upload();
+                        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+                        std::cout << "[_BACKUP] Cleaning backup temporary files" << std::endl;
+                        backup->clean();
+
+                        if (!endpoint.empty()) {
+                            json payload;
+                            payload["device"] = config_.get_device_id();
+                            payload["hostname"] = hostname;
+                            Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, payload, config_.get_server_url(), config_.get_server_secure());
+                        }
+                    }
+                    //out["output"] = in["tag"];
+                    delete backup;
+                };
+
+                restore_ = [this](pson& in, pson& out) {
+                    std::string tag = in["tag"];
+                    std::string endpoint = in["endpoint"];
+                    out["status"] = "";
+
+                    ThingerMonitorRestore *restore = NULL;
+                    // Add new possible options for backup systems
+                    if (config_.get_backups_system() == "platform") {
+                        restore = new PlatformRestore(config_, hostname, tag);
+                    }
+
+                    if (!tag.empty()) {
+                        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+                        std::cout << "[___RSTR] Downloading backup" << std::endl;
+                        restore->download();
+                        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+                        std::cout << "[___RSTR] Restoring backup" << std::endl;
+                        restore->restore();
+                        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+                        std::cout << "[___RSTR] Cleaning backup temporary files" << std::endl;
+                        restore->clean();
+                        if (!endpoint.empty()) {
+                            json payload;
+                            payload["device"] = config_.get_device_id();
+                            payload["hostname"] = hostname;
+                            Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, payload, config_.get_server_url(), config_.get_server_secure());
+                        }
+                    }
+
+                    delete restore;
+                };
+            }
 
             monitor_ >> [this](pson& out) {
 
@@ -249,6 +293,8 @@ public:
         filesystems_.clear();
         drives_.clear();
 
+        config_.reload_config();
+
         for (auto fs_path : config_.get_filesystems()) {
             filesystem fs;
             fs.path = fs_path;
@@ -277,6 +323,7 @@ protected:
     thinger::thinger_resource& cmd_;
     thinger::thinger_resource& reboot_;
     thinger::thinger_resource& update_;
+    thinger::thinger_resource& update_distro_;
     thinger::thinger_resource& backup_;
     thinger::thinger_resource& restore_;
 
@@ -374,7 +421,13 @@ protected:
     }
 
     void update() {
-        system("sudo apt update && sudo apt -qqy upgrade");
+        // System upgrade. By default it does not overwrite config files if a package has a newer version
+        system("sudo apt -y update && sudo DEBIAN_FRONTEND=noninteractive DEBIAN_PRIORITY=critical UCF_FORCE_CONFFOLD=1 apt -qq -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold upgrade");
+    }
+
+    void update_distro() {
+        // Full unattended distro upgrade
+        system("sudo apt -y update && sudo do-release-upgrade -f DistUpgradeViewNonInteractive");
     }
 
 private:

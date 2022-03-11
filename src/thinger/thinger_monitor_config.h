@@ -40,12 +40,12 @@ public:
       load_config();
     }
 
-    bool update_with_remote(pson& data) {
+    bool update_with_remote(std::string& property, pson& data) {
 
-        json remote_config = to_json_rs(data);
+        json remote_config = to_json(data);
 
-        if (remote_config != config_["resources"]) {
-            config_["resources"] = remote_config;
+        if (remote_config != config_[property]) {
+            config_[property] = remote_config;
             save_config();
 
             return true;
@@ -54,16 +54,33 @@ public:
         return false;
     }
 
-    pson in_pson() {
-        // TODO: return full config in pson?
+    pson in_pson(std::string& property) {
 
         pson data;
-        for (auto& rs : config_["resources"].items()) {
+        if (!config_.contains(property)) {
+
+            pson_object& obj = data[property.c_str()];
+            config_[property] = json({{property, json({})}});
+            //TODO: use this when get_property does not hang connection
+            //pson_object& obj = data;
+            //config_[property] = json({});
+            save_config();
+            return data;
+        }
+
+        for (auto& rs : config_[property].items()) {
+            // TODO: add rest of data types
             if (rs.value().is_boolean()) data[rs.key().c_str()] = rs.value().get<bool>();
-            else {
+            else if (rs.value().is_string()) data[rs.key().c_str()] = rs.value().get<std::string>();
+            else if (rs.value().is_array()) {
                 pson_array& array = data[rs.key().c_str()];
                 for (auto& rs_val : rs.value()) {
                     array.add(rs_val.get<std::string>());
+                }
+            } else if (rs.value().is_object()) {
+                pson_object& obj = data[rs.key().c_str()];
+                for (auto& rs_obj : rs.value().items()) {
+                    obj[rs_obj.key().c_str()] = rs_obj.value().get<std::string>().c_str();
                 }
             }
         }
@@ -135,28 +152,36 @@ public:
         return has_backups() && config_["backups"].contains("storage");
     }
 
-    bool has_backups_bucket() {
-        return has_backups() && config_["backups"].contains("bucket");
-    }
-
-    bool has_backups_region() {
-        return has_backups() && config_["backups"].contains("region");
-    }
-
-    bool has_backups_access_key() {
-        return has_backups() && config_["backups"].contains("access_key");
-    }
-
-    bool has_backups_secret_key() {
-        return has_backups() && config_["backups"].contains("secret_key");
-    }
-
     bool has_backups_data_path() {
         return has_backups() && config_["backups"].contains("data_path");
     }
 
     bool has_backups_compose_path() {
         return has_backups() && config_["backups"].contains("compose_path");
+    }
+
+    //bool has_backups_clean() {
+    //    return has_backups() && config_["backups"].contains("clean");
+    //}
+
+    bool has_backups_endpoints_token() {
+        return has_backups() && config_["backups"].contains("endpoints_token");
+    }
+
+    bool has_storage_bucket(const std::string& storage) {
+        return has_backups() && config_["storage"][storage].contains("bucket");
+    }
+
+    bool has_storage_region(const std::string& storage) {
+        return has_backups() && config_["storage"][storage].contains("region");
+    }
+
+    bool has_storage_access_key(const std::string& storage) {
+        return has_backups() && config_["storage"][storage].contains("access_key");
+    }
+
+    bool has_storage_secret_key(const std::string& storage) {
+        return has_backups() && config_["storage"][storage].contains("secret_key");
     }
 
     //-------------------//
@@ -299,22 +324,6 @@ public:
         return (has_backups_storage()) ? config_["backups"]["storage"].get<std::string>() : "";
     }
 
-    std::string get_backups_bucket() {
-        return (has_backups_bucket()) ? config_["backups"]["bucket"].get<std::string>() : "";
-    }
-
-    std::string get_backups_region() {
-        return (has_backups_region()) ? config_["backups"]["region"].get<std::string>() : "";
-    }
-
-    std::string get_backups_access_key() {
-        return (has_backups_access_key()) ? config_["backups"]["access_key"].get<std::string>() : "";
-    }
-
-    std::string get_backups_secret_key() {
-        return (has_backups_secret_key()) ? config_["backups"]["secret_key"].get<std::string>() : "";
-    }
-
     std::string get_backups_data_path() {
         return (has_backups_data_path()) ? config_["backups"]["data_path"].get<std::string>() : "/data";
     }
@@ -322,6 +331,35 @@ public:
     std::string get_backups_compose_path() {
         return (has_backups_compose_path()) ? config_["backups"]["compose_path"].get<std::string>() : "/";
     }
+
+    std::string get_backups_endpoints_token() {
+        return (has_backups_endpoints_token()) ? config_["backups"]["endpoints_token"].get<std::string>() : "";
+    }
+
+    //bool get_backups_clean() {
+    //    return (has_backups_clean()) ? config_["backups"]["clean"].get<bool>() : true;
+    //}
+
+    std::string get_storage_bucket(const std::string& storage) {
+        return (has_storage_bucket(storage)) ? config_["storage"][storage]["bucket"].get<std::string>() : "";
+    }
+
+    std::string get_storage_region(const std::string& storage) {
+        return (has_storage_region(storage)) ? config_["storage"][storage]["region"].get<std::string>() : "";
+    }
+
+    std::string get_storage_access_key(const std::string& storage) {
+        return (has_storage_access_key(storage)) ? config_["storage"][storage]["access_key"].get<std::string>() : "";
+    }
+
+    std::string get_storage_secret_key(const std::string& storage) {
+        return (has_storage_secret_key(storage)) ? config_["storage"][storage]["secret_key"].get<std::string>() : "";
+    }
+
+    void reload_config() {
+        load_config();
+    }
+
 
 protected:
     json config_;
@@ -374,26 +412,34 @@ private:
 
     }
 
-    json to_json_rs(pson& data) {
+    json to_json(pson_object& data) {
 
         json config;
 
-        std::vector<std::string> resources = {"defaults", "interfaces", "filesystems", "drives"};
+        pson_container<pson_pair>::iterator it = data.begin();
 
-        for (auto rs : resources) {
-            if (data[rs.c_str()].is_empty()) continue;
+        if (!it.valid()) config = json({});
 
-            if (data[rs.c_str()].is_boolean()) config[rs] = (bool)data[rs.c_str()];
-            if (data[rs.c_str()].is_array()) {
-                pson_array& array = data[rs.c_str()];
-                pson_container<pson>::iterator it = array.begin();
-                while (it.valid()) {
-                    std::string string = it.item();
-                    //config[rs].append(string);
-                    config[rs].push_back(string);
-                    it.next();
-                }
+        while(it.valid()) {
+            if (it.item().value().is_empty()) {
+                it.next();
+                continue;
             }
+
+            if (it.item().value().is_object()) {
+                config[it.item().name()] = to_json(it.item().value());
+            } else if (it.item().value().is_array()) {
+                pson_array& array = it.item().value();
+                pson_container<pson>::iterator it_arr = array.begin();
+                while (it_arr.valid()) {
+                    std::string string = it_arr.item();
+                    config[it.item().name()].push_back(string);
+                    it_arr.next();
+                }
+            } else if (it.item().value().is_boolean()) config[it.item().name()] = (bool)it.item().value();
+            else if (it.item().value().is_string()) config[it.item().name()] = (std::string)it.item().value();
+
+            it.next();
         }
 
         return config;

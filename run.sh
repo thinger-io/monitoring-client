@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 mkdir -p build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release -DENABLE_OPENSSL=ON -DBUILD_VERSION=0.0.4 ../

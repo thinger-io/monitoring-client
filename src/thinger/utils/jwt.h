@@ -2,7 +2,7 @@
 
 #include <nlohmann/json.hpp>
 
-#include "base64.h"
+#include "crypto.h"
 
 using json = nlohmann::json;
 
@@ -12,7 +12,7 @@ public:
     static json get_payload(std::string const& jwt) {
         // get in between two dots
         std::string base64_payload = get_payload_substring(jwt);
-        std::string string_payload = base64_decode(base64_payload);
+        std::string string_payload = Crypto::base64::decode(base64_payload);
         return json::parse(string_payload);
 
     }

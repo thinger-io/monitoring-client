@@ -1,48 +1,44 @@
-// Create backup
 
-// backups mongodb
-
-// backup influxdb
+#include "../restore.h"
 
 #include <filesystem>
 #include <fstream>
 
 #include "../../utils/date.h"
 #include "../../utils/aws.h"
+#include "../../utils/tar.h"
+#include "../../utils/tar.h"
 
-
-class ThingerRestore {
+class PlatformRestore : public ThingerMonitorRestore {
 
 public:
 
-    ThingerRestore(ThingerMonitorConfig& config, std::string hostname, std::string tag) : config_(config), hostname_(hostname), tag_(tag) {
+    PlatformRestore(ThingerMonitorConfig& config, const std::string hostname, const std::string tag)
+      : ThingerMonitorRestore(config,hostname,tag) {
 
-        system_app = config_.get_backups_system();
         storage = config_.get_backups_storage();
-        bucket = config_.get_backups_bucket();
-        region = config_.get_backups_region();
-        access_key = config_.get_backups_access_key();
-        secret_key = config_.get_backups_secret_key();
+        bucket = config_.get_storage_bucket(storage);
+        region = config_.get_storage_region(storage);
+        access_key = config_.get_storage_access_key(storage);
+        secret_key = config_.get_storage_secret_key(storage);
 
-        file_to_download = hostname_+"_"+tag_+".tar.gz";
+        file_to_download = name_+"_"+tag_+".tar.gz";
 
         create_backup_folder();
     }
 
-    void restore_backup() {
+    void restore() {
 
-        if ( system_app == "platform" ) {
-            decompress_backup();
-            restore_thinger();
-            restore_mongodb();
-            restore_influxdb();
-            restart_platform();
-        }
-        // else if
+        decompress_backup();
+        restore_thinger();
+        restore_mongodb();
+        restore_influxdb();
+        restore_plugins();
+        restart_platform();
 
     }
 
-    int download_backup()  {
+    int download()  {
 
         if ( storage == "S3" )
             return AWS::download_from_s3(backup_folder+"/"+file_to_download, bucket, region, access_key, secret_key);
@@ -50,22 +46,15 @@ public:
         return -1;
     }
 
-    void clean_backup() {
-        if ( system_app == "platform" ) {
-            clean_thinger();
-        }
+    void clean() {
+        clean_thinger();
     }
 
 protected:
     const std::string backup_folder = "/tmp/backup";
 
-    ThingerMonitorConfig& config_;
-    std::string hostname_;
-    const std::string tag_;
-
     std::string file_to_download;
 
-    std::string system_app;
     std::string storage;
     std::string bucket;
     std::string region;
@@ -75,23 +64,21 @@ protected:
 
 private:
     void create_backup_folder() {
-        std::filesystem::remove_all(backup_folder);
-        std::filesystem::create_directories(backup_folder);
+//        std::filesystem::remove_all(backup_folder);
+        std::filesystem::create_directories(backup_folder+"/"+tag_);
     }
 
-    void decompress_backup() { // TODO: use some tar library?
-        std::string command = "tar xfz "+backup_folder+"/"+file_to_download+" -C "+backup_folder+" --same-owner";
-        system(command.c_str());
+    void decompress_backup() {
+        Tar::extract(backup_folder+"/"+file_to_download);
     }
 
     // -- PLATFORM -- //
     void restore_thinger() {
-        // TODO: user docker REST API
-        system("docker stop thinger");
-        std::filesystem::remove_all(config_.get_backups_data_path()+"/thinger/users");
-        std::filesystem::create_directories(config_.get_backups_data_path()+"/thinger/users");
-        std::filesystem::copy(backup_folder+"/thinger-"+tag_+"/users",config_.get_backups_data_path()+"/thinger/users", std::filesystem::copy_options::recursive);
-        //std::filesystem::copy(config_.get_backups_data_path()+"/thinger/users", backup_folder+"/thinger-"+backup_date);
+        Docker::Container::stop("thinger");
+        if (std::filesystem::exists(backup_folder+"/"+tag_+"/thinger-"+tag_+".tar")) {
+            std::filesystem::remove_all(config_.get_backups_data_path()+"/thinger/users");
+            Tar::extract(backup_folder+"/"+tag_+"/thinger-"+tag_+".tar");
+        }
     }
 
     void restore_mongodb() {
@@ -109,26 +96,47 @@ private:
             }
         }
 
-        // TODO: execute mongodump and copy through docker REST API
-        system(("docker cp "+backup_folder+"/mongodbdump-"+tag_+" mongodb:/dump >> /dev/null").c_str());
-        system(("docker exec -it mongodb mongorestore  /dump -u \"thinger\" -p \""+mongo_password+"\" >> /dev/null").c_str());
+        Docker::Container::copy_to_container("mongodb", backup_folder+"/"+tag_+"/mongodbdump-"+tag_+".tar", "/");
+        Docker::Container::exec("mongodb", "mongorestore /dump -u thinger -p "+mongo_password);
     }
 
     void restore_influxdb() {
-        // TODO: execute influxd backup and copy through docker REST API
-        system(("docker cp "+backup_folder+"/influxdbdump-"+tag_+" mongodb:dump >> /dev/null").c_str());
-        system("docker exec -it influxdb influxd restore --portable /dump >> /dev/null");
+        Docker::Container::copy_to_container("influxdb", backup_folder+"/"+tag_+"/influxdbdump-"+tag_+".tar", "/");
+        Docker::Container::exec("influxdb", "influxd restore --portable /dump");
+    }
+
+    void restore_plugins() {
+        // Executed after restore_thinger
+        if (!std::filesystem::exists(config_.get_backups_data_path()+"/thinger/users/")) return;
+
+        for (const auto & p1 : fs::directory_iterator(config_.get_backups_data_path()+"/thinger/users/")) { // users
+            if (! std::filesystem::exists(p1.path().string()+"/plugins/")) continue;
+
+            std::string user = p1.path().filename().string();
+
+            // restore networks
+            std::string network_id = Docker::Network::create_from_inspect(backup_folder+"/"+tag_+"/plugins/"+user+"-network.json");
+
+            // restore plugins
+            for (const auto & p2 : fs::directory_iterator(p1.path().string()+"/plugins/")) { // plugins
+                std::string container_name = user+"-"+p2.path().filename().string();
+                Docker::Container::create_from_inspect(backup_folder+"/"+tag_+"/plugins/"+container_name+".json", network_id);
+                Docker::Container::start(container_name);
+            }
+        }
     }
 
     void clean_thinger() {
-        std::filesystem::remove_all(backup_folder);
-        // TODO: clean inside docker containers through docker REST API
-        system("docker exec -it mongodb rm -rf /dump");
-        system("docker exec -it influxdb rm -rf /dump");
+        std::filesystem::remove_all(backup_folder+"/"+file_to_download);
+        std::filesystem::remove_all(backup_folder+"/"+tag_);
+        Docker::Container::exec("mongodb", "rm -rf /dump");
+        Docker::Container::exec("influxdb", "rm -rf /dump");
     }
 
     void restart_platform() {
-        system("docker-compose -f "+config_.get_backups_compose_path()+"/docker-compose.yml restart");
+        Docker::Container::restart("mongodb");
+        Docker::Container::restart("influxdb");
+        Docker::Container::restart("thinger");
     }
 
 };

@@ -42,6 +42,7 @@ using json = nlohmann::json;
 //const std::vector<std::string> interfaces = {"eth0"};
 //const std::vector<std::string> filesystems = {"/"};
 //const std::vector<std::string> drives = {"xvda"};
+const std::vector<std::string> properties = {"resources","backups","storage"}; // thinger device config properties
 
 int main(int argc, char *argv[]) {
 
@@ -84,13 +85,28 @@ int main(int argc, char *argv[]) {
         if (config.has_user()) {
             config.set_device();
 
-            auto status = create_device(thinger_token, config.get_user(), config.get_device_id(), config.get_device_credentials(), config.get_device_name(), config.get_server_url(), config.get_server_secure());
-            if (status == 200) {
-                std::cout << "Device created succesfully! Please run the program without the token" << std::endl;
-                return 0;
+            if (Thinger::device_exists(thinger_token, config.get_user(), config.get_device_id(), config.get_server_url(), config.get_server_secure())) {
+
+                auto status = Thinger::update_device_credentials(thinger_token, config.get_user(), config.get_device_id(), config.get_device_credentials(), config.get_server_url(), config.get_server_secure());
+                if (status == 200) {
+                    std::cout << "Credentials changed succesfully! Please run the program without the token" << std::endl;
+                    return 0;
+                } else {
+                    std::cout << "Could not change credentials, check the token and its permissions" << std::endl;
+                    return -1;
+                }
+
             } else {
-                std::cout << "Could not create device, check the connection and make sure it doesn't already exist" << std::endl;
-                return -1;
+
+                // TODO: check if device already exists, if not create it
+                auto status = Thinger::create_device(thinger_token, config.get_user(), config.get_device_id(), config.get_device_credentials(), config.get_device_name(), config.get_server_url(), config.get_server_secure());
+                if (status == 200) {
+                    std::cout << "Device created succesfully! Please run the program without the token" << std::endl;
+                    return 0;
+                } else {
+                    std::cout << "Could not create device, check the connection and make sure it doesn't already exist" << std::endl;
+                    return -1;
+                }
             }
         }
     }
@@ -117,10 +133,8 @@ int main(int argc, char *argv[]) {
                 pson data;
                 thing.get_property("_monitor", data);
                 if (!data.is_empty()) {
-std::cout << "is empty" << std::endl;
                     config.update_with_remote(data);
                 } else {
-std::cout << "not empty" << std::endl;
                     //thing.handle()
                     pson c_data = config.in_pson();
                     thing.set_property("_monitor", c_data);
@@ -131,14 +145,18 @@ std::cout << "not empty" << std::endl;
 
    thing.handle();
 
-    pson data;
-    thing.get_property("_monitor", data);
-    if (!data.is_empty()) {
-        config.update_with_remote(data);
-    } else {
-        thing.handle();
-        pson c_data = config.in_pson();
-        thing.set_property("_monitor", c_data);
+    // On start Check if properties are online and update config file, or viceversa
+    for (auto property : properties) {
+
+        pson data;
+        thing.get_property(property.c_str(), data);
+        if (!data.is_empty()) {
+            config.update_with_remote(property, data);
+        } else {
+            thing.handle();
+            pson c_data = config.in_pson(property);
+            thing.set_property(property.c_str(), c_data);
+        }
     }
 
     unsigned long delay = 0;
@@ -149,13 +167,16 @@ std::cout << "not empty" << std::endl;
             std::chrono::system_clock::now().time_since_epoch()).count();
         if (current_seconds >= (delay+CONFIG_DELAY)) {
             // Retrieve remote property
-            pson r_data;
-            thing.get_property("_monitor", r_data);
-            bool updated = config.update_with_remote(r_data);
+            bool updated = false;
+            for (auto property : properties) {
+                pson r_data;
+                thing.get_property(property.c_str(), r_data);
+                updated = updated || config.update_with_remote(property, r_data);
 
-            if (updated) {
-                monitor.reload_configuration();
             }
+
+            if (updated)
+                 monitor.reload_configuration();
 
             delay = current_seconds;
         }
