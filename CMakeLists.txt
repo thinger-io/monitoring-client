@@ -112,21 +112,3 @@ target_include_directories(thinger_monitor PRIVATE ${thinger_SOURCE_DIR}/src/thi
 #FetchContent_MakeAvailable(cpp_httplib)
 #target_include_directories(thinger_monitor PRIVATE ${cpp_httplib_SOURCE_DIR})
 target_include_directories(thinger_monitor PRIVATE ${CMAKE_SOURCE_DIR}/external/cpp-httplib/)
-
-# Add tar library
-#FetchContent_Declare(
-#  tar
-#  GIT_REPOSITORY https://github.com/calccrypto/tar.git
-#  GIT_TAG master
-#)
-#FetchContent_MakeAvailable(tar)
-#target_include_directories(thinger_monitor PRIVATE ${tar_SOURCE_DIR})
-
-# Add cryptopp library
-#FetchContent_Declare(
-#  cryptopp
-#  GIT_REPOSITORY https://github.com/weidai11/cryptopp.git
-#  GIT_TAG CRYPTOPP_8_6_0
-#)
-#FetchContent_MakeAvailable(cryptopp)
-#target_include_directories(thinger_monitor PRIVATE ${cryptopp_SOURCE_DIR})

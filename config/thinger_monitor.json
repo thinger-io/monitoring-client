@@ -15,15 +15,5 @@
     "interfaces": ["eth0"],
     "filesystems": ["/"],
     "drives": ["xvda"]
-  },
-  "backups" : {
-    "system": "platform",
-    "storage": "S3",
-    "bucket": "<bucket name>",
-    "region": "<bucket region>",
-    "access_key": "<storage access key>",
-    "secret_key": "<storage secret key>",
-    "data_path": "<path mounted by compose file>",
-    "compose_path": "<location of docker-compose.yml path>"
   }
 }

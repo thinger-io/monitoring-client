@@ -1,2 +1,3 @@
 
-config/thinger_monitor.json
+build/
+config/thinger_monitor.json_*

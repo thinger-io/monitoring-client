@@ -68,6 +68,7 @@ namespace Docker {
             cli.set_read_timeout(600, 0); // 10 minutes for commands to execute
 
             // TODO: move to its own function
+            std::cout << std::fixed << Date::millis()/1000.0 << " ";
             std::cout << "[_DOCKER] Downloading image: '" << inspect_json["Config"]["Image"].get<std::string>() << "'" << std::endl;
             auto res = cli.Post(("/images/create?fromImage="+inspect_json["Config"]["Image"].get<std::string>()).c_str());
             if ( res.error() == httplib::Error::Read ) {

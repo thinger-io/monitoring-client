@@ -21,13 +21,6 @@ namespace Thinger {
             { "Authorization", "Bearer "+token}
         };
 
-        //json body;
-        //body["device"] = device;
-        //body["credentials"] = credentials;
-        //body["name"] = name;
-        //body["description"] = "Linux Monitoring autoprovision";
-        //body["type"] = "Generic";
-
         auto res = cli.Get(("/v1/users/"+user+"/devices/"+device).c_str(), headers);
 
         return res->status == 200 ? true : false;
@@ -49,7 +42,7 @@ namespace Thinger {
         json body;
         body["credentials"] = credentials;
 
-        auto res = cli.Post(("/v1/users/"+user+"/devices/"+device).c_str(), headers, body.dump(), "application/json");
+        auto res = cli.Put(("/v1/users/"+user+"/devices/"+device).c_str(), headers, body.dump(), "application/json");
 
         return res->status;
     }
