@@ -98,8 +98,26 @@ private:
     }
 
     void backup_influxdb() {
-        Docker::Container::exec("influxdb", "influxd backup --portable /dump");
-        Docker::Container::copy_from_container("influxdb", "/dump", backup_folder+"/"+backup_date+"/influxdbdump-"+backup_date+".tar");
+        if (std::filesystem::exists(config_.get_backups_data_path()+"/influxdb2")) {
+            // get influx token
+            std::ifstream compose (config_.get_backups_compose_path()+"/docker-compose.yml", std::ifstream::in);
+            std::string line;
+
+            std::string influx_token;
+
+            while (std::getline(compose,line,'\n')) {
+                if (line.find("- DOCKER_INFLUXDB_INIT_ADMIN_TOKEN") != std::string::npos) {
+                    unsigned first_del = line.find('=');
+                    unsigned last_del = line.find('\n');
+                    influx_token = line.substr(first_del+1, last_del - first_del-1);
+                }
+            }
+            Docker::Container::exec("influxdb2", "influx backup /dump -t "+influx_token);
+            Docker::Container::copy_from_container("influxdb2", "/dump", backup_folder+"/"+backup_date+"/influxdb2dump-"+backup_date+".tar");
+        } else {
+            Docker::Container::exec("influxdb", "influxd backup --portable /dump");
+            Docker::Container::copy_from_container("influxdb", "/dump", backup_folder+"/"+backup_date+"/influxdbdump-"+backup_date+".tar");
+        }
     }
 
     void backup_plugins() {
@@ -126,7 +144,11 @@ private:
         std::filesystem::remove_all(backup_folder+"/"+backup_date);
         std::filesystem::remove_all(backup_folder+"/"+file_to_upload);
         Docker::Container::exec("mongodb", "rm -rf /dump");
-        Docker::Container::exec("influxdb", "rm -rf /dump");
+        if (std::filesystem::exists(config_.get_backups_data_path()+"/influxdb2")) {
+            Docker::Container::exec("influxdb2", "rm -rf /dump");
+        } else {
+            Docker::Container::exec("influxdb", "rm -rf /dump");
+        }
     }
 
 };

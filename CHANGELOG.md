@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ## [0.0.5] - 2022-03-15
+### Added
+- Backup and restore available for influxdb 2.1
+
 ### Fix
 - Segmentation fault when checking internal interface IP
 

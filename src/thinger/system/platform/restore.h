@@ -101,8 +101,15 @@ private:
     }
 
     void restore_influxdb() {
-        Docker::Container::copy_to_container("influxdb", backup_folder+"/"+tag_+"/influxdbdump-"+tag_+".tar", "/");
-        Docker::Container::exec("influxdb", "influxd restore --portable /dump");
+        if (std::filesystem::exists(config_.get_backups_data_path()+"/influxdb2")) {
+            Docker::Container::copy_to_container("influxdb2", backup_folder+"/"+tag_+"/influxdb2dump-"+tag_+".tar", "/");
+            Docker::Container::exec("influxdb2", "mkdir -p /var/lib/influxdb2/tmp/");
+            Docker::Container::exec("influxdb2", "chown influxdb:influxdb /var/lib/influxdb2/tmp/");
+            Docker::Container::exec("influxdb2", "influx restore /dump --full");
+        } else {
+            Docker::Container::copy_to_container("influxdb", backup_folder+"/"+tag_+"/influxdbdump-"+tag_+".tar", "/");
+            Docker::Container::exec("influxdb", "influxd restore --portable /dump");
+        }
     }
 
     void restore_plugins() {
@@ -130,7 +137,11 @@ private:
         std::filesystem::remove_all(backup_folder+"/"+file_to_download);
         std::filesystem::remove_all(backup_folder+"/"+tag_);
         Docker::Container::exec("mongodb", "rm -rf /dump");
-        Docker::Container::exec("influxdb", "rm -rf /dump");
+        if (std::filesystem::exists(config_.get_backups_data_path()+"/influxdb2")) {
+            Docker::Container::exec("influxdb2", "rm -rf /dump");
+        } else {
+            Docker::Container::exec("influxdb", "rm -rf /dump");
+        }
     }
 
     void restart_platform() {
