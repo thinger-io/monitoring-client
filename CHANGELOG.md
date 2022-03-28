@@ -6,9 +6,12 @@ All notable changes to this project will be documented in this file.
 ## [0.0.5] - 2022-03-15
 ### Added
 - Backup and restore available for influxdb 2.1
+- Tag configurable in backup resource
+- Added default tag and endpoint for backup and restore resources
 
 ### Fix
 - Segmentation fault when checking internal interface IP
+- Backup and restore resources accessible once backups property is set without restarting
 
 ## [0.0.4] - 2022-03-14
 ### Added

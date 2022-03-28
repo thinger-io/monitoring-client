@@ -12,8 +12,10 @@
 #include <arpa/inet.h>
 #include <linux/kernel.h>
 #include <unistd.h>
+#include <thread>
 
 #include "utils/thinger.h"
+#include "utils/date.h"
 
 #include "system/platform/backup.h"
 #include "system/platform/restore.h"
@@ -89,26 +91,32 @@ public:
                 };
             }
 
-            if (config_.has_backups_system()) {
+
                 backup_ = [this](pson& in, pson& out) {
+
+                  if (config_.has_backups_system()) {
+
+                    std::string tag = in["tag"];
                     std::string endpoint = in["endpoint"];
-                    out["status"] = "";
 
-                    ThingerMonitorBackup *backup = NULL;
-                    // Add new possible options for backup systems
-                    if (config_.get_backups_system() == "platform") {
-                        backup = new PlatformBackup(config_, hostname);
-                    }
+                    Date today = Date();
+                    in["tag"] = today.to_iso8601();
+                    in["endpoint"] = "backup_finished";
 
-                    if (in["backup"]) {
-                        in["backup"] = false;
+                    auto lambda = [this](std::string tag, std::string endpoint) {
+
+                        ThingerMonitorBackup *backup = NULL;
+                        // Add new possible options for backup systems
+                        if (config_.get_backups_system() == "platform") {
+                            backup = new PlatformBackup(config_, hostname, tag);
+                        }
 
                         std::cout << std::fixed << Date::millis()/1000.0 << " ";
                         std::cout << "[_BACKUP] Creating backup" << std::endl;
                         backup->create();
                         std::cout << std::fixed << Date::millis()/1000.0 << " ";
                         std::cout << "[_BACKUP] Uploading backup" << std::endl;
-                        out["status"] = backup->upload();
+                        backup->upload();
                         std::cout << std::fixed << Date::millis()/1000.0 << " ";
                         std::cout << "[_BACKUP] Cleaning backup temporary files" << std::endl;
                         backup->clean();
@@ -119,23 +127,39 @@ public:
                             payload["hostname"] = hostname;
                             Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, payload, config_.get_server_url(), config_.get_server_secure());
                         }
+
+                        delete backup;
+                    };
+
+                    if (!tag.empty()) {
+                        out["status"] = "Launched";
+                        std::thread thread(lambda, endpoint, tag);
+                        thread.detach(); // TODO: ideally treat if something goes wrong?
                     }
-                    //out["output"] = in["tag"];
-                    delete backup;
+                  } else {
+                    out["status"] = "ERROR";
+                    out["error"] = "Can't launch backup. Set backups property.";
+                  }
                 };
 
                 restore_ = [this](pson& in, pson& out) {
+
+                  if (config_.has_backups_system()) {
+
                     std::string tag = in["tag"];
                     std::string endpoint = in["endpoint"];
-                    out["status"] = "";
 
-                    ThingerMonitorRestore *restore = NULL;
-                    // Add new possible options for backup systems
-                    if (config_.get_backups_system() == "platform") {
-                        restore = new PlatformRestore(config_, hostname, tag);
-                    }
+                    Date today = Date();
+                    in["tag"] = today.to_iso8601();
+                    in["endpoint"] = "restore_finished";
 
-                    if (!tag.empty()) {
+                    auto lambda = [this](std::string tag, std::string endpoint) {
+                        ThingerMonitorRestore *restore = NULL;
+                        // Add new possible options for backup systems
+                        if (config_.get_backups_system() == "platform") {
+                            restore = new PlatformRestore(config_, hostname, tag);
+                        }
+
                         std::cout << std::fixed << Date::millis()/1000.0 << " ";
                         std::cout << "[___RSTR] Downloading backup" << std::endl;
                         restore->download();
@@ -151,11 +175,20 @@ public:
                             payload["hostname"] = hostname;
                             Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, payload, config_.get_server_url(), config_.get_server_secure());
                         }
-                    }
 
-                    delete restore;
+                        delete restore;
+                    };
+
+                    if (!tag.empty()) {
+                        out["status"] = "Launched";
+                        std::thread thread(lambda, tag, endpoint);
+                        thread.detach(); // TODO: ideally treat if something goes wrong?
+                    }
+                  } else {
+                    out["status"] = "ERROR";
+                    out["error"] = "Can't launch restore. Set backups property.";
+                  }
                 };
-            }
 
             monitor_ >> [this](pson& out) {
 

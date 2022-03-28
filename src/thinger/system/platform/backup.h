@@ -4,7 +4,6 @@
 #include <filesystem>
 #include <fstream>
 
-#include "../../utils/date.h"
 #include "../../utils/aws.h"
 #include "../../utils/docker.h"
 #include "../../utils/tar.h"
@@ -14,14 +13,16 @@ class PlatformBackup : public ThingerMonitorBackup {
 
 public:
 
-    PlatformBackup(ThingerMonitorConfig& config, const std::string& hostname) : ThingerMonitorBackup(config,hostname) {
+    PlatformBackup(ThingerMonitorConfig& config, const std::string& hostname, const std::string& tag)
+      : ThingerMonitorBackup(config,hostname, tag) {
+
         storage = config_.get_backups_storage();
         bucket = config_.get_storage_bucket(storage);
         region = config_.get_storage_region(storage);
         access_key = config_.get_storage_access_key(storage);
         secret_key = config_.get_storage_secret_key(storage);
 
-        file_to_upload = name_+"_"+backup_date+".tar.gz";
+        file_to_upload = name_+"_"+tag_+".tar.gz";
 
         create_backup_folder();
     }
@@ -51,8 +52,6 @@ public:
 
 protected:
     const std::string backup_folder = "/tmp/backup";
-    Date date = Date();
-    const std::string backup_date = date.to_iso8601();
 
     std::string storage;
     std::string bucket;
@@ -64,18 +63,18 @@ protected:
 
 private:
     void create_backup_folder() {
-        std::filesystem::remove_all(backup_folder+"/"+backup_date);
-        std::filesystem::create_directories(backup_folder+"/"+backup_date);
+        std::filesystem::remove_all(backup_folder+"/"+tag_);
+        std::filesystem::create_directories(backup_folder+"/"+tag_);
     }
 
     void compress_backup() {
-        Tar::create(backup_folder+"/"+backup_date, backup_folder+"/"+file_to_upload);
+        Tar::create(backup_folder+"/"+tag_, backup_folder+"/"+file_to_upload);
     }
 
     void backup_thinger() {
         // With tar creation instead of copying to folder we maintain ownership and permissions
         if (std::filesystem::exists(config_.get_backups_data_path()+"/thinger/users"))
-            Tar::create(config_.get_backups_data_path()+"/thinger/users", backup_folder+"/"+backup_date+"/thinger-"+backup_date+".tar");
+            Tar::create(config_.get_backups_data_path()+"/thinger/users", backup_folder+"/"+tag_+"/thinger-"+tag_+".tar");
     }
 
     void backup_mongodb() {
@@ -94,7 +93,7 @@ private:
         }
 
         Docker::Container::exec("mongodb", "mongodump -u thinger -p "+mongo_password);
-        Docker::Container::copy_from_container("mongodb", "/dump", backup_folder+"/"+backup_date+"/mongodbdump-"+backup_date+".tar");
+        Docker::Container::copy_from_container("mongodb", "/dump", backup_folder+"/"+tag_+"/mongodbdump-"+tag_+".tar");
     }
 
     void backup_influxdb() {
@@ -113,16 +112,16 @@ private:
                 }
             }
             Docker::Container::exec("influxdb2", "influx backup /dump -t "+influx_token);
-            Docker::Container::copy_from_container("influxdb2", "/dump", backup_folder+"/"+backup_date+"/influxdb2dump-"+backup_date+".tar");
+            Docker::Container::copy_from_container("influxdb2", "/dump", backup_folder+"/"+tag_+"/influxdb2dump-"+tag_+".tar");
         } else {
             Docker::Container::exec("influxdb", "influxd backup --portable /dump");
-            Docker::Container::copy_from_container("influxdb", "/dump", backup_folder+"/"+backup_date+"/influxdbdump-"+backup_date+".tar");
+            Docker::Container::copy_from_container("influxdb", "/dump", backup_folder+"/"+tag_+"/influxdbdump-"+tag_+".tar");
         }
     }
 
     void backup_plugins() {
 
-        std::filesystem::create_directories(backup_folder+"/"+backup_date+"/plugins");
+        std::filesystem::create_directories(backup_folder+"/"+tag_+"/plugins");
 
         if (! std::filesystem::exists(config_.get_backups_data_path()+"/thinger/users")) return;
 
@@ -130,18 +129,18 @@ private:
             if (! std::filesystem::exists(p1.path().string()+"/plugins/")) continue;
 
             // backups networks
-            Docker::Network::inspect(p1.path().filename().string(), backup_folder+"/"+backup_date+"/plugins");
+            Docker::Network::inspect(p1.path().filename().string(), backup_folder+"/"+tag_+"/plugins");
 
             // backup plugins
             for (const auto & p2 : fs::directory_iterator(p1.path().string()+"/plugins/")) { // plugins
                 std::string container_name = p1.path().filename().string()+"-"+p2.path().filename().string();
-                Docker::Container::inspect(container_name, backup_folder+"/"+backup_date+"/plugins");
+                Docker::Container::inspect(container_name, backup_folder+"/"+tag_+"/plugins");
             }
         }
     }
 
     void clean_thinger() {
-        std::filesystem::remove_all(backup_folder+"/"+backup_date);
+        std::filesystem::remove_all(backup_folder+"/"+tag_);
         std::filesystem::remove_all(backup_folder+"/"+file_to_upload);
         Docker::Container::exec("mongodb", "rm -rf /dump");
         if (std::filesystem::exists(config_.get_backups_data_path()+"/influxdb2")) {

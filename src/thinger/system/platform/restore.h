@@ -13,7 +13,7 @@ class PlatformRestore : public ThingerMonitorRestore {
 
 public:
 
-    PlatformRestore(ThingerMonitorConfig& config, const std::string hostname, const std::string tag)
+    PlatformRestore(ThingerMonitorConfig& config, const std::string& hostname, const std::string& tag)
       : ThingerMonitorRestore(config,hostname,tag) {
 
         storage = config_.get_backups_storage();
@@ -60,7 +60,6 @@ protected:
     std::string region;
     std::string access_key;
     std::string secret_key;
-
 
 private:
     void create_backup_folder() {
