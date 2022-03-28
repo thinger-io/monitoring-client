@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Backup and restore available for influxdb 2.1
 - Tag configurable in backup resource
+- Backup, Restore and Cmd resources may call endpoint on finished
 - Added default tag and endpoint for backup and restore resources
 
 ### Fix

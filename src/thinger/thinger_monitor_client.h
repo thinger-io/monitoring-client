@@ -71,7 +71,19 @@ public:
             retrieve_cpu_cores();
 
             cmd_ = [this](pson& in, pson& out) {
-                out["output"] = cmd(in["input"]);
+                std::string output = cmd(in["input"]);
+                out["output"] = output;
+
+                std::string endpoint = in["endpoint"];
+                in["endpoint"] = "cmd_finished";
+
+                if (!endpoint.empty()) {
+                    json payload;
+                    payload["device"] = config_.get_device_id();
+                    payload["hostname"] = hostname;
+                    payload["payload"] = output;
+                    Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, payload, config_.get_server_url(), config_.get_server_secure());
+                }
             };
 
             if (geteuid() == 0) { // is_root
