@@ -7,7 +7,7 @@ if(NOT BUILD_VERSION)
     SET(BUILD_VERSION "Not set")
 else()
     add_definitions( -DBUILD_VERSION=${BUILD_VERSION} )
-  message(STATUS "The compiler version is ${BUILD_VERSION}")
+    message(STATUS "The program version is ${BUILD_VERSION}")
 endif()
 
 # check c++17 or c++20 support
