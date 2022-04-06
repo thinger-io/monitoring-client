@@ -13,12 +13,15 @@
 #include <linux/kernel.h>
 #include <unistd.h>
 #include <thread>
+#include <future>
 
 #include "utils/thinger.h"
 #include "utils/date.h"
 
 #include "system/platform/backup.h"
 #include "system/platform/restore.h"
+
+using namespace std::chrono_literals;
 
 namespace fs = std::filesystem;
 
@@ -92,29 +95,50 @@ public:
                         reboot();
                 };
 
-                update_ << [this](pson& in) { // needs declaration of input for dashboard button
-                    if (in)
-                        update();
+                update_ = [this](pson& in, pson& out) { // needs declaration of input for dashboard button
+                    if (in) {
+                        if ( f1.future.valid() && f1.future.wait_for(0s)  != std::future_status::ready ) {
+                            if ( f1.task == "update" )
+                                out["status"] = "Already executing";
+                            else
+                                out["status"] = ("Executing: "+f1.task).c_str();
+                            return;
+                        }
+
+                        std::packaged_task<void()> task([this]{
+                            update();
+                        });
+                        f1.task = "update";
+                        f1.future = task.get_future();
+                        std::thread thread(std::move(task));
+                        thread.detach();
+                    }
                 };
 
-                update_distro_ << [this](pson& in) { // needs declaration of input for dashboard button
-                    if (in)
-                        update_distro();
+                update_distro_ = [this](pson& in, pson& out) { // needs declaration of input for dashboard button
+                    if (in) {
+                        if ( f1.future.valid() && f1.future.wait_for(0s)  != std::future_status::ready ) {
+                            if ( f1.task == "update_distro" )
+                                out["status"] = "Already executing";
+                            else
+                                out["status"] = ("Executing: "+f1.task).c_str();
+                            return;
+                        }
+
+                        std::packaged_task<void()> task([this]{
+                            update_distro();
+                        });
+                        f1.task = "update_distro";
+                        f1.future = task.get_future();
+                        std::thread thread(std::move(task));
+                        thread.detach();
+                    }
                 };
             }
 
             backup_ = [this](pson& in, pson& out) {
 
                 if (config_.has_backups_system()) {
-
-                    if (thread_backup.joinable()) {
-                        out["status"] = "Already executing";
-                        return;
-                    }
-                    if (thread_restore.joinable()) {
-                        out["status"] = "Restore executing";
-                        return;
-                    }
 
                     std::string tag = in["tag"];
                     std::string endpoint = in["endpoint"];
@@ -123,7 +147,16 @@ public:
                     in["tag"] = today.to_iso8601();
                     in["endpoint"] = "backup_finished";
 
-                    auto lambda = [this](std::string tag, std::string endpoint) {
+                    if ( f1.future.valid() && f1.future.wait_for(0s)  != std::future_status::ready ) {
+                        if ( f1.task == "backup" )
+                            out["status"] = "Already executing";
+                        else
+                            out["status"] = ("Executing: "+f1.task).c_str();
+                        return;
+                    }
+
+                    // future from a packaged_task
+                    std::packaged_task<void(std::string,std::string)> task([this](std::string tag, std::string endpoint) {
 
                         std::unique_ptr<ThingerMonitorBackup> backup{}; // as nullptr
                         // Add new possible options for backup systems
@@ -158,16 +191,18 @@ public:
                         if (!endpoint.empty())
                             Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, data, config_.get_server_url(), config_.get_server_secure());
 
-                        std::cout << "Ending backup 1" << std::endl;
-                        return;
-                        std::cout << "Ending backup 2" << std::endl;
-
-                    };
+                    });
 
                     if (!tag.empty()) {
                         out["status"] = "Launched";
-                        thread_backup = std::thread(lambda, tag, endpoint);
+                        f1.task = "backup";
+                        f1.future = task.get_future();  // get a future
+                        std::thread thread(std::move(task), tag, endpoint);
+                        thread.detach();
                     }
+
+                    out["status"] = "Ready to be launched";
+
                 } else {
                     out["status"] = "ERROR";
                     out["error"] = "Can't launch backup. Set backups property.";
@@ -178,15 +213,6 @@ public:
 
                 if (config_.has_backups_system()) {
 
-                    if (thread_restore.joinable()) {
-                        out["status"] = "Already executing";
-                        return;
-                    }
-                    if (thread_backup.joinable()) {
-                        out["status"] = "Wait until backup finishes";
-                        return;
-                    }
-
                     std::string tag = in["tag"];
                     std::string endpoint = in["endpoint"];
 
@@ -194,7 +220,15 @@ public:
                     in["tag"] = today.to_iso8601();
                     in["endpoint"] = "restore_finished";
 
-                    auto lambda = [this](std::string tag, std::string endpoint) {
+                    if ( f1.future.valid() && f1.future.wait_for(0s)  != std::future_status::ready ) {
+                        if ( f1.task == "restore" )
+                            out["status"] = "Already executing";
+                        else
+                            out["status"] = ("Executing: "+f1.task).c_str();
+                        return;
+                    }
+
+                    std::packaged_task<void(std::string, std::string)> task([this](std::string tag, std::string endpoint) {
 
                         std::unique_ptr<ThingerMonitorRestore> restore{};
                         // Add new possible options for backup systems
@@ -222,12 +256,18 @@ public:
                             Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, payload, config_.get_server_url(), config_.get_server_secure());
                         }
 
-                    };
+                    });
 
                     if (!tag.empty()) {
                         out["status"] = "Launched";
-                        thread_restore = std::thread(lambda, tag, endpoint);
+                        f1.task = "restore";
+                        f1.future = task.get_future();
+                        std::thread thread(std::move(task), tag, endpoint);
+                        thread.detach();
                     }
+
+                    out["status"] = "Ready to be launched";
+
                 } else {
                     out["status"] = "ERROR";
                     out["error"] = "Can't launch restore. Set backups property.";
@@ -368,10 +408,6 @@ public:
     }
 
     virtual ~ThingerMonitor(){
-        if (thread_backup.joinable())
-            thread_backup.join();
-        if (thread_restore.joinable())
-            thread_restore.join();
     }
 
     void reload_configuration() {
@@ -414,6 +450,12 @@ protected:
     thinger::thinger_resource& restore_;
 
     ThingerMonitorConfig& config_;
+
+    struct future_task {
+        std::string task;
+        std::future<void> future;
+    };
+    future_task f1; // f1 used for blocking backup/restore/update/update_distro
 
     // network
     struct interface {
@@ -520,7 +562,6 @@ protected:
     }
 
 private:
-    std::thread thread_backup, thread_restore;
 
     std::string getIPAddress(std::string interface){
         std::string ipAddress="Unable to get IP Address";
