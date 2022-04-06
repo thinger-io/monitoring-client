@@ -3,8 +3,6 @@ name: Build
 on:
   release:
     types: [ published ] # when a release is created, build and publish bins
-  #push:
-  #  branches: [ master,develop ]
   pull_request:
     branches: [ master,develop ] # when a pull request is opened only build
 
@@ -17,7 +15,6 @@ env:
 jobs:
 
   build_version:
-    #if: ${{ github.event_name == 'release' }}
     runs-on: ubuntu-latest
 
     outputs:
@@ -28,12 +25,7 @@ jobs:
 
     - name: Get tag version
       id : version
-#      run: | # official regex for semantic version: https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
-#        echo "build_version=`grep -oE '(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?' run.sh | head -1`" >> $GITHUB_ENV
-      #run: echo "build_version=`sed -n 's/.*BUILD_VERSION=//p' run.sh | cut -d " " -f1`" >> $GITHUB_ENV
-#      run: echo "::set-output name=version::`sed -n 's/.*BUILD_VERSION=//p' run.sh | cut -d " " -f1`"
       run: |
-        #echo "::set-output name=version::$(echo ${GITHUB_REF})"
         if [ ${{ github.event_name }} == 'release' ]; then
           echo "##[set-output name=version;]$(echo ${GITHUB_REF#refs/tags/})"
         elif [ ${{ github.event_name }} == 'pull_request' ]; then
@@ -50,16 +42,6 @@ jobs:
       image: bautisflow/toolchains:monitoring-client_${{ matrix.architecture }}
 
     steps:
-
-#    - name: Extract branch name or tag
-#      id: extract_ref
-#      shell: bash
-#      run: |
-#        if [ ${{ github.event_name }} == 'release' ]; then
-#          echo "##[set-output name=ref;]$(echo ${GITHUB_REF})"
-#        elif [ ${{ github.event_name }} == 'pull_request' ]; then
-#          echo "##[set-output name=ref;]$(echo ${GITHUB_REF#refs/heads/})"
-#        fi
 
     - name: Checkout repository
       uses: actions/checkout@v2
