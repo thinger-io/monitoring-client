@@ -1,3 +1,4 @@
+#include <nlohmann/json.hpp>
 
 class ThingerMonitorBackup {
 
@@ -12,9 +13,9 @@ protected:
 
 public:
 
-    virtual void create() = 0;
-    virtual int upload() = 0;
-    virtual void clean() = 0;
+    virtual json backup() = 0;
+    virtual json upload() = 0;
+    virtual json clean() = 0;
 
     virtual ~ThingerMonitorBackup() = default;
 

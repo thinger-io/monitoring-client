@@ -1,3 +1,4 @@
+#include <nlohmann/json.hpp>
 
 class ThingerMonitorRestore {
 
@@ -12,9 +13,9 @@ protected:
 
 public:
 
-    virtual int download() = 0;
-    virtual void restore() = 0;
-    virtual void clean() = 0;
+    virtual json download() = 0;
+    virtual json restore() = 0;
+    virtual json clean() = 0;
 
     virtual ~ThingerMonitorRestore() = default;
 

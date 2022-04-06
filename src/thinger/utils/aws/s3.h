@@ -3,12 +3,14 @@
 
 #include "../date.h"
 #include "../crypto.h"
+#include "../http_status.h"
 
 class S3 {
 
 public:
 
     class AWSV4 {
+    // Handles the construction of the signature AWS Signature Version 4 (SigV4)
 
         public:
 
@@ -30,7 +32,6 @@ public:
 
             return auth_header;
         }
-
 
         private:
 
@@ -73,11 +74,12 @@ public:
 
         public:
 
-        MultipartUpload(std::string& bucket, std::string& region, std::string& access_key, std::string& secret_key) :
+        MultipartUpload(std::string& bucket, std::string& region, std::string& access_key, std::string& secret_key, const std::string& file_path) :
             bucket_(bucket),
             region_(region),
             access_key_(access_key),
-            secret_key_(secret_key)
+            secret_key_(secret_key),
+            file_path_(file_path)
         {
             url = bucket+".s3-"+region+".amazonaws.com";
             awsv4 = new AWSV4(access_key, secret_key, region, "s3");
@@ -91,59 +93,122 @@ public:
             cli->set_write_timeout(30, 0); // 30 seconds
             cli->set_read_timeout(30, 0); // 30 seconds
             cli->set_keep_alive(true);
+
+            // Set class attributes
+            // open file and calculate number of parts
+            std::ifstream file(file_path_);
+            auto file_size = std::filesystem::file_size(file_path_);
+            parts = file_size / buffer_size;
+            if (file_size % buffer_size != 0) parts = parts+1;
+
+            // TODO: request list of parts to S3 and form XML body to complete from the response
+            parts_list = new MPUPart[parts+1];
+
+            filename = std::filesystem::path(file_path_).filename();
+
         }
+
+        /**
+            Handles the full lifecycle of the multipart upload. Initiate Upload, Upload Part, Complete Upload, Abort Upload, List Parts.
+            @return Boolean indicating if the upload operation was successful
+        */
+        bool upload() {
+
+            if (!initiate_upload()) {
+                return false;
+            }
+
+            // Upload parts
+            if (!upload_parts()) {
+                abort_upload();
+                return false;
+            }
+
+            if (!complete_upload()) {
+                abort_upload();
+                return false;
+            }
+
+            return true;
+
+        }
+
+
+        ~MultipartUpload()
+        {
+            delete awsv4;
+            delete cli;
+            delete[] parts_list;
+        }
+
+        protected:
+        std::string bucket_, region_, access_key_, secret_key_, file_path_, filename;
+        unsigned int parts;
+
+        private:
+        const std::string content_type = "application/x-compressed-tar";
+        const size_t buffer_size = 10<<20; // 10 Megabytes -> with a max of 10.000 parts allows a file of up to 100GiB
+
+        std::string upload_id = "";
+
+        std::string url;
+        AWSV4 *awsv4;
+        httplib::Client *cli;
 
         struct MPUPart {
             unsigned int part_id;
             std::string ETag;
         };
+        MPUPart *parts_list; // TODO: request list of parts to S3 and form XML body to complete from the response
 
-        std::string initiate_upload(const std::string& file_path) {
+        bool initiate_upload() {
 
-            Date date = Date();
-            std::string filename = std::filesystem::path(file_path).filename();
+            std::cout << std::fixed << Date::millis()/1000.0 << " ";
+            std::cout << "[____AWS] Inititiating upload of "+file_path_ << std::endl;
 
-            // Form aws v4 signature
-            std::string payload_hash = Crypto::hash::sha256("");
-            std::string canonical_request = generate_canonical_request("POST", "/"+filename,"uploads=",bucket_, payload_hash, date);
+            std::string payload = "";
+            auto res = request("POST", "/"+filename,"uploads=",payload, content_type);
 
-            std::string auth_header = awsv4->get_auth_header(date, canonical_request);
-
-            httplib::Headers headers = {
-                { "x-amz-content-sha256", payload_hash },
-                { "x-amz-date", date.to_iso8601('\0',true,"utc") },
-                { "Authorization", auth_header }
-            };
-
-            auto res = cli->Post(("/"+filename+"?uploads").c_str(),headers,"",content_type.c_str());
-
-            if ( res.error() != httplib::Error::Success || res->status != 200 ) {
+            if ( res.error() != httplib::Error::Success || !HttpStatus::isSuccessful(res->status) ) {
                 std::cerr << std::fixed << Date::millis()/1000.0 << " ";
                 std::cerr << "[____AWS] Failed initiating upload "+filename << std::endl;
-                return std::to_string(res->status);
+                return HttpStatus::isSuccessful(res->status);
             }
 
-            std::string upload_id = XML::get_element_value(res->body, "UploadId");
-            return upload_id;
+            upload_id = XML::get_element_value(res->body, "UploadId");
+
+            std::cout << std::fixed << Date::millis()/1000.0 << " ";
+            std::cout << "[____AWS] Upload initiated with upload id "+upload_id << std::endl;
+            return HttpStatus::isSuccessful(res->status);
         }
 
-        int upload(std::string& upload_id, const std::string& file_path) {
+        bool abort_upload() {
 
+            std::cout << std::fixed << Date::millis()/1000.0 << " ";
+            std::cout << "[____AWS] Aborting multipart upload for file: " << file_path_ << "; and upload id: " << upload_id << std::endl;
+
+            std::string payload = "";
+            auto res = request("DELETE", "/"+filename,"uploadId="+upload_id,payload,"text/plain");
+
+            if ( res.error() != httplib::Error::Success || !HttpStatus::isSuccessful(res->status) ) {
+                std::cerr << std::fixed << Date::millis()/1000.0 << " ";
+                std::cerr << "[____AWS] Failed aborting upload id"+upload_id << std::endl;
+            }
+
+            return HttpStatus::isSuccessful(res->status);
+        }
+
+        bool upload_parts() {
             std::string payload_hash, canonical_request, auth_header;
             httplib::Headers headers;
             Date date;
-            std::string filename = std::filesystem::path(file_path).filename();
 
-            size_t buffer_size = 10<<20; // 10 Megabytes -> with a max of 10.000 parts allows a file of up to 100GiB
             char *buffer = new char[buffer_size];
 
-            // open file and calculate number of parts
-            std::ifstream file(file_path);
-            auto file_size = std::filesystem::file_size(file_path);
-            unsigned int parts = file_size / buffer_size;
+            // Open and calculate part size
+            std::ifstream file(file_path_);
+            auto file_size = std::filesystem::file_size(file_path_);
             auto last_part_size = file_size % buffer_size;
-            MPUPart parts_list[parts+1]; // TODO: request list of parts to S3 and form XML body to complete from the response
-            if (last_part_size != 0) parts = parts+1;
 
             for (unsigned int i = 1; i < parts; i++) { // send part by part
 
@@ -154,63 +219,74 @@ public:
                 std::cout << std::fixed << Date::millis()/1000.0 << " ";
                 std::cout << "[____AWS] Multipart upload of "+filename+"; Uploading part "+std::to_string(i)+" out of "+std::to_string(parts) << std::endl;
 
-                payload_hash = Crypto::hash::sha256(buffer, buffer_size);
-                canonical_request = generate_canonical_request("PUT","/"+filename,
-                    "partNumber="+std::to_string(i)+"&uploadId="+upload_id,bucket_,payload_hash,date);
+                auto res = request("PUT","/"+filename,
+                    "partNumber="+std::to_string(i)+"&uploadId="+upload_id,buffer,buffer_size,content_type);
 
-                auth_header = awsv4->get_auth_header(date, canonical_request);
-
-                headers = {
-                    { "x-amz-content-sha256", payload_hash },
-                    { "x-amz-date", date.to_iso8601('\0',true,"utc") },
-                    { "Authorization", auth_header }
-                };
-
-                auto res = cli->Put(("/"+filename+"?partNumber="+std::to_string(i)+"&uploadId="+upload_id).c_str(),headers,buffer,buffer_size,content_type.c_str());
-
-                if ( res.error() != httplib::Error::Success || res->status != 200 ) {
+                if ( res.error() != httplib::Error::Success || !HttpStatus::isSuccessful(res->status) ) {
                     std::cerr << std::fixed << Date::millis()/1000.0 << " ";
                     std::cerr << "[____AWS] Failed Multipart upload "+filename+"; Part "+std::to_string(i)+" out of "+std::to_string(parts) << std::endl;
-                    return res->status;
+                    return HttpStatus::isSuccessful(res->status);
                 }
 
                 parts_list[i-1] = MPUPart{i, res->get_header_value("ETag")};
 
             }
 
+            // Upload last part
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
             std::cout << "[____AWS] Multipart upload of "+filename+"; Uploading part "+std::to_string(parts)+" out of "+std::to_string(parts) << std::endl;
 
             file.read(buffer, buffer_size);
-            date = Date();
-            payload_hash = Crypto::hash::sha256(buffer, last_part_size);
-            canonical_request = generate_canonical_request("PUT","/"+filename,
-                "partNumber="+std::to_string(parts)+"&uploadId="+upload_id,bucket_,payload_hash,date);
 
-            auth_header = awsv4->get_auth_header(date, canonical_request);
+            auto res = request("PUT","/"+filename,
+                "partNumber="+std::to_string(parts)+"&uploadId="+upload_id,buffer,last_part_size,content_type);
 
-            headers = {
-                { "x-amz-content-sha256", payload_hash },
-                { "x-amz-date", date.to_iso8601('\0',true,"utc") },
-                { "Authorization", auth_header }
-            };
-
-            auto res = cli->Put(("/"+filename+"?partNumber="+std::to_string(parts)+"&uploadId="+upload_id).c_str(),headers,buffer,last_part_size,content_type.c_str());
-
-            if ( res.error() != httplib::Error::Success || res->status != 200 ) {
+            if ( res.error() != httplib::Error::Success || !HttpStatus::isSuccessful(res->status) ) {
                 std::cerr << std::fixed << Date::millis()/1000.0 << " ";
                 std::cerr << "[____AWS] Failed Multipart upload "+filename+"; Part "+std::to_string(parts)+" out of "+std::to_string(parts) << std::endl;
-                return res->status;
+                return HttpStatus::isSuccessful(res->status);
             }
 
             parts_list[parts-1] = MPUPart{parts, res->get_header_value("ETag")};
+            return HttpStatus::isSuccessful(res->status);
+        }
 
-            // Complete upload
-            date = Date();
-            std::string complete_xml = generate_xml_complete_mpu(parts_list, parts);
-            payload_hash = Crypto::hash::sha256(complete_xml);
+        bool complete_upload() {
+            // TODO: complete_upload: request list of parts to S3 and form last request with this response
 
-            canonical_request = generate_canonical_request("POST","/"+filename,"uploadId="+upload_id,bucket_,payload_hash,date);
+            std::string complete_xml = generate_xml_complete_mpu();
+
+            std::cout << std::fixed << Date::millis()/1000.0 << " ";
+            std::cout << "[____AWS] Finishing upload of "+file_path_ << std::endl;
+
+            return request("POST","/"+filename,"uploadId="+upload_id,complete_xml, "text/xml");
+        }
+
+        httplib::Result request(
+          const std::string& method,
+          const std::string& path,
+          const std::string& query_parameters,
+          std::string& payload,
+          const std::string& c_type)
+        {
+            return request(method,path,query_parameters,payload.c_str(),payload.size(),c_type);
+        }
+
+        httplib::Result request(
+          const std::string& method,
+          const std::string& path,
+          const std::string& query_parameters,
+          const char *buffer,
+          const size_t buffer_size,
+          const std::string& c_type)
+        {
+            std::string payload_hash, canonical_request, auth_header;
+            httplib::Headers headers;
+            Date date = Date();
+
+            payload_hash = Crypto::hash::sha256(buffer,buffer_size);
+
+            canonical_request = generate_canonical_request(method,path,query_parameters,bucket_,payload_hash,date);
             auth_header = awsv4->get_auth_header(date, canonical_request);
 
             headers = {
@@ -218,36 +294,16 @@ public:
                 { "x-amz-date", date.to_iso8601('\0',true,"utc") },
                 { "Authorization", auth_header }
             };
-            res = cli->Post(("/"+filename+"?uploadId="+upload_id).c_str(),headers,complete_xml, "text-/xml");
 
-            if ( res.error() != httplib::Error::Success || res->status != 200 ) {
-                std::cerr << std::fixed << Date::millis()/1000.0 << " ";
-                std::cerr << "[____AWS] Failed Multipart upload "+filename+" on complete upload request" << std::endl;
-                return res->status;
+            if (method == "POST") {
+                return cli->Post((path+"?"+query_parameters).c_str(),headers,buffer,buffer_size,c_type.c_str());
+            } else if (method == "PUT") {
+                return cli->Put((path+"?"+query_parameters).c_str(),headers,buffer,buffer_size,c_type.c_str());
             }
 
-            return res->status;
+            return httplib::Result{nullptr, httplib::Error::Unknown};;
 
         }
-
-        // TODO: abort_upload
-        // TODO: complete_upload: request list of parts to S3 and form last request with this response
-
-        ~MultipartUpload()
-        {
-            delete awsv4;
-            delete cli;
-        }
-
-        protected:
-        std::string bucket_, region_, access_key_, secret_key_;
-
-        private:
-        const std::string content_type = "application/x-compressed-tar";
-
-        std::string url;
-        AWSV4 *awsv4;
-        httplib::Client *cli;
 
         std::string generate_canonical_request(
           const std::string method,
@@ -271,7 +327,7 @@ public:
             return canonical_request;
         }
 
-        std::string generate_xml_complete_mpu(MPUPart *parts_list, unsigned int parts) {
+        std::string generate_xml_complete_mpu() {
 
             std::string xml_res = "<CompleteMultipartUpload>\n";
             for (int i=0; i < parts; i++) {

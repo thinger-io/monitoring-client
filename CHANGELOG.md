@@ -9,10 +9,12 @@ All notable changes to this project will be documented in this file.
 - Tag configurable in backup resource
 - Backup, Restore and Cmd resources may call endpoint on finished
 - Added default tag and endpoint for backup and restore resources
+- Added platform version as resource
 
 ### Fix
 - Segmentation fault when checking internal interface IP
 - Backup and restore resources accessible once backups property is set without restarting
+- Backup and restore are now asyncronous and blocking between each other
 
 ## [0.0.4] - 2022-03-14
 ### Added

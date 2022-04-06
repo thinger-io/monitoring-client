@@ -103,10 +103,18 @@ public:
                 };
             }
 
+            backup_ = [this](pson& in, pson& out) {
 
-                backup_ = [this](pson& in, pson& out) {
+                if (config_.has_backups_system()) {
 
-                  if (config_.has_backups_system()) {
+                    if (thread_backup.joinable()) {
+                        out["status"] = "Already executing";
+                        return;
+                    }
+                    if (thread_restore.joinable()) {
+                        out["status"] = "Restore executing";
+                        return;
+                    }
 
                     std::string tag = in["tag"];
                     std::string endpoint = in["endpoint"];
@@ -117,46 +125,67 @@ public:
 
                     auto lambda = [this](std::string tag, std::string endpoint) {
 
-                        ThingerMonitorBackup *backup = NULL;
+                        std::unique_ptr<ThingerMonitorBackup> backup{}; // as nullptr
                         // Add new possible options for backup systems
                         if (config_.get_backups_system() == "platform") {
-                            backup = new PlatformBackup(config_, hostname, tag);
+                            backup = std::unique_ptr<ThingerMonitorBackup>{new PlatformBackup(config_, hostname, tag)};
                         }
+
+                        json data;
+                        data["device"]    = config_.get_device_id();
+                        data["hostname"]  = hostname;
+                        data["backup"]    = {};
+                        data["backup"]["operations"] = {};
 
                         std::cout << std::fixed << Date::millis()/1000.0 << " ";
                         std::cout << "[_BACKUP] Creating backup" << std::endl;
-                        backup->create();
+                        data["backup"]["operations"]["backup"] = backup->backup();
                         std::cout << std::fixed << Date::millis()/1000.0 << " ";
                         std::cout << "[_BACKUP] Uploading backup" << std::endl;
-                        backup->upload();
+                        data["backup"]["operations"]["upload"] = backup->upload();
                         std::cout << std::fixed << Date::millis()/1000.0 << " ";
                         std::cout << "[_BACKUP] Cleaning backup temporary files" << std::endl;
-                        backup->clean();
+                        data["backup"]["operations"]["clean"] = backup->clean();
 
-                        if (!endpoint.empty()) {
-                            json payload;
-                            payload["device"] = config_.get_device_id();
-                            payload["hostname"] = hostname;
-                            Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, payload, config_.get_server_url(), config_.get_server_secure());
+                        data["backup"]["status"] = true;
+                        for (auto& element : data["backup"]["operations"]) {
+                            if (!element["status"].get<bool>()) {
+                                data["backup"]["status"] = false;
+                                break;
+                            }
                         }
 
-                        delete backup;
+                        if (!endpoint.empty())
+                            Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, data, config_.get_server_url(), config_.get_server_secure());
+
+                        std::cout << "Ending backup 1" << std::endl;
+                        return;
+                        std::cout << "Ending backup 2" << std::endl;
+
                     };
 
                     if (!tag.empty()) {
                         out["status"] = "Launched";
-                        std::thread thread(lambda, endpoint, tag);
-                        thread.detach(); // TODO: ideally treat if something goes wrong?
+                        thread_backup = std::thread(lambda, tag, endpoint);
                     }
-                  } else {
+                } else {
                     out["status"] = "ERROR";
                     out["error"] = "Can't launch backup. Set backups property.";
-                  }
-                };
+                }
+            };
 
-                restore_ = [this](pson& in, pson& out) {
+            restore_ = [this](pson& in, pson& out) {
 
-                  if (config_.has_backups_system()) {
+                if (config_.has_backups_system()) {
+
+                    if (thread_restore.joinable()) {
+                        out["status"] = "Already executing";
+                        return;
+                    }
+                    if (thread_backup.joinable()) {
+                        out["status"] = "Wait until backup finishes";
+                        return;
+                    }
 
                     std::string tag = in["tag"];
                     std::string endpoint = in["endpoint"];
@@ -166,41 +195,44 @@ public:
                     in["endpoint"] = "restore_finished";
 
                     auto lambda = [this](std::string tag, std::string endpoint) {
-                        ThingerMonitorRestore *restore = NULL;
+
+                        std::unique_ptr<ThingerMonitorRestore> restore{};
                         // Add new possible options for backup systems
                         if (config_.get_backups_system() == "platform") {
-                            restore = new PlatformRestore(config_, hostname, tag);
+                            restore = std::unique_ptr<ThingerMonitorRestore>{new PlatformRestore(config_, hostname, tag)};
                         }
+
+                        json data;
+                        data["device"]    = config_.get_device_id();
+                        data["hostname"]  = hostname;
+                        data["restore"]   = {};
+                        data["restore"]["operations"] = {};
 
                         std::cout << std::fixed << Date::millis()/1000.0 << " ";
                         std::cout << "[___RSTR] Downloading backup" << std::endl;
-                        restore->download();
+                        data["restore"]["operations"]["download"] = restore->download();
                         std::cout << std::fixed << Date::millis()/1000.0 << " ";
                         std::cout << "[___RSTR] Restoring backup" << std::endl;
-                        restore->restore();
+                        data["restore"]["operations"]["restore"] = restore->restore();
                         std::cout << std::fixed << Date::millis()/1000.0 << " ";
                         std::cout << "[___RSTR] Cleaning backup temporary files" << std::endl;
-                        restore->clean();
+                        data["restore"]["operations"]["clean"] = restore->clean();
                         if (!endpoint.empty()) {
                             json payload;
-                            payload["device"] = config_.get_device_id();
-                            payload["hostname"] = hostname;
                             Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, payload, config_.get_server_url(), config_.get_server_secure());
                         }
 
-                        delete restore;
                     };
 
                     if (!tag.empty()) {
                         out["status"] = "Launched";
-                        std::thread thread(lambda, tag, endpoint);
-                        thread.detach(); // TODO: ideally treat if something goes wrong?
+                        thread_restore = std::thread(lambda, tag, endpoint);
                     }
-                  } else {
+                } else {
                     out["status"] = "ERROR";
                     out["error"] = "Can't launch restore. Set backups property.";
-                  }
-                };
+                }
+            };
 
             monitor_ >> [this](pson& out) {
 
@@ -229,6 +261,7 @@ public:
 
                 if (current_seconds >= (every1d + 60*60*24)) {
                     getPublicIPAddress();
+                    getConsoleVersion();
                     every1d = current_seconds;
                 }
 
@@ -299,6 +332,10 @@ public:
                 }
                 out["nw_public_ip"] = public_ip;
 
+                if (config_.get_backups_system() == "platform") {
+                    out["console_version"] = console_version;
+                }
+
                 // RAM
                 retrieve_ram();
                 out["ram_total"] = (double)ram_total / kbtogb;
@@ -331,6 +368,10 @@ public:
     }
 
     virtual ~ThingerMonitor(){
+        if (thread_backup.joinable())
+            thread_backup.join();
+        if (thread_restore.joinable())
+            thread_restore.join();
     }
 
     void reload_configuration() {
@@ -422,6 +463,9 @@ protected:
     unsigned long every5m = 0;
     unsigned long every1d = 0;
 
+    // thinger.io platform
+    std::string console_version;
+
     // -- SYSTEM INFO -- //
     void retrieve_updates() {
         // We will use default ubuntu server notifications
@@ -476,6 +520,7 @@ protected:
     }
 
 private:
+    std::thread thread_backup, thread_restore;
 
     std::string getIPAddress(std::string interface){
         std::string ipAddress="Unable to get IP Address";
@@ -653,6 +698,14 @@ private:
             dv.total_io[1][j++] = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch()).count();
         }
+    }
+
+    // -- THINGER PLATFORM -- //
+    void getConsoleVersion() {
+        httplib::Client cli("http://127.0.0.1");
+        auto res = cli.Get("/v1/server/version");
+        auto res_json = json::parse(res->body);
+        console_version = res_json["version"].get<std::string>();
     }
 
 };
