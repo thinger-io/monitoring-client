@@ -19,9 +19,10 @@ jobs:
 
       - name: Set up dependencies
         run: |
+          sudo apt update
           sudo apt install -y libarchive-tools libarchive-dev
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
 
@@ -66,4 +67,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          sonar-scanner --define sonar.host.url="${{ env.SONAR_SERVER_URL }}" --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}" --define sonar.projectVersion="${{ steps.build_version.outputs.version }}"
+          branch="master"
+          if [[ ${{ steps.build_version.outputs.version }} == *"-alpha"* ]]; then branch="develop"; fi
+          sonar-scanner \
+            --define sonar.host.url="${{ env.SONAR_SERVER_URL }}" \
+            --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}" \
+            --define sonar.projectVersion="${{ steps.build_version.outputs.version }}" \
+            --define sonar.branch.name="$branch" \
+            --define sonar.branch.target="$branch"
