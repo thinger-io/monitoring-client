@@ -19,6 +19,8 @@ public:
 
     std::string to_iso8601(const char del = '-', const bool extended = false, const std::string timezone = "local") {
 
+        struct tm time;
+
         std::string format =
             std::string("%Y").append(std::string(1,del))+
             std::string("%m").append(std::string(1,del))+
@@ -33,18 +35,23 @@ public:
 
         format.erase(remove(format.begin(), format.end(), '\0'), format.end()); //remove '\0' from string
 
-        if (timezone == "utc" || timezone == "gmt")
-            ss << std::put_time(std::gmtime(&date), format.c_str());
-        else // (timezone == "local")
-            ss << std::put_time(std::localtime(&date), format.c_str());
+        if (timezone == "utc" || timezone == "gmt") {
+            gmtime_r(&date, &time); // Compliant
+            ss << std::put_time(&time, format.c_str());
+        } else { // (timezone == "local")
+            localtime_r(&date, &time); // Compliant
+            ss << std::put_time(&time, format.c_str());
+        }
 
         return ss.str();
     }
 
     std::string to_rfc5322() {
 
+        struct tm time;
         std::stringstream ss;
-        ss << std::put_time(std::localtime(&date), "%a, %d %b %Y %T %z");
+        localtime_r(&date, &time); // Compliant
+        ss << std::put_time(&time, "%a, %d %b %Y %T %z");
 
         return ss.str();
 
