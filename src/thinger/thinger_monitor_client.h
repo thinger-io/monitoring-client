@@ -21,8 +21,6 @@
 #include "system/platform/backup.h"
 #include "system/platform/restore.h"
 
-using namespace std::chrono_literals;
-
 namespace fs = std::filesystem;
 
 #if OPEN_SSL
@@ -37,7 +35,7 @@ namespace fs = std::filesystem;
   #define VERSION "Not set"
 #endif
 
-#define SECTOR_SIZE 512
+constexpr int SECTOR_SIZE = 512;
 
 // Conversion constants. //
 const long minute = 60;
@@ -97,7 +95,7 @@ public:
 
                 update_ = [this](pson& in, pson& out) { // needs declaration of input for dashboard button
                     if (in) {
-                        if ( f1.future.valid() && f1.future.wait_for(0s)  != std::future_status::ready ) {
+                        if ( f1.future.valid() && f1.future.wait_for(std::chrono::seconds(0))  != std::future_status::ready ) {
                             if ( f1.task == "update" )
                                 out["status"] = "Already executing";
                             else
@@ -117,7 +115,7 @@ public:
 
                 update_distro_ = [this](pson& in, pson& out) { // needs declaration of input for dashboard button
                     if (in) {
-                        if ( f1.future.valid() && f1.future.wait_for(0s)  != std::future_status::ready ) {
+                        if ( f1.future.valid() && f1.future.wait_for(std::chrono::seconds(0))  != std::future_status::ready ) {
                             if ( f1.task == "update_distro" )
                                 out["status"] = "Already executing";
                             else
@@ -143,11 +141,11 @@ public:
                     std::string tag = in["tag"];
                     std::string endpoint = in["endpoint"];
 
-                    Date today = Date();
+                    auto today = Date();
                     in["tag"] = today.to_iso8601();
                     in["endpoint"] = "backup_finished";
 
-                    if ( f1.future.valid() && f1.future.wait_for(0s)  != std::future_status::ready ) {
+                    if ( f1.future.valid() && f1.future.wait_for(std::chrono::seconds(0))  != std::future_status::ready ) {
                         if ( f1.task == "backup" )
                             out["status"] = "Already executing";
                         else
@@ -161,7 +159,7 @@ public:
                         std::unique_ptr<ThingerMonitorBackup> backup{}; // as nullptr
                         // Add new possible options for backup systems
                         if (config_.get_backups_system() == "platform") {
-                            backup = std::unique_ptr<ThingerMonitorBackup>{new PlatformBackup(config_, hostname, tag)};
+                            backup = std::make_unique<PlatformBackup>(config_, hostname, tag);
                         }
 
                         json data;
@@ -216,11 +214,11 @@ public:
                     std::string tag = in["tag"];
                     std::string endpoint = in["endpoint"];
 
-                    Date today = Date();
+                    auto today = Date();
                     in["tag"] = today.to_iso8601();
                     in["endpoint"] = "restore_finished";
 
-                    if ( f1.future.valid() && f1.future.wait_for(0s)  != std::future_status::ready ) {
+                    if ( f1.future.valid() && f1.future.wait_for(std::chrono::seconds(0))  != std::future_status::ready ) {
                         if ( f1.task == "restore" )
                             out["status"] = "Already executing";
                         else
@@ -233,7 +231,7 @@ public:
                         std::unique_ptr<ThingerMonitorRestore> restore{};
                         // Add new possible options for backup systems
                         if (config_.get_backups_system() == "platform") {
-                            restore = std::unique_ptr<ThingerMonitorRestore>{new PlatformRestore(config_, hostname, tag)};
+                            restore = std::make_unique<PlatformRestore>(config_, hostname, tag);
                         }
 
                         json data;
@@ -407,8 +405,7 @@ public:
             };
     }
 
-    virtual ~ThingerMonitor(){
-    }
+    virtual ~ThingerMonitor() = default;
 
     void reload_configuration() {
         interfaces_.clear();
@@ -417,19 +414,19 @@ public:
 
         config_.reload_config();
 
-        for (auto fs_path : config_.get_filesystems()) {
+        for (const auto& fs_path : config_.get_filesystems()) {
             filesystem fs;
             fs.path = fs_path;
             filesystems_.push_back(fs);
         }
 
-        for (auto dv_name : config_.get_drives()) {
+        for (const auto& dv_name : config_.get_drives()) {
             drive dv;
             dv.name = dv_name;
             drives_.push_back(dv);
         }
 
-        for (auto ifc_name : config_.get_interfaces()) {
+        for (const auto& ifc_name : config_.get_interfaces()) {
             interface ifc;
             ifc.name = ifc_name;
             ifc.internal_ip = getIPAddress(ifc_name);
@@ -439,6 +436,62 @@ public:
     }
 
 protected:
+
+    // -- SYSTEM INFO -- //
+    void retrieve_updates() {
+        // We will use default ubuntu server notifications
+        fs::path f("/var/lib/update-notifier/updates-available");
+        if (fs::exists(f)) {
+            std::ifstream updatesinfo ("/var/lib/update-notifier/updates-available", std::ifstream::in);
+            std::string line;
+            updatesinfo >> normal_updates;
+            if(getline(updatesinfo, line)) {
+                updatesinfo >> security_updates;
+            } else {
+                security_updates = 0;
+            }
+        }
+    }
+
+    void retrieve_restart_status() {
+        fs::path f("/var/run/reboot-required");
+        if (fs::exists(f)) {
+            system_restart = true;
+        } else {
+            system_restart = false;
+        }
+    }
+
+    std::string cmd(const char *in) {
+        std::array<char, 128> buffer;
+        std::string result;
+        std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(in, "r"), &pclose);
+        if (!pipe) {
+            return "Failed to run command\n";
+        }
+
+        while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+            result += buffer.data();
+        }
+        return result;
+    }
+
+    void reboot() {
+        system("sudo reboot");
+    }
+
+    void update() {
+        // System upgrade. By default it does not overwrite config files if a package has a newer version
+        system("sudo apt -y update && sudo DEBIAN_FRONTEND=noninteractive DEBIAN_PRIORITY=critical UCF_FORCE_CONFFOLD=1 apt -qq -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold upgrade");
+    }
+
+    void update_distro() {
+        // Full unattended distro upgrade
+        system("sudo apt -y update && sudo do-release-upgrade -f DistUpgradeViewNonInteractive");
+    }
+
+private:
+
     // thinger resources
     thinger_client& client_;
     thinger::thinger_resource& monitor_;
@@ -508,77 +561,23 @@ protected:
     // thinger.io platform
     std::string console_version;
 
-    // -- SYSTEM INFO -- //
-    void retrieve_updates() {
-        // We will use default ubuntu server notifications
-        fs::path f("/var/lib/update-notifier/updates-available");
-        if (fs::exists(f)) {
-            std::ifstream updatesinfo ("/var/lib/update-notifier/updates-available", std::ifstream::in);
-            std::string line;
-            updatesinfo >> normal_updates;
-            if(getline(updatesinfo, line)) {
-                updatesinfo >> security_updates;
-            } else {
-                security_updates = 0;
-            }
-        }
-    }
-
-    void retrieve_restart_status() {
-        fs::path f("/var/run/reboot-required");
-        if (fs::exists(f)) {
-            system_restart = true;
-        } else {
-            system_restart = false;
-        }
-    }
-
-    std::string cmd(const char *in) {
-        std::array<char, 128> buffer;
-        std::string result;
-        std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(in, "r"), pclose);
-        if (!pipe) {
-            return "Failed to run command\n";
-        }
-
-        while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
-            result += buffer.data();
-        }
-        return result;
-    }
-
-    void reboot() {
-        system("sudo reboot");
-    }
-
-    void update() {
-        // System upgrade. By default it does not overwrite config files if a package has a newer version
-        system("sudo apt -y update && sudo DEBIAN_FRONTEND=noninteractive DEBIAN_PRIORITY=critical UCF_FORCE_CONFFOLD=1 apt -qq -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold upgrade");
-    }
-
-    void update_distro() {
-        // Full unattended distro upgrade
-        system("sudo apt -y update && sudo do-release-upgrade -f DistUpgradeViewNonInteractive");
-    }
-
-private:
-
     std::string getIPAddress(std::string interface){
         std::string ipAddress="Unable to get IP Address";
-        struct ifaddrs *interfaces = NULL;
-        struct ifaddrs *temp_addr = NULL;
+        struct ifaddrs *interfaces = nullptr;
+        struct ifaddrs *temp_addr = nullptr;
         int success = 0;
         // retrieve the current interfaces - returns 0 on success
         success = getifaddrs(&interfaces);
         if (success == 0) {
             // Loop through linked list of interfaces
             temp_addr = interfaces;
-            while(temp_addr != NULL) {
-                if(temp_addr->ifa_addr != NULL && temp_addr->ifa_addr->sa_family == AF_INET) {
+            while(temp_addr != nullptr) {
+                if(temp_addr->ifa_addr != nullptr
+                  && temp_addr->ifa_addr->sa_family == AF_INET
+                  && temp_addr->ifa_name == interface)
+                {
                     // Check if interface is the default interface
-                    if(temp_addr->ifa_name == interface){
-                        ipAddress=inet_ntoa(((struct sockaddr_in*)temp_addr->ifa_addr)->sin_addr);
-                    }
+                    ipAddress=inet_ntoa(((struct sockaddr_in*)temp_addr->ifa_addr)->sin_addr);
                 }
                 temp_addr = temp_addr->ifa_next;
             }

@@ -20,19 +20,19 @@ namespace AWS {
 
     bool multipart_upload_to_s3(const std::string& file_path, std::string& bucket, std::string& region, std::string& access_key, std::string& secret_key) {
 
-        S3::MultipartUpload mpu = S3::MultipartUpload(bucket, region, access_key, secret_key, file_path);
+        auto mpu = S3::MultipartUpload(bucket, region, access_key, secret_key, file_path);
 
         return mpu.upload();
     }
 
-    bool upload_to_s3(const std::string file_path, const std::string bucket, const std::string region, const std::string access_key, const std::string secret_key) {
+    bool upload_to_s3(const std::string& file_path, const std::string& bucket, const std::string& region, const std::string& access_key, const std::string& secret_key) {
 
         const std::string content_type = "application/x-compressed-tar";
 
         httplib::Client cli("https://"+bucket+".s3-"+region+".amazonaws.com");
         cli.set_write_timeout(120, 0); // 5 seconds
 
-        Date date = Date();
+        auto date = Date();
         auto date_string = date.to_rfc5322();
         std::string filename = std::filesystem::path(file_path).filename();
 
@@ -60,13 +60,13 @@ namespace AWS {
 
     }
 
-    bool download_from_s3(const std::string file_path, const std::string bucket, const std::string region, const std::string access_key, const std::string secret_key) {
+    bool download_from_s3(const std::string& file_path, const std::string& bucket, const std::string& region, const std::string& access_key, const std::string& secret_key) {
 
         const std::string content_type = "application/x-compressed-tar";
 
         httplib::Client cli("https://"+bucket+".s3-"+region+".amazonaws.com");
 
-        Date date = Date();
+        auto date = Date();
         auto date_string = date.to_rfc5322();
         std::string filename = std::filesystem::path(file_path).filename();
 

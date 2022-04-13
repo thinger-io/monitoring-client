@@ -65,9 +65,9 @@ public:
 
         if ( storage == "S3" )
             data["operation"]["download_s3"] = {};
-            if (AWS::download_from_s3(backup_folder+"/"+file_to_download, bucket, region, access_key, secret_key))
+            if (AWS::download_from_s3(backup_folder+"/"+file_to_download, bucket, region, access_key, secret_key)) {
                 data["operation"]["download_s3"]["status"] = true;
-            else {
+            } else {
                 data["operation"]["download_s3"]["status"] = false;
                 data["operation"]["download_s3"]["error"].push_back("Failed downloading from S3");
             }
@@ -104,21 +104,21 @@ private:
     std::string access_key;
     std::string secret_key;
 
-    json create_backup_folder() {
+    json create_backup_folder() const {
         json data;
 
         data["status"] = true;
-        if ( !std::filesystem::exists(backup_folder+"/"+tag()) ) {
-            if ( !std::filesystem::create_directories(backup_folder+"/"+tag()) ) {
-                data["status"] = false;
-                data["error"] = "Failed to create backup directory";
-            }
+        if ( !std::filesystem::exists(backup_folder+"/"+tag())
+          && !std::filesystem::create_directories(backup_folder+"/"+tag()) ) {
+
+            data["status"] = false;
+            data["error"] = "Failed to create backup directory";
         }
 
         return data;
     }
 
-    json decompress_backup() {
+    json decompress_backup() const {
         json data;
 
         data["status"] = Tar::extract(backup_folder+"/"+file_to_download);
@@ -126,7 +126,7 @@ private:
         return data;
     }
 
-    json restore_thinger() {
+    json restore_thinger() const {
         json data;
 
         if (!Docker::Container::stop("thinger")) {
@@ -154,7 +154,7 @@ private:
         return data;
     }
 
-    json restore_mongodb() {
+    json restore_mongodb() const {
         json data;
         // get mongodb root password
         std::ifstream compose (config().get_backups_compose_path()+"/docker-compose.yml", std::ifstream::in);
@@ -175,17 +175,18 @@ private:
             data["error"].push_back("Failed copying backup to mongodb container");
             return data;
         }
-        if (!Docker::Container::exec("mongodb", "mongorestore /dump -u thinger -p "+mongo_password))
+        if (!Docker::Container::exec("mongodb", "mongorestore /dump -u thinger -p "+mongo_password)) {
             data["status"] = false;
             data["error"].push_back("Failed restoring mongodb backup");
             return data;
+        }
 
         data["status"] = true;
 
         return data;
     }
 
-    json restore_influxdb() {
+    json restore_influxdb() const {
         json data;
 
         if (std::filesystem::exists(config().get_backups_data_path()+"/influxdb2")) {
@@ -227,7 +228,7 @@ private:
         return data;
     }
 
-    json restore_plugins() {
+    json restore_plugins() const {
 
         json data;
 
@@ -274,7 +275,7 @@ private:
         return data;
     }
 
-    bool clean_restore() {
+    bool clean_restore() const {
         bool status = true;
         status = status && std::filesystem::remove_all(backup_folder+"/"+file_to_download);
         status = status && std::filesystem::remove_all(backup_folder+"/"+tag());
@@ -287,7 +288,7 @@ private:
         return status;
     }
 
-    bool restart_platform() {
+    bool restart_platform() const {
         json data;
         if (!Docker::Container::restart("mongodb"))
             data["error"].push_back("Failed restaring mongodb container");

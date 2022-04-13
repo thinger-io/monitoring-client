@@ -14,7 +14,7 @@ public:
 
         public:
 
-        AWSV4(std::string& access_key, std::string& secret_key, std::string& region, const std::string service) :
+        AWSV4(std::string& access_key, std::string& secret_key, std::string& region, const std::string& service) :
             access_key_(access_key),
             secret_key_(secret_key),
             region_(region),
@@ -37,7 +37,7 @@ public:
 
         std::string access_key_, secret_key_, region_, service_;
 
-        std::string generate_key(Date date) {
+        std::string generate_key(Date date) const {
 
             const std::string kDate = Crypto::hash::hmac_sha256("AWS4"+secret_key_, date.to_iso8601('\0',false,"utc"));
             const std::string kRegion = Crypto::hash::hmac_sha256(kDate, region_);
@@ -47,7 +47,7 @@ public:
             return kSigning;
         }
 
-        std::string generate_string_to_sign(Date& date, std::string& canonical_request) {
+        std::string generate_string_to_sign(Date& date, std::string& canonical_request) const {
 
             const std::string string_to_sign =
 
@@ -82,10 +82,10 @@ public:
             file_path_(file_path)
         {
             url = bucket+".s3-"+region+".amazonaws.com";
-            awsv4 = new AWSV4(access_key, secret_key, region, "s3");
+            awsv4 = std::make_unique<AWSV4>(access_key, secret_key, region, "s3");
 
             // Initialize http client
-            cli = new httplib::Client("https://"+url);
+            cli = std::make_unique<httplib::Client>("https://"+url);
             httplib::Headers headers = {
                 { "Host", bucket_+".s3-"+region_+".amazonaws.com" },
             };
@@ -102,7 +102,7 @@ public:
             if (file_size % buffer_size != 0) parts = parts+1;
 
             // TODO: request list of parts to S3 and form XML body to complete from the response
-            parts_list = new MPUPart[parts+1];
+            parts_list = std::unique_ptr<MPUPart[]>{new MPUPart[parts+1]};
 
             filename = std::filesystem::path(file_path_).filename();
 
@@ -133,33 +133,26 @@ public:
 
         }
 
+        ~MultipartUpload() = default;
 
-        ~MultipartUpload()
-        {
-            delete awsv4;
-            delete cli;
-            delete[] parts_list;
-        }
-
-        protected:
+        private:
         std::string bucket_, region_, access_key_, secret_key_, file_path_, filename;
         unsigned int parts;
 
-        private:
         const std::string content_type = "application/x-compressed-tar";
         const size_t buffer_size = 10<<20; // 10 Megabytes -> with a max of 10.000 parts allows a file of up to 100GiB
 
         std::string upload_id = "";
 
         std::string url;
-        AWSV4 *awsv4;
-        httplib::Client *cli;
+        std::unique_ptr<AWSV4> awsv4{};
+        std::unique_ptr<httplib::Client> cli{};
 
         struct MPUPart {
             unsigned int part_id;
             std::string ETag;
         };
-        MPUPart *parts_list; // TODO: request list of parts to S3 and form XML body to complete from the response
+        std::unique_ptr<MPUPart[]> parts_list; // TODO: request list of parts to S3 and form XML body to complete from the response
 
         bool initiate_upload() {
 
@@ -203,7 +196,7 @@ public:
             httplib::Headers headers;
             Date date;
 
-            char *buffer = new char[buffer_size];
+            auto *buffer = new char[buffer_size];
 
             // Open and calculate part size
             std::ifstream file(file_path_);
@@ -282,11 +275,11 @@ public:
         {
             std::string payload_hash, canonical_request, auth_header;
             httplib::Headers headers;
-            Date date = Date();
+            auto date = Date();
 
             payload_hash = Crypto::hash::sha256(buffer,buffer_size);
 
-            canonical_request = generate_canonical_request(method,path,query_parameters,bucket_,payload_hash,date);
+            canonical_request = generate_canonical_request(method,path,query_parameters,payload_hash,date);
             auth_header = awsv4->get_auth_header(date, canonical_request);
 
             headers = {
@@ -306,12 +299,11 @@ public:
         }
 
         std::string generate_canonical_request(
-          const std::string method,
-          const std::string path,
-          const std::string query_parameters,
-          std::string& bucket,
+          const std::string& method,
+          const std::string& path,
+          const std::string& query_parameters,
           std::string& payload_hash,
-          Date date)
+          Date date) const
         {
 
             const std::string canonical_request =
@@ -327,7 +319,7 @@ public:
             return canonical_request;
         }
 
-        std::string generate_xml_complete_mpu() {
+        std::string generate_xml_complete_mpu() const {
 
             std::string xml_res = "<CompleteMultipartUpload>\n";
             for (int i=0; i < parts; i++) {

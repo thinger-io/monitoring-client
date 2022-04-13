@@ -59,9 +59,9 @@ public:
 
         if ( storage == "S3" )
             data["operation"]["upload_s3"] = {};
-            if(AWS::multipart_upload_to_s3(backup_folder+"/"+file_to_upload, bucket, region, access_key, secret_key))
+            if(AWS::multipart_upload_to_s3(backup_folder+"/"+file_to_upload, bucket, region, access_key, secret_key)) {
                 data["operation"]["upload_s3"]["status"] = true;
-            else {
+            } else {
                 data["operation"]["upload_s3"]["status"] = false;
                 data["operation"]["upload_s3"]["error"].push_back("Failed uploading to S3");
             }
@@ -98,7 +98,7 @@ private:
 
     std::string file_to_upload;
 
-   json create_backup_folder() {
+   json create_backup_folder() const {
         json data;
 
         std::filesystem::remove_all(backup_folder+"/"+tag());
@@ -111,7 +111,7 @@ private:
         return data;
     }
 
-    json backup_thinger() {
+    json backup_thinger() const {
         json data;
 
         // With tar creation instead of copying to folder we maintain ownership and permissions
@@ -122,7 +122,7 @@ private:
         return data;
     }
 
-    json backup_mongodb() {
+    json backup_mongodb() const {
         json data;
         // get mongodb root password
         std::ifstream compose (config().get_backups_compose_path()+"/docker-compose.yml", std::ifstream::in);
@@ -155,7 +155,7 @@ private:
         return data;
     }
 
-    json backup_influxdb() {
+    json backup_influxdb() const {
         json data;
 
         if (std::filesystem::exists(config().get_backups_data_path()+"/influxdb2")) {
@@ -201,7 +201,7 @@ private:
 
     }
 
-    json backup_plugins() {
+    json backup_plugins() const {
 
         json data;
 
@@ -248,7 +248,7 @@ private:
         return data;
     }
 
-    json compress_backup() {
+    json compress_backup() const {
         json data;
 
         data["status"] = Tar::create(backup_folder+"/"+tag(), backup_folder+"/"+file_to_upload);
@@ -256,7 +256,7 @@ private:
         return data;
     }
 
-    bool clean_backup() {
+    bool clean_backup() const {
         bool status = true;
         status = status && std::filesystem::remove_all(backup_folder+"/"+tag());
         status = status && std::filesystem::remove_all(backup_folder+"/"+file_to_upload);

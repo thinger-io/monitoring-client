@@ -16,14 +16,12 @@ namespace Crypto {
     std::string to_hex(std::string string) {
 
         unsigned int len = string.length();
-        //unsigned char hash[len];
-        unsigned char* hash = (unsigned char*)string.c_str();
+        auto hash = (unsigned char*)string.c_str();
 
         std::stringstream ss;
         ss << std::hex << std::setfill('0');
         for (int i = 0; i < len; i++) {
             ss << std::hex << std::setw(2)  << (unsigned int)hash[i];
-            //ss << std::hex << std::setw(2)  << string.at(i);
         }
 
         return ss.str();
@@ -70,13 +68,15 @@ namespace Crypto {
                 bits_collected += 8;
                 while (bits_collected >= 6) {
                     bits_collected -= 6;
-                    retval[outpos++] = b64_table[(accumulator >> bits_collected) & 0x3fu];
+                    retval[outpos] = b64_table[(accumulator >> bits_collected) & 0x3fu];
+                    outpos++;
                 }
             }
             if (bits_collected > 0) { // Any trailing bits that are missing.
                 assert(bits_collected < 6);
                 accumulator <<= 6 - bits_collected;
-                retval[outpos++] = b64_table[accumulator & 0x3fu];
+                retval[outpos] = b64_table[accumulator & 0x3fu];
+                outpos++;
             }
             assert(outpos >= (retval.size() - 2));
             assert(outpos <= retval.size());
@@ -118,7 +118,7 @@ namespace Crypto {
             unsigned char hash[32];
 
             HMAC_CTX *hmac = HMAC_CTX_new();
-            HMAC_Init_ex(hmac, &key[0], key.length(), EVP_sha1(), NULL);
+            HMAC_Init_ex(hmac, &key[0], key.length(), EVP_sha1(), nullptr);
             HMAC_Update(hmac, (unsigned char*)&msg[0], msg.length());
             unsigned int len = 32;
             HMAC_Final(hmac, hash, &len);
@@ -148,7 +148,7 @@ namespace Crypto {
             unsigned char hash[64];
 
             HMAC_CTX *hmac = HMAC_CTX_new();
-            HMAC_Init_ex(hmac, &key[0], key.length(), EVP_sha256(), NULL);
+            HMAC_Init_ex(hmac, &key[0], key.length(), EVP_sha256(), nullptr);
             HMAC_Update(hmac, (unsigned char*)&msg[0], msg.length());
             unsigned int len = 64;
             HMAC_Final(hmac, hash, &len);
