@@ -15,13 +15,13 @@ public:
     PlatformBackup(ThingerMonitorConfig& config, const std::string& hostname, const std::string& tag)
       : ThingerMonitorBackup(config,hostname, tag) {
 
-        storage = config_.get_backups_storage();
-        bucket = config_.get_storage_bucket(storage);
-        region = config_.get_storage_region(storage);
-        access_key = config_.get_storage_access_key(storage);
-        secret_key = config_.get_storage_secret_key(storage);
+        storage = this->config().get_backups_storage();
+        bucket = this->config().get_storage_bucket(storage);
+        region = this->config().get_storage_region(storage);
+        access_key = this->config().get_storage_access_key(storage);
+        secret_key = this->config().get_storage_secret_key(storage);
 
-        file_to_upload = name_+"_"+tag_+".tar.gz";
+        file_to_upload = this->name()+"_"+this->tag()+".tar.gz";
 
     }
 
@@ -87,7 +87,7 @@ public:
         return data;
     }
 
-protected:
+private:
     const std::string backup_folder = "/tmp/backup";
 
     std::string storage;
@@ -98,13 +98,11 @@ protected:
 
     std::string file_to_upload;
 
-private:
-
    json create_backup_folder() {
         json data;
 
-        std::filesystem::remove_all(backup_folder+"/"+tag_);
-        if (!std::filesystem::create_directories(backup_folder+"/"+tag_)) {
+        std::filesystem::remove_all(backup_folder+"/"+tag());
+        if (!std::filesystem::create_directories(backup_folder+"/"+tag())) {
           data["status"]  = false;
           data["error"].push_back("Failed to create backup directory");
         } else
@@ -118,8 +116,8 @@ private:
 
         // With tar creation instead of copying to folder we maintain ownership and permissions
         data["status"] = true;
-        if (std::filesystem::exists(config_.get_backups_data_path()+"/thinger/users"))
-            data["status"] = Tar::create(config_.get_backups_data_path()+"/thinger/users", backup_folder+"/"+tag_+"/thinger-"+tag_+".tar");
+        if (std::filesystem::exists(config().get_backups_data_path()+"/thinger/users"))
+            data["status"] = Tar::create(config().get_backups_data_path()+"/thinger/users", backup_folder+"/"+tag()+"/thinger-"+tag()+".tar");
 
         return data;
     }
@@ -127,7 +125,7 @@ private:
     json backup_mongodb() {
         json data;
         // get mongodb root password
-        std::ifstream compose (config_.get_backups_compose_path()+"/docker-compose.yml", std::ifstream::in);
+        std::ifstream compose (config().get_backups_compose_path()+"/docker-compose.yml", std::ifstream::in);
         std::string line;
 
         std::string mongo_password;
@@ -146,7 +144,7 @@ private:
             return data;
         }
 
-        if (!Docker::Container::copy_from_container("mongodb", "/dump", backup_folder+"/"+tag_+"/mongodbdump-"+tag_+".tar")) {
+        if (!Docker::Container::copy_from_container("mongodb", "/dump", backup_folder+"/"+tag()+"/mongodbdump-"+tag()+".tar")) {
             data["status"]  = false;
             data["error"].push_back("Failed copying mongodb backup from container");
             return data;
@@ -160,9 +158,9 @@ private:
     json backup_influxdb() {
         json data;
 
-        if (std::filesystem::exists(config_.get_backups_data_path()+"/influxdb2")) {
+        if (std::filesystem::exists(config().get_backups_data_path()+"/influxdb2")) {
             // get influx token
-            std::ifstream compose (config_.get_backups_compose_path()+"/docker-compose.yml", std::ifstream::in);
+            std::ifstream compose (config().get_backups_compose_path()+"/docker-compose.yml", std::ifstream::in);
             std::string line;
 
             std::string influx_token;
@@ -179,7 +177,7 @@ private:
                 data["error"].push_back("Failed executing influxdb2 backup");
                 return data;
             }
-            if (!Docker::Container::copy_from_container("influxdb2", "/dump", backup_folder+"/"+tag_+"/influxdb2dump-"+tag_+".tar")) {
+            if (!Docker::Container::copy_from_container("influxdb2", "/dump", backup_folder+"/"+tag()+"/influxdb2dump-"+tag()+".tar")) {
                 data["status"]  = false;
                 data["error"].push_back("Failed copying influxdb2 backup from container");
                 return data;
@@ -190,7 +188,7 @@ private:
                 data["error"].push_back("Failed executing influxdb backup");
                 return data;
             }
-            if (!Docker::Container::copy_from_container("influxdb", "/dump", backup_folder+"/"+tag_+"/influxdbdump-"+tag_+".tar")) {
+            if (!Docker::Container::copy_from_container("influxdb", "/dump", backup_folder+"/"+tag()+"/influxdbdump-"+tag()+".tar")) {
                 data["status"]  = false;
                 data["error"].push_back("Failed copying influxdb backup from container");
                 return data;
@@ -207,25 +205,25 @@ private:
 
         json data;
 
-        if (!std::filesystem::create_directories(backup_folder+"/"+tag_+"/plugins")) {
+        if (!std::filesystem::create_directories(backup_folder+"/"+tag()+"/plugins")) {
             data["status"]  = false;
             data["error"].push_back("Failed creating plugins directory in backup folder");
             return data;
         }
 
-        if (! std::filesystem::exists(config_.get_backups_data_path()+"/thinger/users")) {
+        if (! std::filesystem::exists(config().get_backups_data_path()+"/thinger/users")) {
             data["status"] = true;
             data["msg"].push_back("Platform has no users");
             return data;
         }
 
-        for (const auto & p1 : fs::directory_iterator(config_.get_backups_data_path()+"/thinger/users/")) { // users
+        for (const auto & p1 : fs::directory_iterator(config().get_backups_data_path()+"/thinger/users/")) { // users
             if (! std::filesystem::exists(p1.path().string()+"/plugins/")) continue;
 
             std::string user = p1.path().filename().string();
 
             // backups networks
-            if ( Docker::Network::inspect(user, backup_folder+"/"+tag_+"/plugins") ) {
+            if ( Docker::Network::inspect(user, backup_folder+"/"+tag()+"/plugins") ) {
                 data["msg"].push_back("Backed up "+user+" docker network");
             } else {
                 data["error"].push_back("Failed backing up "+user+" docker network");
@@ -234,7 +232,7 @@ private:
             // backup plugins
             for (const auto & p2 : fs::directory_iterator(p1.path().string()+"/plugins/")) { // plugins
                 std::string container_name = user+"-"+p2.path().filename().string();
-                if (Docker::Container::inspect(container_name, backup_folder+"/"+tag_+"/plugins")) {
+                if (Docker::Container::inspect(container_name, backup_folder+"/"+tag()+"/plugins")) {
                     data["msg"].push_back("Backed up "+container_name+" docker container");
                 } else {
                     data["error"].push_back("Failed backing up "+container_name+" docker container");
@@ -253,17 +251,17 @@ private:
     json compress_backup() {
         json data;
 
-        data["status"] = Tar::create(backup_folder+"/"+tag_, backup_folder+"/"+file_to_upload);
+        data["status"] = Tar::create(backup_folder+"/"+tag(), backup_folder+"/"+file_to_upload);
 
         return data;
     }
 
     bool clean_backup() {
         bool status = true;
-        status = status && std::filesystem::remove_all(backup_folder+"/"+tag_);
+        status = status && std::filesystem::remove_all(backup_folder+"/"+tag());
         status = status && std::filesystem::remove_all(backup_folder+"/"+file_to_upload);
         status = status && Docker::Container::exec("mongodb", "rm -rf /dump");
-        if (std::filesystem::exists(config_.get_backups_data_path()+"/influxdb2")) {
+        if (std::filesystem::exists(config().get_backups_data_path()+"/influxdb2")) {
             status = status && Docker::Container::exec("influxdb2", "rm -rf /dump");
         } else {
             status = status && Docker::Container::exec("influxdb", "rm -rf /dump");
