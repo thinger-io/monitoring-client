@@ -3,15 +3,9 @@ name: Release
 on:
   push:
     branches: [ master,develop ]
-#  workflow_run:
-#    workflows: ["Build x86_64"]
-#    branches: [ master ]
-#    types:
-#      - completed
 
 jobs:
   release:
-#    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -22,7 +16,7 @@ jobs:
       id: extract_branch
 
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         fetch-depth: 0
         ref: ${{ steps.extract_branch.outputs.branch }}
@@ -30,13 +24,10 @@ jobs:
     - name: Get tag version
       run: | # official regex for semantic version: https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
         echo "tag_version=`grep -oE '(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?' run.sh | head -1`" >> $GITHUB_ENV
-        #tag_version=`grep -oE '(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?' run.sh | head -1`
-        #echo "tag_version=${tag_version}" >> $GITHUB_ENV
 
     - name: Check if tag is for develop and if it already exists
       id: check_tag
       run: |
-        #git fetch --prune --unshallow --tags
         git fetch --prune --tags
         if [ ${{ steps.extract_branch.outputs.branch }} == 'develop' ]; then
             for i in {1..100}; do
@@ -47,13 +38,12 @@ jobs:
                 fi
             done
         elif [ `git tag --list | grep -q ${{ env.tag_version }}` -ne 0 ]; then exit 1; fi
-#        echo "::set-output name=tag_version::$(echo ${{ env.tag_version }} )"
 
     - name: Get changelog body
       id: get_changelog
       run: |
         release_body=$(cat << EOF
-        $(awk '/^## \[[0-9]+/ {flag=!flag; next} flag {print}' CHANGELOG.md)
+        $(awk '/^## \[[0-9]+/,EOF' CHANGELOG.md | awk '(NR>1)' | awk '1;/^## \[[0-9]+/{exit}' | sed '$d')
         EOF
         )
         release_body="${release_body//'%'/'%25'}"
@@ -76,7 +66,6 @@ jobs:
         prerelease: ${{ steps.is_prerelease.outputs.prerelease }}
         commit: ${{ steps.extract_branch.outputs.branch }}
         tag: ${{ env.tag_version }}
-        #commit: ${{ env.GITHUB_SHA }}
         name: ${{ env.tag_version }}
         token: ${{ secrets.GH_PAT }} # can't use GITHUB_TOKEN as it will not trigger additional events
         artifacts: "install/install_thinger_monitor.sh"

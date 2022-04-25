@@ -3,7 +3,22 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.0.4] - 2022-01-10
+## [0.0.5] - 2022-04-25
+### Added
+- Backup and restore available for influxdb 2.1
+- Tag configurable in backup resource
+- Backup, Restore and Cmd resources may call endpoint on finished
+- Added default tag and endpoint for backup and restore resources
+- Added platform version as resource
+- Backup and restore return json as payload with details when calling endpoint
+
+### Fix
+- Segmentation fault when checking internal interface IP
+- Backup and restore resources accessible once backups property is set without restarting
+- Backup and restore are now asyncronous and blocking between each other
+- System update is asyncronous and blocking against backup and restore
+
+## [0.0.4] - 2022-03-14
 ### Added
 - New configuration options for backup and restore operations
 - Added S3 upload and retrieval capabilities for backups
@@ -50,7 +65,8 @@ All notable changes to this project will be documented in this file.
 - Module configuration
 - Execution of commands
 
-[Unreleased]: https://github.com/thinger-io/monitoring-client/0.0.4...HEAD
+[Unreleased]: https://github.com/thinger-io/monitoring-client/0.0.5...HEAD
+[0.0.5]: https://github.com/thinger-io/monitoring-client/compare/0.0.4...0.0.5
 [0.0.4]: https://github.com/thinger-io/monitoring-client/compare/0.0.3...0.0.4
 [0.0.3]: https://github.com/thinger-io/monitoring-client/compare/0.0.2...0.0.3
 [0.0.2]: https://github.com/thinger-io/monitoring-client/compare/0.0.1...0.0.2

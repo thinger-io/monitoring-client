@@ -12,8 +12,11 @@
 #include <arpa/inet.h>
 #include <linux/kernel.h>
 #include <unistd.h>
+#include <thread>
+#include <future>
 
 #include "utils/thinger.h"
+#include "utils/date.h"
 
 #include "system/platform/backup.h"
 #include "system/platform/restore.h"
@@ -32,7 +35,7 @@ namespace fs = std::filesystem;
   #define VERSION "Not set"
 #endif
 
-#define SECTOR_SIZE 512
+constexpr int SECTOR_SIZE = 512;
 
 // Conversion constants. //
 const long minute = 60;
@@ -69,7 +72,19 @@ public:
             retrieve_cpu_cores();
 
             cmd_ = [this](pson& in, pson& out) {
-                out["output"] = cmd(in["input"]);
+                std::string output = cmd(in["input"]);
+                out["output"] = output;
+
+                std::string endpoint = in["endpoint"];
+                in["endpoint"] = "cmd_finished";
+
+                if (!endpoint.empty()) {
+                    json payload;
+                    payload["device"] = config_.get_device_id();
+                    payload["hostname"] = hostname;
+                    payload["payload"] = output;
+                    Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, payload, config_.get_server_url(), config_.get_server_secure());
+                }
             };
 
             if (geteuid() == 0) { // is_root
@@ -78,84 +93,184 @@ public:
                         reboot();
                 };
 
-                update_ << [this](pson& in) { // needs declaration of input for dashboard button
-                    if (in)
-                        update();
+                update_ = [this](pson& in, pson& out) { // needs declaration of input for dashboard button
+                    if (in) {
+                        if ( f1.future.valid() && f1.future.wait_for(std::chrono::seconds(0))  != std::future_status::ready ) {
+                            if ( f1.task == "update" )
+                                out["status"] = "Already executing";
+                            else
+                                out["status"] = ("Executing: "+f1.task).c_str();
+                            return;
+                        }
+
+                        std::packaged_task<void()> task([this]{
+                            update();
+                        });
+                        f1.task = "update";
+                        f1.future = task.get_future();
+                        std::thread thread(std::move(task));
+                        thread.detach();
+                    }
                 };
 
-                update_distro_ << [this](pson& in) { // needs declaration of input for dashboard button
-                    if (in)
-                        update_distro();
+                update_distro_ = [this](pson& in, pson& out) { // needs declaration of input for dashboard button
+                    if (in) {
+                        if ( f1.future.valid() && f1.future.wait_for(std::chrono::seconds(0))  != std::future_status::ready ) {
+                            if ( f1.task == "update_distro" )
+                                out["status"] = "Already executing";
+                            else
+                                out["status"] = ("Executing: "+f1.task).c_str();
+                            return;
+                        }
+
+                        std::packaged_task<void()> task([this]{
+                            update_distro();
+                        });
+                        f1.task = "update_distro";
+                        f1.future = task.get_future();
+                        std::thread thread(std::move(task));
+                        thread.detach();
+                    }
                 };
             }
 
-            if (config_.has_backups_system()) {
-                backup_ = [this](pson& in, pson& out) {
-                    std::string endpoint = in["endpoint"];
-                    out["status"] = "";
+            backup_ = [this](pson& in, pson& out) {
 
-                    ThingerMonitorBackup *backup = NULL;
-                    // Add new possible options for backup systems
-                    if (config_.get_backups_system() == "platform") {
-                        backup = new PlatformBackup(config_, hostname);
+                if (config_.has_backups_system()) {
+
+                    std::string tag = in["tag"];
+                    std::string endpoint = in["endpoint"];
+
+                    auto today = Date();
+                    in["tag"] = today.to_iso8601();
+                    in["endpoint"] = "backup_finished";
+
+                    if ( f1.future.valid() && f1.future.wait_for(std::chrono::seconds(0))  != std::future_status::ready ) {
+                        if ( f1.task == "backup" )
+                            out["status"] = "Already executing";
+                        else
+                            out["status"] = ("Executing: "+f1.task).c_str();
+                        return;
                     }
 
-                    if (in["backup"]) {
-                        in["backup"] = false;
+                    // future from a packaged_task
+                    std::packaged_task<void(std::string,std::string)> task([this](std::string tag, std::string endpoint) {
+
+                        std::unique_ptr<ThingerMonitorBackup> backup{}; // as nullptr
+                        // Add new possible options for backup systems
+                        if (config_.get_backups_system() == "platform") {
+                            backup = std::make_unique<PlatformBackup>(config_, hostname, tag);
+                        }
+
+                        json data;
+                        data["device"]    = config_.get_device_id();
+                        data["hostname"]  = hostname;
+                        data["backup"]    = {};
+                        data["backup"]["operations"] = {};
 
                         std::cout << std::fixed << Date::millis()/1000.0 << " ";
                         std::cout << "[_BACKUP] Creating backup" << std::endl;
-                        backup->create();
+                        data["backup"]["operations"]["backup"] = backup->backup();
                         std::cout << std::fixed << Date::millis()/1000.0 << " ";
                         std::cout << "[_BACKUP] Uploading backup" << std::endl;
-                        out["status"] = backup->upload();
+                        data["backup"]["operations"]["upload"] = backup->upload();
                         std::cout << std::fixed << Date::millis()/1000.0 << " ";
                         std::cout << "[_BACKUP] Cleaning backup temporary files" << std::endl;
-                        backup->clean();
+                        data["backup"]["operations"]["clean"] = backup->clean();
 
-                        if (!endpoint.empty()) {
-                            json payload;
-                            payload["device"] = config_.get_device_id();
-                            payload["hostname"] = hostname;
-                            Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, payload, config_.get_server_url(), config_.get_server_secure());
+                        data["backup"]["status"] = true;
+                        for (auto& element : data["backup"]["operations"]) {
+                            if (!element["status"].get<bool>()) {
+                                data["backup"]["status"] = false;
+                                break;
+                            }
                         }
-                    }
-                    //out["output"] = in["tag"];
-                    delete backup;
-                };
 
-                restore_ = [this](pson& in, pson& out) {
-                    std::string tag = in["tag"];
-                    std::string endpoint = in["endpoint"];
-                    out["status"] = "";
+                        if (!endpoint.empty())
+                            Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, data, config_.get_server_url(), config_.get_server_secure());
 
-                    ThingerMonitorRestore *restore = NULL;
-                    // Add new possible options for backup systems
-                    if (config_.get_backups_system() == "platform") {
-                        restore = new PlatformRestore(config_, hostname, tag);
-                    }
+                    });
 
                     if (!tag.empty()) {
-                        std::cout << std::fixed << Date::millis()/1000.0 << " ";
-                        std::cout << "[___RSTR] Downloading backup" << std::endl;
-                        restore->download();
-                        std::cout << std::fixed << Date::millis()/1000.0 << " ";
-                        std::cout << "[___RSTR] Restoring backup" << std::endl;
-                        restore->restore();
-                        std::cout << std::fixed << Date::millis()/1000.0 << " ";
-                        std::cout << "[___RSTR] Cleaning backup temporary files" << std::endl;
-                        restore->clean();
-                        if (!endpoint.empty()) {
-                            json payload;
-                            payload["device"] = config_.get_device_id();
-                            payload["hostname"] = hostname;
-                            Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, payload, config_.get_server_url(), config_.get_server_secure());
-                        }
+                        out["status"] = "Launched";
+                        f1.task = "backup";
+                        f1.future = task.get_future();  // get a future
+                        std::thread thread(std::move(task), tag, endpoint);
+                        thread.detach();
                     }
 
-                    delete restore;
-                };
-            }
+                    out["status"] = "Ready to be launched";
+
+                } else {
+                    out["status"] = "ERROR";
+                    out["error"] = "Can't launch backup. Set backups property.";
+                }
+            };
+
+            restore_ = [this](pson& in, pson& out) {
+
+                if (config_.has_backups_system()) {
+
+                    std::string tag = in["tag"];
+                    std::string endpoint = in["endpoint"];
+
+                    auto today = Date();
+                    in["tag"] = today.to_iso8601();
+                    in["endpoint"] = "restore_finished";
+
+                    if ( f1.future.valid() && f1.future.wait_for(std::chrono::seconds(0))  != std::future_status::ready ) {
+                        if ( f1.task == "restore" )
+                            out["status"] = "Already executing";
+                        else
+                            out["status"] = ("Executing: "+f1.task).c_str();
+                        return;
+                    }
+
+                    std::packaged_task<void(std::string, std::string)> task([this](std::string tag, std::string endpoint) {
+
+                        std::unique_ptr<ThingerMonitorRestore> restore{};
+                        // Add new possible options for backup systems
+                        if (config_.get_backups_system() == "platform") {
+                            restore = std::make_unique<PlatformRestore>(config_, hostname, tag);
+                        }
+
+                        json data;
+                        data["device"]    = config_.get_device_id();
+                        data["hostname"]  = hostname;
+                        data["restore"]   = {};
+                        data["restore"]["operations"] = {};
+
+                        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+                        std::cout << "[___RSTR] Downloading backup" << std::endl;
+                        data["restore"]["operations"]["download"] = restore->download();
+                        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+                        std::cout << "[___RSTR] Restoring backup" << std::endl;
+                        data["restore"]["operations"]["restore"] = restore->restore();
+                        std::cout << std::fixed << Date::millis()/1000.0 << " ";
+                        std::cout << "[___RSTR] Cleaning backup temporary files" << std::endl;
+                        data["restore"]["operations"]["clean"] = restore->clean();
+                        if (!endpoint.empty()) {
+                            json payload;
+                            Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, payload, config_.get_server_url(), config_.get_server_secure());
+                        }
+
+                    });
+
+                    if (!tag.empty()) {
+                        out["status"] = "Launched";
+                        f1.task = "restore";
+                        f1.future = task.get_future();
+                        std::thread thread(std::move(task), tag, endpoint);
+                        thread.detach();
+                    }
+
+                    out["status"] = "Ready to be launched";
+
+                } else {
+                    out["status"] = "ERROR";
+                    out["error"] = "Can't launch restore. Set backups property.";
+                }
+            };
 
             monitor_ >> [this](pson& out) {
 
@@ -184,6 +299,7 @@ public:
 
                 if (current_seconds >= (every1d + 60*60*24)) {
                     getPublicIPAddress();
+                    getConsoleVersion();
                     every1d = current_seconds;
                 }
 
@@ -254,6 +370,10 @@ public:
                 }
                 out["nw_public_ip"] = public_ip;
 
+                if (config_.get_backups_system() == "platform") {
+                    out["console_version"] = console_version;
+                }
+
                 // RAM
                 retrieve_ram();
                 out["ram_total"] = (double)ram_total / kbtogb;
@@ -285,8 +405,7 @@ public:
             };
     }
 
-    virtual ~ThingerMonitor(){
-    }
+    virtual ~ThingerMonitor() = default;
 
     void reload_configuration() {
         interfaces_.clear();
@@ -295,19 +414,19 @@ public:
 
         config_.reload_config();
 
-        for (auto fs_path : config_.get_filesystems()) {
+        for (const auto& fs_path : config_.get_filesystems()) {
             filesystem fs;
             fs.path = fs_path;
             filesystems_.push_back(fs);
         }
 
-        for (auto dv_name : config_.get_drives()) {
+        for (const auto& dv_name : config_.get_drives()) {
             drive dv;
             dv.name = dv_name;
             drives_.push_back(dv);
         }
 
-        for (auto ifc_name : config_.get_interfaces()) {
+        for (const auto& ifc_name : config_.get_interfaces()) {
             interface ifc;
             ifc.name = ifc_name;
             ifc.internal_ip = getIPAddress(ifc_name);
@@ -317,6 +436,62 @@ public:
     }
 
 protected:
+
+    // -- SYSTEM INFO -- //
+    void retrieve_updates() {
+        // We will use default ubuntu server notifications
+        fs::path f("/var/lib/update-notifier/updates-available");
+        if (fs::exists(f)) {
+            std::ifstream updatesinfo ("/var/lib/update-notifier/updates-available", std::ifstream::in);
+            std::string line;
+            updatesinfo >> normal_updates;
+            if(getline(updatesinfo, line)) {
+                updatesinfo >> security_updates;
+            } else {
+                security_updates = 0;
+            }
+        }
+    }
+
+    void retrieve_restart_status() {
+        fs::path f("/var/run/reboot-required");
+        if (fs::exists(f)) {
+            system_restart = true;
+        } else {
+            system_restart = false;
+        }
+    }
+
+    std::string cmd(const char *in) {
+        std::array<char, 128> buffer;
+        std::string result;
+        std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(in, "r"), &pclose);
+        if (!pipe) {
+            return "Failed to run command\n";
+        }
+
+        while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+            result += buffer.data();
+        }
+        return result;
+    }
+
+    void reboot() {
+        system("sudo reboot");
+    }
+
+    void update() {
+        // System upgrade. By default it does not overwrite config files if a package has a newer version
+        system("sudo apt -y update && sudo DEBIAN_FRONTEND=noninteractive DEBIAN_PRIORITY=critical UCF_FORCE_CONFFOLD=1 apt -qq -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold upgrade");
+    }
+
+    void update_distro() {
+        // Full unattended distro upgrade
+        system("sudo apt -y update && sudo do-release-upgrade -f DistUpgradeViewNonInteractive");
+    }
+
+private:
+
     // thinger resources
     thinger_client& client_;
     thinger::thinger_resource& monitor_;
@@ -328,6 +503,12 @@ protected:
     thinger::thinger_resource& restore_;
 
     ThingerMonitorConfig& config_;
+
+    struct future_task {
+        std::string task;
+        std::future<void> future;
+    };
+    future_task f1; // f1 used for blocking backup/restore/update/update_distro
 
     // network
     struct interface {
@@ -377,77 +558,26 @@ protected:
     unsigned long every5m = 0;
     unsigned long every1d = 0;
 
-    // -- SYSTEM INFO -- //
-    void retrieve_updates() {
-        // We will use default ubuntu server notifications
-        fs::path f("/var/lib/update-notifier/updates-available");
-        if (fs::exists(f)) {
-            std::ifstream updatesinfo ("/var/lib/update-notifier/updates-available", std::ifstream::in);
-            std::string line;
-            updatesinfo >> normal_updates;
-            if(getline(updatesinfo, line)) {
-                updatesinfo >> security_updates;
-            } else {
-                security_updates = 0;
-            }
-        }
-    }
-
-    void retrieve_restart_status() {
-        fs::path f("/var/run/reboot-required");
-        if (fs::exists(f)) {
-            system_restart = true;
-        } else {
-            system_restart = false;
-        }
-    }
-
-    std::string cmd(const char *in) {
-        std::array<char, 128> buffer;
-        std::string result;
-        std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(in, "r"), pclose);
-        if (!pipe) {
-            return "Failed to run command\n";
-        }
-
-        while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
-            result += buffer.data();
-        }
-        return result;
-    }
-
-    void reboot() {
-        system("sudo reboot");
-    }
-
-    void update() {
-        // System upgrade. By default it does not overwrite config files if a package has a newer version
-        system("sudo apt -y update && sudo DEBIAN_FRONTEND=noninteractive DEBIAN_PRIORITY=critical UCF_FORCE_CONFFOLD=1 apt -qq -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold upgrade");
-    }
-
-    void update_distro() {
-        // Full unattended distro upgrade
-        system("sudo apt -y update && sudo do-release-upgrade -f DistUpgradeViewNonInteractive");
-    }
-
-private:
+    // thinger.io platform
+    std::string console_version;
 
     std::string getIPAddress(std::string interface){
         std::string ipAddress="Unable to get IP Address";
-        struct ifaddrs *interfaces = NULL;
-        struct ifaddrs *temp_addr = NULL;
+        struct ifaddrs *interfaces = nullptr;
+        struct ifaddrs *temp_addr = nullptr;
         int success = 0;
         // retrieve the current interfaces - returns 0 on success
         success = getifaddrs(&interfaces);
         if (success == 0) {
             // Loop through linked list of interfaces
             temp_addr = interfaces;
-            while(temp_addr != NULL) {
-                if(temp_addr->ifa_addr->sa_family == AF_INET) {
+            while(temp_addr != nullptr) {
+                if(temp_addr->ifa_addr != nullptr
+                  && temp_addr->ifa_addr->sa_family == AF_INET
+                  && temp_addr->ifa_name == interface)
+                {
                     // Check if interface is the default interface
-                    if(temp_addr->ifa_name == interface){
-                        ipAddress=inet_ntoa(((struct sockaddr_in*)temp_addr->ifa_addr)->sin_addr);
-                    }
+                    ipAddress=inet_ntoa(((struct sockaddr_in*)temp_addr->ifa_addr)->sin_addr);
                 }
                 temp_addr = temp_addr->ifa_next;
             }
@@ -608,6 +738,14 @@ private:
             dv.total_io[1][j++] = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch()).count();
         }
+    }
+
+    // -- THINGER PLATFORM -- //
+    void getConsoleVersion() {
+        httplib::Client cli("http://127.0.0.1");
+        auto res = cli.Get("/v1/server/version");
+        auto res_json = json::parse(res->body);
+        console_version = res_json["version"].get<std::string>();
     }
 
 };

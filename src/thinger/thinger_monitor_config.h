@@ -9,7 +9,7 @@ using json = nlohmann::json;
 
 namespace fs = std::filesystem;
 
-#define DF_CONFIG_PATH "/etc/thinger_io/thinger_monitor.json"
+constexpr std::string_view DF_CONFIG_PATH = "/etc/thinger_io/thinger_monitor.json";
 
 using std::filesystem::current_path;
 
@@ -27,9 +27,9 @@ public:
     }
 
     ThingerMonitorConfig(
-      std::vector<std::string> filesystems,
-      std::vector<std::string> drives,
-      std::vector<std::string> interfaces,
+      const std::vector<std::string>& filesystems,
+      const std::vector<std::string>& drives,
+      const std::vector<std::string>& interfaces,
       bool defaults = true) :
         filesystems_(filesystems),
         drives_(drives),
@@ -92,71 +92,71 @@ public:
     //----- Has's -----//
     //------------------//
 
-    bool has_user() {
+    bool has_user() const {
         return config_.contains("user") && !is_placeholder(get_user());
     }
 
-    bool has_device() {
+    bool has_device() const {
         return config_.contains("device");
     }
 
-    bool has_device_id() {
+    bool has_device_id() const {
         return has_device() && config_["device"].contains("id") && !is_placeholder(get_device_id());
     }
 
-    bool has_device_name() {
+    bool has_device_name() const {
         return has_device() && config_["device"].contains("name") && !is_placeholder(get_device_name());
     }
 
-    bool has_device_credentials() {
+    bool has_device_credentials() const {
         return has_device() && config_["device"].contains("credentials") && !is_placeholder(get_device_credentials());
     }
 
-    bool has_filesystems() {
+    bool has_filesystems() const {
         return config_.contains("resources") && config_["resources"].contains("filesystems");
     }
 
-    bool has_drives() {
+    bool has_drives() const {
         return config_.contains("resources") && config_["resources"].contains("drives");
     }
 
-    bool has_interfaces() {
+    bool has_interfaces() const {
         return config_.contains("resources") && config_["resources"].contains("interfaces");
     }
 
-    bool has_defaults() {
+    bool has_defaults() const {
         return config_.contains("resources") && config_["resources"].contains("defaults");
     }
 
-    bool has_server() {
+    bool has_server() const {
         return config_.contains("server");
     }
 
-    bool has_server_url() {
+    bool has_server_url() const {
         return has_server() && config_["server"].contains("url") && !is_placeholder(config_["server"]["url"].get<std::string>());
     }
 
-    bool has_server_secure() {
+    bool has_server_secure() const {
         return has_server() && config_["server"].contains("secure");
     }
 
-    bool has_backups() {
+    bool has_backups() const {
         return config_.contains("backups");
     }
 
-    bool has_backups_system() {
+    bool has_backups_system() const {
         return has_backups() && config_["backups"].contains("system");
     }
 
-    bool has_backups_storage() {
+    bool has_backups_storage() const {
         return has_backups() && config_["backups"].contains("storage");
     }
 
-    bool has_backups_data_path() {
+    bool has_backups_data_path() const {
         return has_backups() && config_["backups"].contains("data_path");
     }
 
-    bool has_backups_compose_path() {
+    bool has_backups_compose_path() const {
         return has_backups() && config_["backups"].contains("compose_path");
     }
 
@@ -164,23 +164,23 @@ public:
     //    return has_backups() && config_["backups"].contains("clean");
     //}
 
-    bool has_backups_endpoints_token() {
+    bool has_backups_endpoints_token() const {
         return has_backups() && config_["backups"].contains("endpoints_token");
     }
 
-    bool has_storage_bucket(const std::string& storage) {
+    bool has_storage_bucket(const std::string& storage) const {
         return has_backups() && config_["storage"][storage].contains("bucket");
     }
 
-    bool has_storage_region(const std::string& storage) {
+    bool has_storage_region(const std::string& storage) const {
         return has_backups() && config_["storage"][storage].contains("region");
     }
 
-    bool has_storage_access_key(const std::string& storage) {
+    bool has_storage_access_key(const std::string& storage) const {
         return has_backups() && config_["storage"][storage].contains("access_key");
     }
 
-    bool has_storage_secret_key(const std::string& storage) {
+    bool has_storage_secret_key(const std::string& storage) const {
         return has_backups() && config_["storage"][storage].contains("secret_key");
     }
 
@@ -360,8 +360,8 @@ public:
         load_config();
     }
 
+private:
 
-protected:
     json config_;
     std::string config_path_;
 
@@ -370,7 +370,6 @@ protected:
     std::vector<std::string> interfaces_;
     bool defaults_;
 
-private:
 
     void load_config(){
 
@@ -383,7 +382,7 @@ private:
 
     }
 
-    void save_config() {
+    void save_config() const {
         std::filesystem::path f(config_path_);
 
         if (!std::filesystem::exists(f)) {
@@ -394,7 +393,7 @@ private:
         file << std::setw(2) << config_ << std::endl;
     }
 
-    std::string generate_credentials(std::size_t length) {
+    std::string generate_credentials(std::size_t length) const {
 
         std::string CHARACTERS = "0123456789abcdefghijklmnopqrstuvwxyz!@#$%^&*()ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -457,7 +456,7 @@ private:
         }
     }
 
-    bool is_placeholder(const std::string& value) {
+    bool is_placeholder(const std::string& value) const {
         return std::regex_match(value, std::regex("(<.*>)"));
     }
 

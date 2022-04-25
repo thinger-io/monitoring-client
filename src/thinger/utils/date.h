@@ -33,10 +33,13 @@ public:
 
         format.erase(remove(format.begin(), format.end(), '\0'), format.end()); //remove '\0' from string
 
-        if (timezone == "utc" || timezone == "gmt")
-            ss << std::put_time(std::gmtime(&date), format.c_str());
-        else // (timezone == "local")
-            ss << std::put_time(std::localtime(&date), format.c_str());
+        if (timezone == "utc" || timezone == "gmt") {
+            gmtime_r(&date, &time); // Compliant
+            ss << std::put_time(&time, format.c_str());
+        } else { // (timezone == "local")
+            localtime_r(&date, &time); // Compliant
+            ss << std::put_time(&time, format.c_str());
+        }
 
         return ss.str();
     }
@@ -44,7 +47,8 @@ public:
     std::string to_rfc5322() {
 
         std::stringstream ss;
-        ss << std::put_time(std::localtime(&date), "%a, %d %b %Y %T %z");
+        localtime_r(&date, &time); // Compliant
+        ss << std::put_time(&time, "%a, %d %b %Y %T %z");
 
         return ss.str();
 
@@ -53,12 +57,13 @@ public:
     // TODO change this to a monotonic clock implementation. Using c++11?
     static unsigned long millis() {
         struct timeval te;
-        gettimeofday(&te, NULL);
+        gettimeofday(&te, nullptr);
         unsigned long milliseconds = te.tv_sec*1000LL + te.tv_usec/1000;
         return milliseconds;
     }
 
-protected:
+private:
     time_t date;
+    struct tm time;
 
 };

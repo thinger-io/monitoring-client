@@ -37,11 +37,8 @@
 
 using json = nlohmann::json;
 
-#define CONFIG_DELAY 10
+constexpr int CONFIG_DELAY = 10;
 
-//const std::vector<std::string> interfaces = {"eth0"};
-//const std::vector<std::string> filesystems = {"/"};
-//const std::vector<std::string> drives = {"xvda"};
 const std::vector<std::string> properties = {"resources","backups","storage"}; // thinger device config properties
 
 int main(int argc, char *argv[]) {
@@ -67,10 +64,10 @@ int main(int argc, char *argv[]) {
             case 'k':
                 config.set_server_secure(false);
                 break;
-            //default: /* '?' */
-            //    fprintf(stderr, "Usage: %s [-t nsecs] [-n] name\n",
-            //        argv[0]);
-            //    exit(EXIT_FAILURE);
+            default: /* '?' */
+                fprintf(stderr, "Usage: %s [-c config_path] [-t token] [-u user] [-s server] [-k]\n",
+                    argv[0]);
+                exit(EXIT_FAILURE);
         }
     }
 
@@ -183,5 +180,4 @@ int main(int argc, char *argv[]) {
 
     }
 
-    return 0;
 }

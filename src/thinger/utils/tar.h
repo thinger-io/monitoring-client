@@ -13,7 +13,7 @@ namespace Tar {
 
     namespace {
 
-        void write_archive(const std::string source_path, const std::string outname, const std::vector<std::string> filename, const bool compression) {
+        bool write_archive(const std::string source_path, const std::string outname, const std::vector<std::string> filename, const bool compression) {
             struct archive *a;
             struct archive_entry *entry;
             struct stat st;
@@ -38,7 +38,8 @@ namespace Tar {
                 fd = open(f.c_str(), O_RDONLY);
                 len = read(fd, buff, sizeof(buff));
                 while ( len > 0 ) {
-                    archive_write_data(a, buff, len);
+                    if (archive_write_data(a, buff, len) < 0)
+                        return false;
                     len = read(fd, buff, sizeof(buff));
                 }
                 close(fd);
@@ -46,6 +47,8 @@ namespace Tar {
             }
             archive_write_close(a);
             archive_write_free(a);
+
+            return true;
         }
 
         int copy_data(struct archive *ar, struct archive *aw) {
@@ -68,7 +71,7 @@ namespace Tar {
             }
         }
 
-        void extract_archive(const std::string file) {
+        bool extract_archive(const std::string file) {
             // I believe extraction happens in the same folder
             // at the moment we are fine as paths inside archive contain
             // full path. See: https://github.com/libarchive/libarchive/issues/1531
@@ -95,41 +98,59 @@ namespace Tar {
             ext = archive_write_disk_new(); // writes into disk
             archive_write_disk_set_options(ext, flags);
             archive_write_disk_set_standard_lookup(ext);
-            if ((r = archive_read_open_filename(a, file.c_str(), 10240)))
-              exit(1);
+            if ((r = archive_read_open_filename(a, file.c_str(), 10240))) {
+              //exit(1);
+              return false;
+            }
             for (;;) {
               r = archive_read_next_header(a, &entry);
               if (r == ARCHIVE_EOF)
                 break;
-              if (r < ARCHIVE_OK)
+              if (r < ARCHIVE_OK) {
                 fprintf(stderr, "%s\n", archive_error_string(a));
-              if (r < ARCHIVE_WARN)
-                exit(1);
+                return false;
+              }
+              if (r < ARCHIVE_WARN) {
+                //exit(1);
+                return false;
+              }
               r = archive_write_header(ext, entry);
-              if (r < ARCHIVE_OK)
+              if (r < ARCHIVE_OK) {
                 fprintf(stderr, "%s\n", archive_error_string(ext));
+                return false;
+              }
               else if (archive_entry_size(entry) > 0) {
                 r = copy_data(a, ext);
-                if (r < ARCHIVE_OK)
+                if (r < ARCHIVE_OK) {
                   fprintf(stderr, "%s\n", archive_error_string(ext));
-                if (r < ARCHIVE_WARN)
-                  exit(1);
+                  return false;
+                }
+                if (r < ARCHIVE_WARN) {
+                  //exit(1);
+                  return false;
+                }
               }
               r = archive_write_finish_entry(ext);
-              if (r < ARCHIVE_OK)
+              if (r < ARCHIVE_OK) {
                 fprintf(stderr, "%s\n", archive_error_string(ext));
-              if (r < ARCHIVE_WARN)
-                exit(1);
+                return false;
+              }
+              if (r < ARCHIVE_WARN) {
+                //exit(1);
+                return false;
+              }
             }
             archive_read_close(a);
             archive_read_free(a);
             archive_write_close(ext);
             archive_write_free(ext);
+
+            return true;
         }
 
     }
 
-    int create(const std::string source_path, const std::string dest_file) {
+    bool create(const std::string source_path, const std::string dest_file) {
 
         bool compression = false;
         if (dest_file.substr(dest_file.find_last_of(".") + 1) == "tgz" ||
@@ -148,19 +169,16 @@ namespace Tar {
             filename.push_back(source_path);
         }
 
-        write_archive(source_path, dest_file, filename, compression);
-
-        return 0;
+        return write_archive(source_path, dest_file, filename, compression);
 
     }
 
     // Global extractor
-    int extract(const std::string file) {
+    bool extract(const std::string file) {
 
         // TODO: should not need to copy to root folder, but we needed it until the relative path is saved into the file
-        extract_archive(file);
+        return extract_archive(file);
 
-        return 0;
     }
 
 };

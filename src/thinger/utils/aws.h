@@ -6,9 +6,9 @@
 #include <httplib.h>
 
 #include "date.h"
-//#include "base64.h"
 #include "crypto.h"
 #include "xml.h"
+#include "http_status.h"
 
 #include "aws/s3.h"
 
@@ -18,27 +18,21 @@
 
 namespace AWS {
 
-    int multipart_upload_to_s3(const std::string& file_path, std::string& bucket, std::string& region, std::string& access_key, std::string& secret_key) {
+    bool multipart_upload_to_s3(const std::string& file_path, std::string& bucket, std::string& region, std::string& access_key, std::string& secret_key) {
 
-        S3::MultipartUpload mpu = S3::MultipartUpload(bucket, region, access_key, secret_key);
+        auto mpu = S3::MultipartUpload(bucket, region, access_key, secret_key, file_path);
 
-        std::cout << std::fixed << Date::millis()/1000.0 << " ";
-        std::cout << "[____AWS] Inititiating upload of "+file_path << std::endl;
-        std::string upload_id = mpu.initiate_upload(file_path);
-        std::cout << std::fixed << Date::millis()/1000.0 << " ";
-        std::cout << "[____AWS] Upload initiated with uploadid "+upload_id << std::endl;
-        return mpu.upload(upload_id, file_path);
-
+        return mpu.upload();
     }
 
-    int upload_to_s3(const std::string file_path, const std::string bucket, const std::string region, const std::string access_key, const std::string secret_key) {
+    bool upload_to_s3(const std::string& file_path, const std::string& bucket, const std::string& region, const std::string& access_key, const std::string& secret_key) {
 
         const std::string content_type = "application/x-compressed-tar";
 
         httplib::Client cli("https://"+bucket+".s3-"+region+".amazonaws.com");
         cli.set_write_timeout(120, 0); // 5 seconds
 
-        Date date = Date();
+        auto date = Date();
         auto date_string = date.to_rfc5322();
         std::string filename = std::filesystem::path(file_path).filename();
 
@@ -62,17 +56,17 @@ namespace AWS {
         std::cout << "[____AWS] Uploading file "+filename+" to "+bucket+" bucket" << std::endl;
         auto res = cli.Put(("/"+filename).c_str(), headers, body.str(), content_type.c_str());
 
-        return res->status;
+        return HttpStatus::isSuccessful(res->status);
 
     }
 
-    int download_from_s3(const std::string file_path, const std::string bucket, const std::string region, const std::string access_key, const std::string secret_key) {
+    bool download_from_s3(const std::string& file_path, const std::string& bucket, const std::string& region, const std::string& access_key, const std::string& secret_key) {
 
         const std::string content_type = "application/x-compressed-tar";
 
         httplib::Client cli("https://"+bucket+".s3-"+region+".amazonaws.com");
 
-        Date date = Date();
+        auto date = Date();
         auto date_string = date.to_rfc5322();
         std::string filename = std::filesystem::path(file_path).filename();
 
@@ -99,7 +93,7 @@ namespace AWS {
             return true;
           });
 
-        return res->status;
+        return HttpStatus::isSuccessful(res->status);
     }
 
 };

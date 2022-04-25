@@ -7,7 +7,7 @@ if(NOT BUILD_VERSION)
     SET(BUILD_VERSION "Not set")
 else()
     add_definitions( -DBUILD_VERSION=${BUILD_VERSION} )
-  message(STATUS "The compiler version is ${BUILD_VERSION}")
+    message(STATUS "The program version is ${BUILD_VERSION}")
 endif()
 
 # check c++17 or c++20 support
@@ -55,6 +55,8 @@ if(CROSS)
   # strip binary for smaller size
   set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -s")
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
+else()
+  SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pthread")
 endif()
 
 set(SOURCE_FILES src/main.cpp)

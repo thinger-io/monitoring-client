@@ -2,6 +2,8 @@
 #include <vector>
 #include <httplib.h>
 
+#include "http_status.h"
+
 #include <nlohmann/json.hpp>
 
 // Support from API 1.41
@@ -9,7 +11,7 @@ namespace Docker {
 
     namespace Container {
 
-        int inspect(const std::string& container_id, const std::string& dest_path) {
+        bool inspect(const std::string& container_id, const std::string& dest_path) {
 
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
             std::cout << "[_DOCKER] Inspecting container: '" << container_id;
@@ -24,7 +26,7 @@ namespace Docker {
 
             if ( res.error() != httplib::Error::Success ) {
                 std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
-                return -1;
+                return false;
             }
 
             auto res_json = json::parse(res->body);
@@ -32,7 +34,7 @@ namespace Docker {
             if ( ! file ) {
                 std::cout << std::fixed << Date::millis()/1000.0 << " ";
                 std::cout << "[_DOCKER] There was an error saving result to filesystem" << std::endl;
-                return res->status;
+                return false;
             }
 
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
@@ -46,11 +48,11 @@ namespace Docker {
                     std::cout << res.error() << std::endl;
             }
 
-            return res->status;
+            return HttpStatus::isSuccessful(res->status);
         }
 
         // Used only for plugins
-        int create_from_inspect(const std::string& source_path, const std::string& network_id = "") {
+        bool create_from_inspect(const std::string& source_path, const std::string& network_id = "") {
 
             json inspect_json;
 
@@ -73,10 +75,10 @@ namespace Docker {
             auto res = cli.Post(("/images/create?fromImage="+inspect_json["Config"]["Image"].get<std::string>()).c_str());
             if ( res.error() == httplib::Error::Read ) {
                 std::cout << "[_DOCKER] Error: Timeout waiting for image to download" << std::endl;
-                return -1;
+                return false;
             } else if ( res.error() != httplib::Error::Success ) {
                 std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
-                return -1;
+                return false;
             }
 
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
@@ -104,10 +106,10 @@ namespace Docker {
 
             if ( res.error() == httplib::Error::Read ) {
                 std::cout << "[_DOCKER] Error: Timeout waiting for command to execute" << std::endl;
-                return -1;
+                return false;
             } else if ( res.error() != httplib::Error::Success ) {
                 std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
-                return -1;
+                return false;
             }
 
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
@@ -118,10 +120,10 @@ namespace Docker {
                 std::cout << "[_DOCKER] Error description: " << res->body << std::endl;
             }
 
-            return res->status;
+            return HttpStatus::isSuccessful(res->status);
         }
 
-        int exec(const std::string container_id, const std::string command) {
+        bool exec(const std::string container_id, const std::string command) {
 
             // POST request: https://docs.docker.com/engine/api/v1.41/#operation/ContainerExec
             // To exec a command in a container, you first need to create an exec instance, then start it.
@@ -165,10 +167,10 @@ namespace Docker {
 
             if ( res2.error() == httplib::Error::Read ) {
                 std::cout << "[_DOCKER] Error: Timeout waiting for command to execute" << std::endl;
-                return -1;
+                return false;
             } else if ( res2.error() != httplib::Error::Success ) {
                 std::cout << "[_DOCKER] Request error: " << res2.error() << std::endl;
-                return -1;
+                return false;
             }
 
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
@@ -177,11 +179,10 @@ namespace Docker {
             else
                 std::cout << "[_DOCKER] An error occurred while executing" << std::endl;
 
-            return res2->status;
-
+            return HttpStatus::isSuccessful(res2->status);
         }
 
-        int restart(const std::string container_id) {
+        bool restart(const std::string container_id) {
 
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
             std::cout << "[_DOCKER] Restarting container: '" << container_id << "'" << std::endl;
@@ -194,7 +195,7 @@ namespace Docker {
 
             if ( res.error() != httplib::Error::Success ) {
                 std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
-                return -1;
+                return false;
             }
 
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
@@ -203,10 +204,10 @@ namespace Docker {
             else
                 std::cout << "[_DOCKER] Could not be restarted" << std::endl;
 
-            return res->status;
+            return HttpStatus::isSuccessful(res->status);
         }
 
-        int start(const std::string container_id) {
+        bool start(const std::string container_id) {
 
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
             std::cout << "[_DOCKER] Starting container: '" << container_id << "'" << std::endl;
@@ -219,7 +220,7 @@ namespace Docker {
 
             if ( res.error() != httplib::Error::Success ) {
                 std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
-                return -1;
+                return false;
             }
 
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
@@ -228,10 +229,10 @@ namespace Docker {
             else
                 std::cout << "[_DOCKER] Could not be restarted" << std::endl;
 
-            return res->status;
+            return HttpStatus::isSuccessful(res->status);
         }
 
-        int stop(const std::string container_id) {
+        bool stop(const std::string container_id) {
 
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
             std::cout << "[_DOCKER] Stopping container: '" << container_id << "'" << std::endl;
@@ -244,7 +245,7 @@ namespace Docker {
 
             if ( res.error() != httplib::Error::Success ) {
                 std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
-                return -1;
+                return false;
             }
 
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
@@ -253,11 +254,11 @@ namespace Docker {
             else
                 std::cout << "[_DOCKER] Could not be stopped" << std::endl;
 
-            return res->status;
+            return HttpStatus::isSuccessful(res->status);
         }
 
         // It seems that the path has to be relative to the access point
-        int copy_from_container(const std::string container_id, const std::string source_path, const std::string dest_path) {
+        bool copy_from_container(const std::string container_id, const std::string source_path, const std::string dest_path) {
 
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
             std::cout << "[_DOCKER] Copying from container: '" << container_id << "' path: '" << source_path;
@@ -277,7 +278,7 @@ namespace Docker {
 
             if ( res.error() != httplib::Error::Success ) {
                 std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
-                return -1;
+                return false;
             }
 
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
@@ -286,10 +287,10 @@ namespace Docker {
             else
                 std::cout << "[_DOCKER] Could not be copied" << std::endl;
 
-            return res->status;
+            return HttpStatus::isSuccessful(res->status);
         }
 
-        int copy_to_container(const std::string container_id, const std::string source_path, const std::string dest_path) {
+        bool copy_to_container(const std::string container_id, const std::string source_path, const std::string dest_path) {
 
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
             std::cout << "[_DOCKER] Copying from host path: '" << source_path << "' to container '" << container_id;
@@ -304,7 +305,7 @@ namespace Docker {
             char *buffer = new char[buffer_size];
             std::ifstream file(source_path);
 
-            /* Whitout content provider
+            /* Whithout content provider
             std::stringstream body;
             body << file.rdbuf();
 
@@ -332,7 +333,7 @@ namespace Docker {
 
             if ( res.error() != httplib::Error::Success ) {
                 std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
-                return -1;
+                return false;
             }
 
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
@@ -341,13 +342,13 @@ namespace Docker {
             else
                 std::cout << "[_DOCKER] Could not be copied" << std::endl;
 
-            return res->status;
+            return HttpStatus::isSuccessful(res->status);
         }
     }
 
     namespace Network { // TODO: could this be done with abstract classes?
 
-        int inspect(const std::string network_id, const std::string dest_path) {
+        bool inspect(const std::string& network_id, const std::string& dest_path) {
 
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
             std::cout << "[_DOCKER] Inspecting network: '" << network_id;
@@ -362,7 +363,7 @@ namespace Docker {
 
             if ( res.error() != httplib::Error::Success ) {
                 std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
-                return -1;
+                return false;
             }
 
             auto res_json = json::parse(res->body);
@@ -370,7 +371,7 @@ namespace Docker {
             if ( ! file ) {
                 std::cout << std::fixed << Date::millis()/1000.0 << " ";
                 std::cout << "[_DOCKER] There was an error saving result to filesystem" << std::endl;
-                return res->status;
+                return false;
             }
 
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
@@ -384,7 +385,7 @@ namespace Docker {
                     std::cout << res.error() << std::endl;
             }
 
-            return res->status;
+            return HttpStatus::isSuccessful(res->status);
         }
 
         std::string create_from_inspect(const std::string source_path) {
@@ -419,10 +420,10 @@ namespace Docker {
 
             if ( res.error() == httplib::Error::Read ) {
                 std::cout << "[_DOCKER] Error: Timeout waiting for command to execute" << std::endl;
-                return "-1";
+                return "";
             } else if ( res.error() != httplib::Error::Success ) {
                 std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
-                return "-1";
+                return "";
             }
 
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
