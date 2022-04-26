@@ -746,7 +746,7 @@ private:
         httplib::Client cli("http://127.0.0.1");
         auto res = cli.Get("/v1/server/version");
         auto res_json = json::parse(res->body);
-        if (res.error() != httplib::Error:Success) {
+        if (res.error() != httplib::Error::Success) {
             console_version = "Could not retrieve";
         } else {
             auto res_json = json::parse(res->body);
