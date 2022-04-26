@@ -299,7 +299,8 @@ public:
 
                 if (current_seconds >= (every1d + 60*60*24)) {
                     getPublicIPAddress();
-                    getConsoleVersion();
+                    if (config_.get_backups_system() == "platform")
+                        getConsoleVersion();
                     every1d = current_seconds;
                 }
 

@@ -68,10 +68,16 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           branch="master"
-          if [[ ${{ steps.build_version.outputs.version }} == *"-alpha"* ]]; then branch="develop"; fi
-          sonar-scanner \
-            --define sonar.host.url="${{ env.SONAR_SERVER_URL }}" \
-            --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}" \
-            --define sonar.projectVersion="${{ steps.build_version.outputs.version }}" \
-            --define sonar.branch.name="$branch" \
-            --define sonar.branch.target="$branch"
+          if [[ ${{ steps.build_version.outputs.version }} == *"-alpha"* ]]; then
+            branch="develop"
+            sonar-scanner \
+              --define sonar.host.url="${{ env.SONAR_SERVER_URL }}" \
+              --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}" \
+              --define sonar.projectVersion="${{ steps.build_version.outputs.version }}" \
+              --define sonar.branch.name="$branch" \
+              --define sonar.branch.target="$branch"
+          else
+            sonar-scanner \
+              --define sonar.host.url="${{ env.SONAR_SERVER_URL }}" \
+              --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}" \
+              --define sonar.projectVersion="${{ steps.build_version.outputs.version }}"
