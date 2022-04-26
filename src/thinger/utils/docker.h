@@ -305,7 +305,7 @@ namespace Docker {
             char *buffer = new char[buffer_size];
             std::ifstream file(source_path);
 
-            /* Whithout content provider
+            /* Without content provider
             std::stringstream body;
             body << file.rdbuf();
 
