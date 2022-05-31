@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.0.6] - 2022-05-31
+### Changed
+- InfluxDB version detection for backup and restore is done through REST API
+
+### Fix
+- When exec command fails internally function will return false
+
 ## [0.0.5] - 2022-04-25
 ### Added
 - Backup and restore available for influxdb 2.1
@@ -65,7 +72,8 @@ All notable changes to this project will be documented in this file.
 - Module configuration
 - Execution of commands
 
-[Unreleased]: https://github.com/thinger-io/monitoring-client/0.0.5...HEAD
+[Unreleased]: https://github.com/thinger-io/monitoring-client/0.0.6...HEAD
+[0.0.6]: https://github.com/thinger-io/monitoring-client/compare/0.0.5...0.0.6
 [0.0.5]: https://github.com/thinger-io/monitoring-client/compare/0.0.4...0.0.5
 [0.0.4]: https://github.com/thinger-io/monitoring-client/compare/0.0.3...0.0.4
 [0.0.3]: https://github.com/thinger-io/monitoring-client/compare/0.0.2...0.0.3

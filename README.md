@@ -1,6 +1,6 @@
 # Linux Monitoring Client
 
-The Linux Monitoring Client is  a software module based on the Thinger.io Linux Client that keeps track of different system metrics, and publishes them to the Thinger.io Platform in order to keep track of a server or an embedded Linux device or a fleet of them.
+The Linux Monitoring Client is a software module based on the Thinger.io Linux Client that keeps track of different system metrics, and publishes them to the Thinger.io Platform in order to keep track of a server or an embedded Linux device or a fleet of them.
 
 ## Getting Started
 

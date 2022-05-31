@@ -90,7 +90,7 @@ jobs:
         echo "github workspace directory"
         ls -la ${{ github.workspace }}
 
-    - name: Upload x86_64 binary to release
+    - name: Upload binaries to release
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}

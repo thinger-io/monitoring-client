@@ -9,6 +9,8 @@
 #include "../../utils/tar.h"
 #include "../../utils/tar.h"
 
+#include "./utils.h"
+
 class PlatformRestore : public ThingerMonitorRestore {
 
 public:
@@ -189,7 +191,9 @@ private:
     json restore_influxdb() const {
         json data;
 
-        if (std::filesystem::exists(config().get_backups_data_path()+"/influxdb2")) {
+        std::string influxdb_version = Platform::Utils::InfluxDB::get_version();
+
+        if (influxdb_version.starts_with("v2.")) {
             if (!Docker::Container::copy_to_container("influxdb2", backup_folder+"/"+tag()+"/influxdb2dump-"+tag()+".tar", "/")) {
                 data["status"]  = false;
                 data["error"].push_back("Failed copying backup to influxdb2 container");
@@ -210,7 +214,7 @@ private:
                 data["error"].push_back("Failed restoring influxdb2 backup");
                 return data;
             }
-        } else {
+        } else if (influxdb_version.starts_with("1.")){
             if (!Docker::Container::copy_to_container("influxdb", backup_folder+"/"+tag()+"/influxdbdump-"+tag()+".tar", "/")) {
                 data["status"]  = false;
                 data["error"].push_back("Failed copying backup to influxdb container");

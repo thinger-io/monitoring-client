@@ -125,6 +125,8 @@ namespace Docker {
 
         bool exec(const std::string container_id, const std::string command) {
 
+            std::string exec_id = "";
+
             // POST request: https://docs.docker.com/engine/api/v1.41/#operation/ContainerExec
             // To exec a command in a container, you first need to create an exec instance, then start it.
 
@@ -145,7 +147,7 @@ namespace Docker {
                 cmd.push_back(word);
             }
 
-            json body1 = {
+            json body = {
               {"AttachStdin", false},
               {"AttachStdout", false},
               {"AttachStderr", true}, // will keep the request blocked until it finishes. Not ideal
@@ -153,33 +155,50 @@ namespace Docker {
               {"Cmd", cmd}
             };
 
-            auto res1 = cli.Post(("/containers/"+container_id+"/exec").c_str(), body1.dump(), "application/json");
+            auto res = cli.Post(("/containers/"+container_id+"/exec").c_str(), body.dump(), "application/json");
 
-            auto res1_json = json::parse(res1->body);
+            auto res_json = json::parse(res->body);
+
+            exec_id = res_json["Id"].get<std::string>();
 
             // Start exec instance
-            json body2 = {
+            body = {
               {"Detach", false}, // Does not seem to work!! block until end of command
               {"Tty", false}
             };
 
-            auto res2 = cli.Post(("/exec/"+res1_json["Id"].get<std::string>()+"/start").c_str(), body2.dump(), "application/json");
+            res = cli.Post(("/exec/"+exec_id+"/start").c_str(), body.dump(), "application/json");
 
-            if ( res2.error() == httplib::Error::Read ) {
+            std::cout << std::fixed << Date::millis()/1000.0 << " ";
+
+            if ( res.error() == httplib::Error::Read ) {
                 std::cout << "[_DOCKER] Error: Timeout waiting for command to execute" << std::endl;
                 return false;
-            } else if ( res2.error() != httplib::Error::Success ) {
-                std::cout << "[_DOCKER] Request error: " << res2.error() << std::endl;
+            } else if ( res.error() != httplib::Error::Success ) {
+                std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
                 return false;
             }
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
-            if (res2->status == 200)
-                std::cout << "[_DOCKER] Succesfully executed" << std::endl;
-            else
-                std::cout << "[_DOCKER] An error occurred while executing" << std::endl;
+            //std::cout << res->body << std::endl;
 
-            return HttpStatus::isSuccessful(res2->status);
+            if (!HttpStatus::isSuccessful(res->status)) {
+                std::cout << "[_DOCKER] An error occurred while executing" << std::endl;
+                return false;
+            }
+
+            // Inspect exec instance
+            res = cli.Get(("/exec/"+exec_id+"/json").c_str());
+
+            res_json = json::parse(res->body);
+
+            if (!HttpStatus::isSuccessful(res->status) || res_json["ExitCode"].get<int>() != 0) {
+                std::cout << "[_DOCKER] An error occurred while executing" << std::endl;
+                return false;
+            }
+
+            std::cout << "[_DOCKER] Succesfully executed" << std::endl;
+
+            return true;
         }
 
         bool restart(const std::string container_id) {

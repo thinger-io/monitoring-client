@@ -8,6 +8,8 @@
 #include "../../utils/docker.h"
 #include "../../utils/tar.h"
 
+#include "./utils.h"
+
 class PlatformBackup : public ThingerMonitorBackup {
 
 public:
@@ -35,8 +37,8 @@ public:
             return data;
         }
 
-        data["operation"]["backup_thinger"]   = backup_thinger();
-        data["operation"]["backup_mongodb"]   = backup_mongodb();
+        //data["operation"]["backup_thinger"]   = backup_thinger();
+        //data["operation"]["backup_mongodb"]   = backup_mongodb();
         data["operation"]["backup_influxdb"]  = backup_influxdb();
         data["operation"]["backup_plugins"]   = backup_plugins();
         data["operation"]["compress_backup"]  = compress_backup();
@@ -158,10 +160,14 @@ private:
     json backup_influxdb() const {
         json data;
 
-        if (std::filesystem::exists(config().get_backups_data_path()+"/influxdb2")) {
+        std::string influxdb_version = Platform::Utils::InfluxDB::get_version();
+
+        if (influxdb_version.starts_with("v2.")) {
             // get influx token
             std::ifstream compose (config().get_backups_compose_path()+"/docker-compose.yml", std::ifstream::in);
             std::string line;
+
+            // TODO: docker_task Docker::Container::exec("influxdb2", "printenv --null DOCKER_INFLUXDB_INIT_ADMIN_TOKEN");
 
             std::string influx_token;
 
@@ -182,7 +188,7 @@ private:
                 data["error"].push_back("Failed copying influxdb2 backup from container");
                 return data;
             }
-        } else {
+        } else if (influxdb_version.starts_with("1.")){
             if (!Docker::Container::exec("influxdb", "influxd backup --portable /dump")) {
                 data["status"]  = false;
                 data["error"].push_back("Failed executing influxdb backup");
