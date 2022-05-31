@@ -199,16 +199,6 @@ private:
                 data["error"].push_back("Failed copying backup to influxdb2 container");
                 return data;
             }
-            if (!Docker::Container::exec("influxdb2", "mkdir -p /var/lib/influxdb2/tmp/")) {
-                data["status"]  = false;
-                data["error"].push_back("Failed creating temp folder in influxdb2 container");
-                return data;
-            }
-            if (!Docker::Container::exec("influxdb2", "chown influxdb:influxdb /var/lib/influxdb2/tmp/")) {
-                data["status"]  = false;
-                data["error"].push_back("Failed changing permissions of temp folder to influxdb user in influxdb2 container");
-                return data;
-            }
             if (!Docker::Container::exec("influxdb2", "influx restore /dump --full")) {
                 data["status"]  = false;
                 data["error"].push_back("Failed restoring influxdb2 backup");
