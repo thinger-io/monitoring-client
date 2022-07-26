@@ -37,8 +37,8 @@ public:
             return data;
         }
 
-        //data["operation"]["backup_thinger"]   = backup_thinger();
-        //data["operation"]["backup_mongodb"]   = backup_mongodb();
+        data["operation"]["backup_thinger"]   = backup_thinger();
+        data["operation"]["backup_mongodb"]   = backup_mongodb();
         data["operation"]["backup_influxdb"]  = backup_influxdb();
         data["operation"]["backup_plugins"]   = backup_plugins();
         data["operation"]["compress_backup"]  = compress_backup();

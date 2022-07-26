@@ -286,8 +286,13 @@ private:
         json data;
         if (!Docker::Container::restart("mongodb"))
             data["error"].push_back("Failed restaring mongodb container");
-        if (!Docker::Container::restart("influxdb"))
-            data["error"].push_back("Failed restarting influxdb container");
+        if (std::filesystem::exists(config().get_backups_data_path()+"/influxdb2")) {
+            if (!Docker::Container::restart("influxdb2"))
+                data["error"].push_back("Failed restarting influxdb2 container");
+        } else {
+            if (!Docker::Container::restart("influxdb"))
+                data["error"].push_back("Failed restarting influxdb container");
+        }
         if (!Docker::Container::restart("thinger"))
             data["error"].push_back("Failed restarting thinger container");
 

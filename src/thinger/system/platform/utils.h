@@ -11,7 +11,8 @@ namespace Platform::Utils::InfluxDB {
         auto res = cli.Get("/ping");
 
         if (res.error() != httplib::Error::Success) {
-            std::cout << "[PLATFORM] Can't ping influxdb /ping endpoint" << std::endl;
+            std::cout << std::fixed << Date::millis()/1000.0 << " ";
+            std::cout << "[_INFLUX] Can't ping influxdb /ping endpoint" << std::endl;
             return "false"; // TODO: throw exception
         }
 

@@ -382,7 +382,8 @@ public:
                 out["ram_used"] = (double)(ram_total - ram_available) / kbtogb;
                 out["ram_usage"] = (double)((ram_total - ram_available) * 100) / ram_total;
                 out["ram_swaptotal"] = (double)ram_swaptotal / kbtogb;
-                out["ram_swapfree"] = (double)ram_swaptotal / kbtogb;
+                out["ram_swapfree"] = (double)ram_swapfree / kbtogb;
+                out["ram_swapused"] = (double)(ram_swaptotal - ram_swapfree) / kbtogb;
                 out["ram_swapusage"] = (ram_swaptotal == 0) ? 0 : (double)((ram_swaptotal - ram_swapfree) *100) / ram_swaptotal;
 
                 // CPU
@@ -745,7 +746,6 @@ private:
     void getConsoleVersion() {
         httplib::Client cli("http://127.0.0.1");
         auto res = cli.Get("/v1/server/version");
-        auto res_json = json::parse(res->body);
         if (res.error() != httplib::Error::Success) {
             console_version = "Could not retrieve";
         } else {
