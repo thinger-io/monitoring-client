@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 - When exec command fails internally function will return false
 - Restore on influxdb2 was not restarting container
 - Memory swap was not being correctly monitored
+- Resources were being duplicated with default and own name
 
 ## [0.0.5] - 2022-04-25
 ### Added

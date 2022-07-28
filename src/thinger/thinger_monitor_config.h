@@ -276,6 +276,7 @@ public:
     std::vector<std::string> get_filesystems() {
 
         if (has_filesystems()) {
+            filesystems_.clear();
             for (auto fs : config_["resources"]["filesystems"]) {
                 filesystems_.push_back(fs.get<std::string>());
             }
@@ -286,6 +287,7 @@ public:
     std::vector<std::string> get_drives() {
 
         if (has_drives()) {
+            drives_.clear();
             for (auto dv : config_["resources"]["drives"]) {
                 drives_.push_back(dv.get<std::string>());
             }
@@ -296,6 +298,7 @@ public:
     std::vector<std::string> get_interfaces() {
 
         if (has_interfaces()) {
+            interfaces_.clear();
             for (auto ifc : config_["resources"]["interfaces"]) {
                 interfaces_.push_back(ifc.get<std::string>());
             }
@@ -411,7 +414,7 @@ private:
 
     }
 
-    json to_json(pson_object& data) {
+    json to_json(pson_object& data) const {
 
         json config;
 
