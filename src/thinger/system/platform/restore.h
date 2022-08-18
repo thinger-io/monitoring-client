@@ -11,18 +11,20 @@
 
 #include "./utils.h"
 
+namespace fs = std::filesystem;
+
 class PlatformRestore : public ThingerMonitorRestore {
 
 public:
 
-    PlatformRestore(ThingerMonitorConfig& config, const std::string& hostname, const std::string& tag)
+    PlatformRestore(thinger::monitor::Config& config, const std::string& hostname, const std::string& tag)
       : ThingerMonitorRestore(config,hostname,tag) {
 
-        storage = this->config().get_backups_storage();
-        bucket = this->config().get_storage_bucket(storage);
-        region = this->config().get_storage_region(storage);
-        access_key = this->config().get_storage_access_key(storage);
-        secret_key = this->config().get_storage_secret_key(storage);
+        storage = this->config().get_storage();
+        bucket = this->config().get_bucket(storage);
+        region = this->config().get_region(storage);
+        access_key = this->config().get_access_key(storage);
+        secret_key = this->config().get_secret_key(storage);
 
         file_to_download = this->name()+"_"+this->tag()+".tar.gz";
 
@@ -138,7 +140,7 @@ private:
         }
 
         if (std::filesystem::exists(backup_folder+"/"+tag()+"/thinger-"+tag()+".tar")) {
-            if (!std::filesystem::remove_all(config().get_backups_data_path()+"/thinger/users")) {
+            if (!std::filesystem::remove_all(config().get_data_path()+"/thinger/users")) {
                 data["status"]  = false;
                 data["error"].push_back("Failed removing thinger installed directories");
                 return data;
@@ -159,7 +161,7 @@ private:
     json restore_mongodb() const {
         json data;
         // get mongodb root password
-        std::ifstream compose (config().get_backups_compose_path()+"/docker-compose.yml", std::ifstream::in);
+        std::ifstream compose (config().get_compose_path()+"/docker-compose.yml", std::ifstream::in);
         std::string line;
 
         std::string mongo_password;
@@ -227,13 +229,13 @@ private:
         json data;
 
         // Executed after restore_thinger
-        if (!std::filesystem::exists(config().get_backups_data_path()+"/thinger/users/")) {
+        if (!std::filesystem::exists(config().get_data_path()+"/thinger/users/")) {
             data["status"] = true;
             data["msg"].push_back("Platform has no users");
             return data;
         }
 
-        for (const auto & p1 : fs::directory_iterator(config().get_backups_data_path()+"/thinger/users/")) { // users
+        for (const auto & p1 : fs::directory_iterator(config().get_data_path()+"/thinger/users/")) { // users
             if (! std::filesystem::exists(p1.path().string()+"/plugins/")) continue;
 
             std::string user = p1.path().filename().string();
@@ -274,7 +276,7 @@ private:
         status = status && std::filesystem::remove_all(backup_folder+"/"+file_to_download);
         status = status && std::filesystem::remove_all(backup_folder+"/"+tag());
         status = status && Docker::Container::exec("mongodb", "rm -rf /dump");
-        if (std::filesystem::exists(config().get_backups_data_path()+"/influxdb2")) {
+        if (std::filesystem::exists(config().get_data_path()+"/influxdb2")) {
             status = status && Docker::Container::exec("influxdb2", "rm -rf /dump");
         } else {
             status = status && Docker::Container::exec("influxdb", "rm -rf /dump");
@@ -286,7 +288,7 @@ private:
         json data;
         if (!Docker::Container::restart("mongodb"))
             data["error"].push_back("Failed restaring mongodb container");
-        if (std::filesystem::exists(config().get_backups_data_path()+"/influxdb2")) {
+        if (std::filesystem::exists(config().get_data_path()+"/influxdb2")) {
             if (!Docker::Container::restart("influxdb2"))
                 data["error"].push_back("Failed restarting influxdb2 container");
         } else {

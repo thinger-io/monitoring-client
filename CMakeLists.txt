@@ -71,8 +71,8 @@ add_definitions( -DOPEN_SSL=${OPEN_SSL} )
 # json
 include(FetchContent)
 FetchContent_Declare(json
-  GIT_REPOSITORY https://github.com/nlohmann/json.git
-  GIT_TAG v3.10.5
+  GIT_REPOSITORY  https://github.com/nlohmann/json.git
+  GIT_TAG         v3.10.5
 )
 
 FetchContent_GetProperties(json)
@@ -82,6 +82,7 @@ if(NOT json_POPULATED)
   list(APPEND ADDITIONAL_LIBS nlohmann_json::nlohmann_json)
 endif()
 
+# libarchive
 find_package(LibArchive REQUIRED)
 if (LibArchive_FOUND)
   include_directories(${LibArchive_INCLUDE_DIRS})
@@ -93,11 +94,24 @@ add_executable(thinger_monitor ${SOURCE_FILES})
 target_link_libraries(thinger_monitor ${ADDITIONAL_LIBS})
 set_target_properties(thinger_monitor PROPERTIES COMPILE_DEFINITIONS "DAEMON=0")
 
+# Catch2
+FetchContent_Declare(
+  Catch2
+  GIT_REPOSITORY  https://github.com/catchorg/Catch2.git
+  GIT_TAG         v3.1.0
+)
+
+FetchContent_MakeAvailable(Catch2)
+
+add_executable(tests test/thinger/config.cpp)
+#target_link_libraries(tests PRIVATE Catch2::Catch2WithMain)
+list(APPEND ADDITIONAL_LIBS Catch2::Catch2WithMain)
+target_link_libraries(tests ${ADDITIONAL_LIBS})
+
 if(BIN_EXTENSION)
   set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${PROJECT_NAME}.${BIN_EXTENSION}")
   message(STATUS "Binary name is ${PROJECT_NAME}.${BIN_EXTENSION}")
 endif()
-
 
 # Add thinger libraries
 FetchContent_Declare(
@@ -107,6 +121,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(thinger)
 target_include_directories(thinger_monitor PRIVATE ${thinger_SOURCE_DIR}/src/thinger )
+target_include_directories(tests PRIVATE ${thinger_SOURCE_DIR}/src/thinger )
 
 # Add cpp_httplib library
 # Added localy as an external library until it implements unix sockets
@@ -118,3 +133,4 @@ target_include_directories(thinger_monitor PRIVATE ${thinger_SOURCE_DIR}/src/thi
 #FetchContent_MakeAvailable(cpp_httplib)
 #target_include_directories(thinger_monitor PRIVATE ${cpp_httplib_SOURCE_DIR})
 target_include_directories(thinger_monitor PRIVATE ${CMAKE_SOURCE_DIR}/external/cpp-httplib/)
+target_include_directories(tests PRIVATE ${CMAKE_SOURCE_DIR}/external/cpp-httplib/)

@@ -1,16 +1,17 @@
-#include "thinger_monitor_config.h"
+#include "config.h"
+#include "monitor.h"
 
 #include <thinger_client.h>
 
 #include <httplib.h>
 
 #include <thread>
-#include <chrono>
-#include <fstream>
-#include <ifaddrs.h>
+//#include <chrono>
+//#include <fstream>
+//#include <ifaddrs.h>
 #include <filesystem>
-#include <arpa/inet.h>
 #include <linux/kernel.h>
+//#include <arpa/inet.h>
 #include <unistd.h>
 #include <thread>
 #include <future>
@@ -42,34 +43,36 @@ const long minute = 60;
 const long hour = minute * 60;
 const long day = hour * 24;
 
-const double btokb = 1024;
-const double kbtogb = btokb * 1024;
-const double btomb = kbtogb;
-const double btogb = kbtogb * 1024;
+const std::uintmax_t btokb = 1024;
+const std::uintmax_t kbtogb = btokb * 1024;
+const std::uintmax_t btomb = kbtogb;
+const std::uintmax_t btogb = kbtogb * 1024;
 
-class ThingerMonitor {
+namespace thinger::monitor {
 
-public:
+    class Client {
 
-    ThingerMonitor(thinger_client& client, ThingerMonitorConfig& config) :
-        client_(client),
-        monitor_(client["monitor"]),
-        cmd_(client["cmd"]),
-        reboot_(client["reboot"]),
-        update_(client["update"]),
-        update_distro_(client["update_distro"]),
-        backup_(client["backup"]),
-        restore_(client["restore"]),
-        config_(config)
-    {
+    public:
+
+        Client(thinger_client& client, Config& config) :
+            client_(client),
+            monitor_(client["monitor"]),
+            cmd_(client["cmd"]),
+            reboot_(client["reboot"]),
+            update_(client["update"]),
+            update_distro_(client["update_distro"]),
+            backup_(client["backup"]),
+            restore_(client["restore"]),
+            config_(config)
+        {
 
             reload_configuration();
 
             // Executed only once
-            retrieve_hostname();
-            retrieve_os_version();
-            retrieve_kernel_version();
-            retrieve_cpu_cores();
+            system::retrieve_hostname(hostname);
+            system::retrieve_os_version(os_version);
+            system::retrieve_kernel_version(kernel_version);
+            cpu::retrieve_cpu_cores(cpu_cores);
 
             cmd_ = [this](pson& in, pson& out) {
                 std::string output = cmd(in["input"]);
@@ -80,10 +83,10 @@ public:
 
                 if (!endpoint.empty()) {
                     json payload;
-                    payload["device"] = config_.get_device_id();
+                    payload["device"] = config_.get_id();
                     payload["hostname"] = hostname;
                     payload["payload"] = output;
-                    Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, payload, config_.get_server_url(), config_.get_server_secure());
+                    Thinger::call_endpoint(config_.get_endpoints_token(), config_.get_user(), endpoint, payload, config_.get_url(), config_.get_ssl());
                 }
             };
 
@@ -136,7 +139,7 @@ public:
 
             backup_ = [this](pson& in, pson& out) {
 
-                if (config_.has_backups_system()) {
+                if (!config_.get_backup().empty()) {
 
                     std::string tag = in["tag"];
                     std::string endpoint = in["endpoint"];
@@ -158,12 +161,12 @@ public:
 
                         std::unique_ptr<ThingerMonitorBackup> backup{}; // as nullptr
                         // Add new possible options for backup systems
-                        if (config_.get_backups_system() == "platform") {
+                        if (config_.get_backup() == "platform") {
                             backup = std::make_unique<PlatformBackup>(config_, hostname, tag);
                         }
 
                         json data;
-                        data["device"]    = config_.get_device_id();
+                        data["device"]    = config_.get_id();
                         data["hostname"]  = hostname;
                         data["backup"]    = {};
                         data["backup"]["operations"] = {};
@@ -187,7 +190,7 @@ public:
                         }
 
                         if (!endpoint.empty())
-                            Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, data, config_.get_server_url(), config_.get_server_secure());
+                            Thinger::call_endpoint(config_.get_endpoints_token(), config_.get_user(), endpoint, data, config_.get_url(), config_.get_ssl());
 
                     });
 
@@ -209,7 +212,7 @@ public:
 
             restore_ = [this](pson& in, pson& out) {
 
-                if (config_.has_backups_system()) {
+                if (!config_.get_backup().empty()) {
 
                     std::string tag = in["tag"];
                     std::string endpoint = in["endpoint"];
@@ -230,12 +233,12 @@ public:
 
                         std::unique_ptr<ThingerMonitorRestore> restore{};
                         // Add new possible options for backup systems
-                        if (config_.get_backups_system() == "platform") {
+                        if (config_.get_backup() == "platform") {
                             restore = std::make_unique<PlatformRestore>(config_, hostname, tag);
                         }
 
                         json data;
-                        data["device"]    = config_.get_device_id();
+                        data["device"]    = config_.get_id();
                         data["hostname"]  = hostname;
                         data["restore"]   = {};
                         data["restore"]["operations"] = {};
@@ -251,7 +254,7 @@ public:
                         data["restore"]["operations"]["clean"] = restore->clean();
                         if (!endpoint.empty()) {
                             json payload;
-                            Thinger::call_endpoint(config_.get_backups_endpoints_token(), config_.get_user(), endpoint, payload, config_.get_server_url(), config_.get_server_secure());
+                            Thinger::call_endpoint(config_.get_endpoints_token(), config_.get_user(), endpoint, payload, config_.get_url(), config_.get_ssl());
                         }
 
                     });
@@ -279,15 +282,15 @@ public:
 
                 // Set values at defined intervals
                 if (current_seconds >= (every5s + 5)) {
-                    retrieve_cpu_loads(); // load and usage is updated every 5s by sysinfo
-                    retrieve_cpu_usage();
+                    cpu::retrieve_cpu_loads(cpu_loads); // load and usage is updated every 5s by sysinfo
+                    cpu::retrieve_cpu_usage(cpu_usage, cpu_loads, cpu_cores);
                     every5s = current_seconds;
                 }
 
                 if (current_seconds >= (every1m + 60)) {
-                    retrieve_uptime();
-                    retrieve_cpu_procs();
-                    retrieve_fs_stats();
+                    system::retrieve_uptime(uptime);
+                    cpu::retrieve_cpu_procs(cpu_procs);
+                    storage::retrieve_fs_stats(filesystems_);
                     every1m = current_seconds;
                 }
 
@@ -298,14 +301,14 @@ public:
                 }
 
                 if (current_seconds >= (every1d + 60*60*24)) {
-                    getPublicIPAddress();
-                    if (config_.get_backups_system() == "platform")
-                        getConsoleVersion();
+                    public_ip = network::getPublicIPAddress();
+                    if (config_.get_backup() == "platform")
+                        platform::getConsoleVersion(console_version);
                     every1d = current_seconds;
                 }
 
                 // Storage
-                for (auto & fs : filesystems_) {
+                for (auto const & fs : filesystems_) {
                     std::string name = fs.path;
                     if ( config_.get_defaults() && &fs == &filesystems_.front()) {
                         name = "default";
@@ -317,7 +320,7 @@ public:
                 }
 
                 // IO
-                retrieve_dv_stats();
+                retrieve_dv_stats(drives_);
                 for (auto & dv : drives_) {
                     std::string name = dv.name;
                     if ( config_.get_defaults() && &dv == &drives_.front()) {
@@ -341,7 +344,7 @@ public:
                 }
 
                 // Network
-                retrieve_ifc_stats();
+                retrieve_ifc_stats(interfaces_);
                 for (auto & ifc : interfaces_) {
                     std::string name = ifc.name;
                     if ( config_.get_defaults() && &ifc == &interfaces_.front()) {
@@ -371,12 +374,12 @@ public:
                 }
                 out["nw_public_ip"] = public_ip;
 
-                if (config_.get_backups_system() == "platform") {
+                if (config_.get_backup() == "platform") {
                     out["console_version"] = console_version;
                 }
 
                 // RAM
-                retrieve_ram();
+                memory::retrieve_ram(ram_total, ram_available, ram_swaptotal, ram_swapfree);
                 out["ram_total"] = (double)ram_total / kbtogb;
                 out["ram_available"] = (double)ram_available / kbtogb;
                 out["ram_used"] = (double)(ram_total - ram_available) / kbtogb;
@@ -407,31 +410,29 @@ public:
             };
     }
 
-    virtual ~ThingerMonitor() = default;
+    virtual ~Client() = default;
 
     void reload_configuration() {
         interfaces_.clear();
         filesystems_.clear();
         drives_.clear();
 
-        config_.reload_config();
-
         for (const auto& fs_path : config_.get_filesystems()) {
-            filesystem fs;
+            storage::filesystem fs;
             fs.path = fs_path;
             filesystems_.push_back(fs);
         }
 
         for (const auto& dv_name : config_.get_drives()) {
-            drive dv;
+            io::drive dv;
             dv.name = dv_name;
             drives_.push_back(dv);
         }
 
         for (const auto& ifc_name : config_.get_interfaces()) {
-            interface ifc;
+            network::interface ifc;
             ifc.name = ifc_name;
-            ifc.internal_ip = getIPAddress(ifc_name);
+            ifc.internal_ip = network::getIPAddress(ifc_name);
             interfaces_.push_back(ifc);
         }
 
@@ -439,6 +440,7 @@ public:
 
 protected:
 
+    // TODO: move this functions to ns and make them configurable or self discoverable
     // -- SYSTEM INFO -- //
     void retrieve_updates() {
         // We will use default ubuntu server notifications
@@ -479,32 +481,33 @@ protected:
     }
 
     void reboot() {
-        system("sudo reboot");
+        ::system("sudo reboot");
     }
 
     void update() {
         // System upgrade. By default it does not overwrite config files if a package has a newer version
-        system("sudo apt -y update && sudo DEBIAN_FRONTEND=noninteractive DEBIAN_PRIORITY=critical UCF_FORCE_CONFFOLD=1 apt -qq -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold upgrade");
+        ::system("sudo apt -y update && sudo DEBIAN_FRONTEND=noninteractive DEBIAN_PRIORITY=critical UCF_FORCE_CONFFOLD=1 apt -qq -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold upgrade");
     }
 
     void update_distro() {
         // Full unattended distro upgrade
-        system("sudo apt -y update && sudo do-release-upgrade -f DistUpgradeViewNonInteractive");
+        ::system("sudo apt -y update && sudo do-release-upgrade -f DistUpgradeViewNonInteractive");
     }
 
 private:
 
     // thinger resources
     thinger_client& client_;
-    thinger::thinger_resource& monitor_;
-    thinger::thinger_resource& cmd_;
-    thinger::thinger_resource& reboot_;
-    thinger::thinger_resource& update_;
-    thinger::thinger_resource& update_distro_;
-    thinger::thinger_resource& backup_;
-    thinger::thinger_resource& restore_;
+    // TODO: make a map of thinger resources
+    thinger_resource& monitor_;
+    thinger_resource& cmd_;
+    thinger_resource& reboot_;
+    thinger_resource& update_;
+    thinger_resource& update_distro_;
+    thinger_resource& backup_;
+    thinger_resource& restore_;
 
-    ThingerMonitorConfig& config_;
+    Config& config_;
 
     struct future_task {
         std::string task;
@@ -513,28 +516,14 @@ private:
     future_task f1; // f1 used for blocking backup/restore/update/update_distro
 
     // network
-    struct interface {
-        std::string name;
-        std::string internal_ip;
-        unsigned long long int total_transfer[2][3]; // before, after; b incoming, b outgoing, 3-> ts
-        unsigned long long total_packets[4]; // incoming (total, dropped), outgoing (total, dropped)
-    };
-    std::vector<interface> interfaces_;
+    std::vector<network::interface> interfaces_;
     std::string public_ip;
 
     // storage
-    struct filesystem {
-        std::string path;
-        std::filesystem::space_info space_info;
-    };
-    std::vector<filesystem> filesystems_;
+    std::vector<storage::filesystem> filesystems_;
 
     // io
-    struct drive {
-        std::string name;
-        unsigned long long int total_io[2][4]; // before, after; sectors read, sectors writte, io tics, ts
-    };
-    std::vector<drive> drives_;
+    std::vector<io::drive> drives_;
 
     // system info
     std::string hostname;
@@ -546,7 +535,7 @@ private:
 
     // CPU
     const float f_load = 1.f / (1 << SI_LOAD_SHIFT);
-    float cpu_loads[3]; // 1, 5 and 15 mins loads
+    std::array<float, 3> cpu_loads; // 1, 5 and 15 mins loads
     float cpu_usage;
     unsigned short cpu_cores;
     unsigned int cpu_procs;
@@ -563,195 +552,6 @@ private:
     // thinger.io platform
     std::string console_version;
 
-    std::string getIPAddress(std::string interface){
-        std::string ipAddress="Unable to get IP Address";
-        struct ifaddrs *interfaces = nullptr;
-        struct ifaddrs *temp_addr = nullptr;
-        int success = 0;
-        // retrieve the current interfaces - returns 0 on success
-        success = getifaddrs(&interfaces);
-        if (success == 0) {
-            // Loop through linked list of interfaces
-            temp_addr = interfaces;
-            while(temp_addr != nullptr) {
-                if(temp_addr->ifa_addr != nullptr
-                  && temp_addr->ifa_addr->sa_family == AF_INET
-                  && temp_addr->ifa_name == interface)
-                {
-                    // Check if interface is the default interface
-                    ipAddress=inet_ntoa(((struct sockaddr_in*)temp_addr->ifa_addr)->sin_addr);
-                }
-                temp_addr = temp_addr->ifa_next;
-            }
-        }
-        // Free memory
-        freeifaddrs(interfaces);
-        return ipAddress;
-    }
-
-    void getPublicIPAddress() {
-        httplib::Client cli("https://ifconfig.me");
-        auto res = cli.Get("/ip");
-        if ( res.error() == httplib::Error::SSLServerVerification ) {
-            httplib::Client cli("http://ifconfig.me");
-            res = cli.Get("/ip");
-        }
-        public_ip = res->body;
-    }
-
-    // -- SYSTEM INFO -- //
-    void retrieve_hostname() {
-        std::ifstream hostinfo ("/etc/hostname", std::ifstream::in);
-        hostinfo >> hostname;
-    }
-
-    void retrieve_os_version() {
-        std::ifstream osinfo ("/etc/os-release", std::ifstream::in);
-        std::string line;
-
-        while(std::getline(osinfo,line)) {
-            if (line.find("PRETTY_NAME") != std::string::npos) {
-                // get text in between "
-                unsigned first_del = line.find('"');
-                unsigned last_del = line.find_last_of('"');
-                os_version = line.substr(first_del +1, last_del - first_del -1);
-            }
-        }
-    }
-
-    void retrieve_kernel_version() {
-        std::ifstream kernelinfo ("/proc/version", std::ifstream::in);
-        std::string version;
-
-        kernelinfo >> kernel_version;
-        kernelinfo >> version; // skipping second word
-        kernelinfo >> version;
-
-        kernel_version = kernel_version + " " + version;
-    }
-
-    void retrieve_uptime() {
-        std::chrono::milliseconds uptime_millis(0u);
-        double uptime_seconds;
-        if (std::ifstream("/proc/uptime", std::ios::in) >> uptime_seconds) {
-            int days = (int)uptime_seconds / (60*60*24);
-            int hours = ((int)uptime_seconds % (((days > 0) ? days : 1)*60*60*24)) / (60*60);
-            int minutes = (int)uptime_seconds % (((days > 0) ? days : 1)*60*60*24) % (((hours > 0) ? hours: 1)*60*60) / 60;
-            uptime =
-                ((days > 0) ? std::to_string(days)+((days == 1) ? " day, ":" days, ") : "") +
-                ((hours > 0) ? std::to_string(hours)+((hours == 1) ? " hour, ":" hours, ") : "") +
-                std::to_string(minutes)+((minutes == 1) ? " minute":" minutes");
-        }
-    }
-
-    // -- NETWORK -- //
-    void retrieve_ifc_stats() {
-        for (auto & ifc : interfaces_) {
-            int j = 0;
-
-            std::ifstream netinfo ("/proc/net/dev", std::ifstream::in);
-            std::string line;
-            std::string null;
-
-            while(netinfo >> line) {
-                if (line == ifc.name+":") {
-                    netinfo >> ifc.total_transfer[1][j++]; //first bytes inc
-                    netinfo >> ifc.total_packets[j-1]; // total packets inc
-                    netinfo >> null >> ifc.total_packets[j]; // drop packets inc
-                    netinfo >> null >> null >> null >> null >> ifc.total_transfer[1][j++]; // total bytes out
-                    netinfo >> ifc.total_packets[j]; // total packets out
-                    netinfo >> null >> ifc.total_packets[j+1]; // drop packets out
-
-                    ifc.total_transfer[1][j++] = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::system_clock::now().time_since_epoch()).count();
-
-                    break;
-                }
-            }
-        }
-    }
-
-    // -- STORAGE -- //
-    void retrieve_fs_stats() {
-        for (auto & fs : filesystems_) {
-            fs.space_info = std::filesystem::space(fs.path);
-        }
-    }
-
-    // -- RAM -- //
-    void retrieve_ram() {
-
-        std::ifstream raminfo ("/proc/meminfo", std::ifstream::in);
-        std::string line;
-
-        while(raminfo >> line) {
-            if (line == "MemTotal:") {
-                raminfo >> ram_total;
-            } else if (line == "MemAvailable:") {
-                raminfo >> ram_available;
-            } else if (line == "SwapTotal:") {
-                raminfo >> ram_swaptotal;
-            } else if (line == "SwapFree:") {
-                raminfo >> ram_swapfree;
-                // From /proc/meminfo order once we reach available we may stop reading
-                break;
-            }
-        }
-    }
-
-    // -- CPU -- //
-    void retrieve_cpu_cores() {
-        cpu_cores = std::thread::hardware_concurrency();
-    }
-
-    void retrieve_cpu_loads() {
-        std::ifstream loadinfo ("/proc/loadavg", std::ifstream::in);
-        for (auto i = 0; i < 3; i++) {
-            loadinfo >> cpu_loads[i];
-        }
-    }
-
-    void retrieve_cpu_usage() {
-        cpu_usage = cpu_loads[0] * 100 / cpu_cores;
-    }
-
-    void retrieve_cpu_procs() {
-        std::string path = "/proc";
-        cpu_procs = 0;
-        for (const auto & entry : std::filesystem::directory_iterator(path)) {
-          if (entry.is_directory() && isdigit(entry.path().u8string().back()))  {
-            cpu_procs++;
-          }
-        }
-    }
-
-    // -- I/O -- //
-    void retrieve_dv_stats() {
-        for(auto & dv : drives_) {
-            int j = 0;
-
-            std::ifstream dvinfo ("/sys/block/"+dv.name+"/stat", std::ifstream::in);
-            std::string null;
-
-            dvinfo >> null >> null >> dv.total_io[1][j++]; // sectors read
-            dvinfo >> null >> null >> null >> dv.total_io[1][j++]; // sectors written
-            dvinfo >> null >> null >> dv.total_io[1][j++]; // io ticks -> time spent in io
-
-            dv.total_io[1][j++] = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now().time_since_epoch()).count();
-        }
-    }
-
-    // -- THINGER PLATFORM -- //
-    void getConsoleVersion() {
-        httplib::Client cli("http://127.0.0.1");
-        auto res = cli.Get("/v1/server/version");
-        if (res.error() != httplib::Error::Success) {
-            console_version = "Could not retrieve";
-        } else {
-            auto res_json = json::parse(res->body);
-            console_version = res_json["version"].get<std::string>();
-        }
-    }
-
 };
+
+}

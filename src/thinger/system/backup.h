@@ -4,17 +4,17 @@ class ThingerMonitorBackup {
 
 protected:
 
-    ThingerMonitorBackup(ThingerMonitorConfig& config, const std::string& name, const std::string& tag)
+    ThingerMonitorBackup(thinger::monitor::Config& config, const std::string& name, const std::string& tag)
       : config_(config), name_(name), tag_(tag)
     {}
 
-    ThingerMonitorConfig config() const { return config_; }
+    thinger::monitor::Config config() const { return config_; }
     std::string name() const { return name_; }
     std::string tag() const { return tag_; }
 
 private:
 
-    ThingerMonitorConfig config_;
+    thinger::monitor::Config config_;
     std::string name_;
     std::string tag_;
 
