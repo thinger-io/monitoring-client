@@ -124,13 +124,10 @@ target_include_directories(thinger_monitor PRIVATE ${thinger_SOURCE_DIR}/src/thi
 target_include_directories(tests PRIVATE ${thinger_SOURCE_DIR}/src/thinger )
 
 # Add cpp_httplib library
-# Added localy as an external library until it implements unix sockets
-#FetchContent_Declare(
-#  cpp_httplib
-#  GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
-#  GIT_TAG v0.10.1
-#)
-#FetchContent_MakeAvailable(cpp_httplib)
-#target_include_directories(thinger_monitor PRIVATE ${cpp_httplib_SOURCE_DIR})
-target_include_directories(thinger_monitor PRIVATE ${CMAKE_SOURCE_DIR}/external/cpp-httplib/)
-target_include_directories(tests PRIVATE ${CMAKE_SOURCE_DIR}/external/cpp-httplib/)
+FetchContent_Declare(
+  cpp_httplib
+  GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
+  GIT_TAG v0.11.1
+)
+FetchContent_MakeAvailable(cpp_httplib)
+target_include_directories(thinger_monitor PRIVATE ${cpp_httplib_SOURCE_DIR})

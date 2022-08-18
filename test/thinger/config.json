@@ -1,7 +1,7 @@
 {
   "backups": {
-    "compose_path": "/",
-    "data_path": "/data",
+    "compose_path": "/compose/test",
+    "data_path": "/data/test",
     "endpoints_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJtb25pdG9yX3Rlc3QiLCJzdnIiOiIxOTIuMTY4LjEuMSIsInVzciI6InRoaW5nZXIifQ.by4zF0i8tfMz8MsQOxDoy-q1IY3yeChKGSxHlQucKD0",
     "storage": "S3",
     "system": "platform"

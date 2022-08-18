@@ -17,7 +17,8 @@ namespace Docker {
             std::cout << "[_DOCKER] Inspecting container: '" << container_id;
             std::cout << "' and saving result to: '" << dest_path+"/"+container_id+".json" << std::endl;
 
-            httplib::Client cli("unix:/var/run/docker.sock");
+            httplib::Client cli("/var/run/docker.sock");
+            cli.set_address_family(AF_UNIX);
             cli.set_default_headers({ { "Host", "localhost" } });
 
             std::ofstream file(dest_path+"/"+container_id+".json");
@@ -65,7 +66,8 @@ namespace Docker {
                 inspect_file >> inspect_json;
             }
 
-            httplib::Client cli("unix:/var/run/docker.sock");
+            httplib::Client cli("/var/run/docker.sock");
+            cli.set_address_family(AF_UNIX);
             cli.set_default_headers({ { "Host", "localhost" } });
             cli.set_read_timeout(600, 0); // 10 minutes for commands to execute
 
@@ -134,7 +136,8 @@ namespace Docker {
             std::cout << "[_DOCKER] Executing command: '" << command << "' in container '" << container_id << "'" << std::endl;
 
             // Create exec instance
-            httplib::Client cli("unix:/var/run/docker.sock");
+            httplib::Client cli("/var/run/docker.sock");
+            cli.set_address_family(AF_UNIX);
             cli.set_default_headers({ { "Host", "localhost" } });
             cli.set_read_timeout(600, 0); // 10 minutes for commands to execute
 
@@ -206,7 +209,8 @@ namespace Docker {
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
             std::cout << "[_DOCKER] Restarting container: '" << container_id << "'" << std::endl;
 
-            httplib::Client cli("unix:/var/run/docker.sock");
+            httplib::Client cli("/var/run/docker.sock");
+            cli.set_address_family(AF_UNIX);
             cli.set_default_headers({ { "Host", "localhost" } });
             cli.set_read_timeout(600, 0); // 10 minutes for commands to execute
 
@@ -231,7 +235,8 @@ namespace Docker {
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
             std::cout << "[_DOCKER] Starting container: '" << container_id << "'" << std::endl;
 
-            httplib::Client cli("unix:/var/run/docker.sock");
+            httplib::Client cli("/var/run/docker.sock");
+            cli.set_address_family(AF_UNIX);
             cli.set_default_headers({ { "Host", "localhost" } });
             cli.set_read_timeout(600, 0); // 10 minutes for commands to execute
 
@@ -256,7 +261,8 @@ namespace Docker {
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
             std::cout << "[_DOCKER] Stopping container: '" << container_id << "'" << std::endl;
 
-            httplib::Client cli("unix:/var/run/docker.sock");
+            httplib::Client cli("/var/run/docker.sock");
+            cli.set_address_family(AF_UNIX);
             cli.set_default_headers({ { "Host", "localhost" } });
             cli.set_read_timeout(600, 0); // 10 minutes for commands to execute
 
@@ -284,7 +290,8 @@ namespace Docker {
             std::cout << "' to host path: '" << dest_path << "'" << std::endl;
 
             // https://docs.docker.com/engine/api/v1.41/#operation/ContainerArchive
-            httplib::Client cli("unix:/var/run/docker.sock");
+            httplib::Client cli("/var/run/docker.sock");
+            cli.set_address_family(AF_UNIX);
             cli.set_default_headers({ { "Host", "localhost" } });
 
             std::ofstream file(dest_path); // must have tar extension
@@ -316,7 +323,8 @@ namespace Docker {
             std::cout << "' path: '" << dest_path << "'" << std::endl;
 
             // https://docs.docker.com/engine/api/v1.41/#operation/PutContainerArchive
-            httplib::Client cli("unix:/var/run/docker.sock");
+            httplib::Client cli("/var/run/docker.sock");
+            cli.set_address_family(AF_UNIX);
             cli.set_write_timeout(600, 0); // 10 minutes
             cli.set_default_headers({ { "Host", "localhost" } });
 
@@ -373,7 +381,8 @@ namespace Docker {
             std::cout << "[_DOCKER] Inspecting network: '" << network_id;
             std::cout << "' and saving result to: '" << dest_path+"/"+network_id+"-network.json" << std::endl;
 
-            httplib::Client cli("unix:/var/run/docker.sock");
+            httplib::Client cli("/var/run/docker.sock");
+            cli.set_address_family(AF_UNIX);
             cli.set_default_headers({ { "Host", "localhost" } });
 
             std::ofstream file(dest_path+"/"+network_id+"-network.json");
@@ -431,7 +440,8 @@ namespace Docker {
             std::cout << std::fixed << Date::millis()/1000.0 << " ";
             std::cout << "[_DOCKER] Creating network: '" << inspect_json["Name"].get<std::string>() << "'" << std::endl;
 
-            httplib::Client cli("unix:/var/run/docker.sock");
+            httplib::Client cli("/var/run/docker.sock");
+            cli.set_address_family(AF_UNIX);
             cli.set_default_headers({ { "Host", "localhost" } });
             cli.set_read_timeout(600, 0); // 10 minutes for commands to execute
 

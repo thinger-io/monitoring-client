@@ -75,6 +75,10 @@ namespace thinger::monitor {
               REQUIRE( config.get_access_key(config.get_storage()) == "access_s3" );
               REQUIRE( config.get_secret_key(config.get_storage()) == "secret_s3" );
 
+              REQUIRE( config.get_compose_path() == "/compose/test" );
+              REQUIRE( config.get_data_path() == "/data/test" );
+              REQUIRE( config.get_secret_key(config.get_storage()) == "secret_s3" );
+
         }
 
         SECTION("Setters") {
