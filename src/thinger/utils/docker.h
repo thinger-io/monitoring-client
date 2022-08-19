@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <vector>
 #include <httplib.h>
+#include <spdlog/spdlog.h>
 
 #include "http_status.h"
 
@@ -13,9 +14,7 @@ namespace Docker {
 
         bool inspect(const std::string& container_id, const std::string& dest_path) {
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
-            std::cout << "[_DOCKER] Inspecting container: '" << container_id;
-            std::cout << "' and saving result to: '" << dest_path+"/"+container_id+".json" << std::endl;
+            spdlog::info("[_DOCKER] Inspecting container: '{0}' and saving result to: '{1}'", container_id, dest_path+"/"+container_id+".json");
 
             httplib::Client cli("/var/run/docker.sock");
             cli.set_address_family(AF_UNIX);
@@ -26,27 +25,25 @@ namespace Docker {
             auto res = cli.Get(("/containers/"+container_id+"/json").c_str());
 
             if ( res.error() != httplib::Error::Success ) {
-                std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
+                spdlog::error("[_DOCKER] Request error: {0}", to_string(res.error()));
                 return false;
             }
 
             auto res_json = json::parse(res->body);
             file << std::setw(4) << res_json << std::endl;
             if ( ! file ) {
-                std::cout << std::fixed << Date::millis()/1000.0 << " ";
-                std::cout << "[_DOCKER] There was an error saving result to filesystem" << std::endl;
+                spdlog::error("[_DOCKER] There was an error saving result to filesystem");
                 return false;
             }
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
             if (res->status == 200)
-                std::cout << "[_DOCKER] Succesfully retrieved information" << std::endl;
+                spdlog::info("[_DOCKER] Succesfully retrieved information");
             else {
-                std::cout << "[_DOCKER] Could not retrieve information. Status Code: " << res->status << std::endl;
+                spdlog::warn("[_DOCKER] Could not retrieve information. Status Code: {0}", res->status);
 
-                std::cout << res->body << std::endl;
+                spdlog::debug(res->body);
                 if ( res.error() != httplib::Error::Success )
-                    std::cout << res.error() << std::endl;
+                    spdlog::debug(to_string(res.error()));
             }
 
             return HttpStatus::isSuccessful(res->status);
@@ -57,8 +54,7 @@ namespace Docker {
 
             json inspect_json;
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
-            std::cout << "[_DOCKER] Reading docker inspect json from: '" << source_path << "'" << std::endl;
+            spdlog::info("[_DOCKER] Reading docker inspect json from: '{0}'", source_path);
 
             std::filesystem::path file(source_path);
             if (std::filesystem::exists(file)) {
@@ -72,23 +68,21 @@ namespace Docker {
             cli.set_read_timeout(600, 0); // 10 minutes for commands to execute
 
             // TODO: move to its own function
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
-            std::cout << "[_DOCKER] Downloading image: '" << inspect_json["Config"]["Image"].get<std::string>() << "'" << std::endl;
+            spdlog::info("[_DOCKER] Downloading image: '{0}'", inspect_json["Config"]["Image"].get<std::string>());
             auto res = cli.Post(("/images/create?fromImage="+inspect_json["Config"]["Image"].get<std::string>()).c_str());
             if ( res.error() == httplib::Error::Read ) {
-                std::cout << "[_DOCKER] Error: Timeout waiting for image to download" << std::endl;
+                spdlog::error("[_DOCKER] Error: Timeout waiting for image to download");
                 return false;
             } else if ( res.error() != httplib::Error::Success ) {
-                std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
+                spdlog::error("[_DOCKER] Request error: {0}", to_string(res.error()));
                 return false;
             }
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
             if (res->status == 200)
-                std::cout << "[_DOCKER] Image downloaded succesfully" << std::endl;
+                spdlog::info("[_DOCKER] Image downloaded succesfully");
             else {
-                std::cout << "[_DOCKER] An error occurred while downloading the image" << std::endl;
-                std::cout << "[_DOCKER] Error description: " << res->body << std::endl;
+                spdlog::error("[_DOCKER] An error occurred while downloading the image");
+                spdlog::debug("[_DOCKER] Error description: ", res->body);
             }
 
             json body = inspect_json["Config"];
@@ -100,26 +94,24 @@ namespace Docker {
                 }
             }
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
-            std::cout << "[_DOCKER] Creating container: '" << inspect_json["Name"].get<std::string>() << "'" << std::endl;
+            spdlog::info("[_DOCKER] Creating container: '{0}'", inspect_json["Name"].get<std::string>());
 
             res = cli.Post(("/containers/create?name="+inspect_json["Name"].get<std::string>()).c_str(),
               body.dump(), "application/json");
 
             if ( res.error() == httplib::Error::Read ) {
-                std::cout << "[_DOCKER] Error: Timeout waiting for command to execute" << std::endl;
+                spdlog::error("[_DOCKER] Error: Timeout waiting for command to execute");
                 return false;
             } else if ( res.error() != httplib::Error::Success ) {
-                std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
+                spdlog::error("[_DOCKER] Request error: {0}", to_string(res.error()));
                 return false;
             }
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
             if (res->status == 201)
-                std::cout << "[_DOCKER] Succesfully executed" << std::endl;
+                spdlog::info("[_DOCKER] Succesfully executed");
             else {
-                std::cout << "[_DOCKER] An error occurred while executing" << std::endl;
-                std::cout << "[_DOCKER] Error description: " << res->body << std::endl;
+                spdlog::error("[_DOCKER] An error occurred while executing");
+                spdlog::debug("[_DOCKER] Error description: ", res->body);
             }
 
             return HttpStatus::isSuccessful(res->status);
@@ -132,8 +124,7 @@ namespace Docker {
             // POST request: https://docs.docker.com/engine/api/v1.41/#operation/ContainerExec
             // To exec a command in a container, you first need to create an exec instance, then start it.
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
-            std::cout << "[_DOCKER] Executing command: '" << command << "' in container '" << container_id << "'" << std::endl;
+            spdlog::info("[_DOCKER] Executing command: '{0}' in container '{1}'", command, container_id);
 
             // Create exec instance
             httplib::Client cli("/var/run/docker.sock");
@@ -172,20 +163,16 @@ namespace Docker {
 
             res = cli.Post(("/exec/"+exec_id+"/start").c_str(), body.dump(), "application/json");
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
-
             if ( res.error() == httplib::Error::Read ) {
-                std::cout << "[_DOCKER] Error: Timeout waiting for command to execute" << std::endl;
+                spdlog::error("[_DOCKER] Error: Timeout waiting for command to execute");
                 return false;
             } else if ( res.error() != httplib::Error::Success ) {
-                std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
+                spdlog::error("[_DOCKER] Request error: {0}", to_string(res.error()));
                 return false;
             }
 
-            //std::cout << res->body << std::endl;
-
             if (!HttpStatus::isSuccessful(res->status)) {
-                std::cout << "[_DOCKER] An error occurred while executing" << std::endl;
+                spdlog::error("[_DOCKER] An error occurred while executing");
                 return false;
             }
 
@@ -195,19 +182,18 @@ namespace Docker {
             res_json = json::parse(res->body);
 
             if (!HttpStatus::isSuccessful(res->status) || res_json["ExitCode"].get<int>() != 0) {
-                std::cout << "[_DOCKER] An error occurred while executing" << std::endl;
+                spdlog::error("[_DOCKER] An error occurred while executing");
                 return false;
             }
 
-            std::cout << "[_DOCKER] Succesfully executed" << std::endl;
+            spdlog::info("[_DOCKER] Succesfully executed");
 
             return true;
         }
 
         bool restart(const std::string container_id) {
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
-            std::cout << "[_DOCKER] Restarting container: '" << container_id << "'" << std::endl;
+            spdlog::info("[_DOCKER] Restarting container: '{0}'", container_id);
 
             httplib::Client cli("/var/run/docker.sock");
             cli.set_address_family(AF_UNIX);
@@ -217,23 +203,21 @@ namespace Docker {
             auto res = cli.Post(("/containers/"+container_id+"/restart").c_str(), "t=0", "application/x-www-form-urlencoded");
 
             if ( res.error() != httplib::Error::Success ) {
-                std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
+                spdlog::error("[_DOCKER] Request error: {0}", to_string(res.error()));
                 return false;
             }
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
             if (res->status == 204)
-                std::cout << "[_DOCKER] Succesfully restarted" << std::endl;
+                spdlog::info("[_DOCKER] Succesfully restarted");
             else
-                std::cout << "[_DOCKER] Could not be restarted" << std::endl;
+                spdlog::warn("[_DOCKER] Could not be restarted");
 
             return HttpStatus::isSuccessful(res->status);
         }
 
         bool start(const std::string container_id) {
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
-            std::cout << "[_DOCKER] Starting container: '" << container_id << "'" << std::endl;
+            spdlog::info("[_DOCKER] Starting container: '{0}'", container_id);
 
             httplib::Client cli("/var/run/docker.sock");
             cli.set_address_family(AF_UNIX);
@@ -243,23 +227,21 @@ namespace Docker {
             auto res = cli.Post(("/containers/"+container_id+"/start").c_str(), "t=0", "application/x-www-form-urlencoded");
 
             if ( res.error() != httplib::Error::Success ) {
-                std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
+                spdlog::error("[_DOCKER] Request error: {0}", to_string(res.error()));
                 return false;
             }
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
             if (res->status == 204)
-                std::cout << "[_DOCKER] Succesfully restarted" << std::endl;
+                spdlog::info("[_DOCKER] Succesfully restarted");
             else
-                std::cout << "[_DOCKER] Could not be restarted" << std::endl;
+                spdlog::warn("[_DOCKER] Could not be restarted");
 
             return HttpStatus::isSuccessful(res->status);
         }
 
         bool stop(const std::string container_id) {
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
-            std::cout << "[_DOCKER] Stopping container: '" << container_id << "'" << std::endl;
+            spdlog::info("[_DOCKER] Stopping container: '{0}'", container_id);
 
             httplib::Client cli("/var/run/docker.sock");
             cli.set_address_family(AF_UNIX);
@@ -269,15 +251,14 @@ namespace Docker {
             auto res = cli.Post(("/containers/"+container_id+"/stop").c_str(), "t=0", "application/x-www-form-urlencoded");
 
             if ( res.error() != httplib::Error::Success ) {
-                std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
+                spdlog::error("[_DOCKER] Request error: {0}", to_string(res.error()));
                 return false;
             }
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
             if (res->status == 204 || res->status == 304)
-                std::cout << "[_DOCKER] Succesfully stopped" << std::endl;
+                spdlog::info("[_DOCKER] Succesfully stopped");
             else
-                std::cout << "[_DOCKER] Could not be stopped" << std::endl;
+                spdlog::warn("[_DOCKER] Could not be stopped");
 
             return HttpStatus::isSuccessful(res->status);
         }
@@ -285,9 +266,7 @@ namespace Docker {
         // It seems that the path has to be relative to the access point
         bool copy_from_container(const std::string container_id, const std::string source_path, const std::string dest_path) {
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
-            std::cout << "[_DOCKER] Copying from container: '" << container_id << "' path: '" << source_path;
-            std::cout << "' to host path: '" << dest_path << "'" << std::endl;
+            spdlog::info("[_DOCKER] Copying from container: '{0}' path: '{1}' to host path: '{2}'", container_id, source_path, dest_path);
 
             // https://docs.docker.com/engine/api/v1.41/#operation/ContainerArchive
             httplib::Client cli("/var/run/docker.sock");
@@ -303,24 +282,21 @@ namespace Docker {
               });
 
             if ( res.error() != httplib::Error::Success ) {
-                std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
+                spdlog::error("[_DOCKER] Request error: ", to_string(res.error()));
                 return false;
             }
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
             if (res->status == 200)
-                std::cout << "[_DOCKER] Succesfully copied" << std::endl;
+                spdlog::info("[_DOCKER] Succesfully copied");
             else
-                std::cout << "[_DOCKER] Could not be copied" << std::endl;
+                spdlog::warn("[_DOCKER] Could not be copied");
 
             return HttpStatus::isSuccessful(res->status);
         }
 
         bool copy_to_container(const std::string container_id, const std::string source_path, const std::string dest_path) {
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
-            std::cout << "[_DOCKER] Copying from host path: '" << source_path << "' to container '" << container_id;
-            std::cout << "' path: '" << dest_path << "'" << std::endl;
+            spdlog::info("[_DOCKER] Copying from host path: '{0}' to container '{1}' path: '{2}'", source_path, container_id, dest_path);
 
             // https://docs.docker.com/engine/api/v1.41/#operation/PutContainerArchive
             httplib::Client cli("/var/run/docker.sock");
@@ -359,15 +335,14 @@ namespace Docker {
             );
 
             if ( res.error() != httplib::Error::Success ) {
-                std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
+                spdlog::error("[_DOCKER] Request error: ", to_string(res.error()));
                 return false;
             }
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
             if (res->status == 200)
-                std::cout << "[_DOCKER] Succesfully copied" << std::endl;
+                spdlog::info("[_DOCKER] Succesfully copied");
             else
-                std::cout << "[_DOCKER] Could not be copied" << std::endl;
+                spdlog::warn("[_DOCKER] Could not be copied");
 
             return HttpStatus::isSuccessful(res->status);
         }
@@ -377,9 +352,7 @@ namespace Docker {
 
         bool inspect(const std::string& network_id, const std::string& dest_path) {
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
-            std::cout << "[_DOCKER] Inspecting network: '" << network_id;
-            std::cout << "' and saving result to: '" << dest_path+"/"+network_id+"-network.json" << std::endl;
+            spdlog::info("[_DOCKER] Inspecting network: '{0}' and saving result to: '{1}'", network_id, dest_path+"/"+network_id+"-network.json");
 
             httplib::Client cli("/var/run/docker.sock");
             cli.set_address_family(AF_UNIX);
@@ -390,27 +363,25 @@ namespace Docker {
             auto res = cli.Get(("/networks/"+network_id).c_str());
 
             if ( res.error() != httplib::Error::Success ) {
-                std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
+                spdlog::error("[_DOCKER] Request error: {0}", to_string(res.error()));
                 return false;
             }
 
             auto res_json = json::parse(res->body);
             file << std::setw(4) << res_json << std::endl;
             if ( ! file ) {
-                std::cout << std::fixed << Date::millis()/1000.0 << " ";
-                std::cout << "[_DOCKER] There was an error saving result to filesystem" << std::endl;
+                spdlog::error("[_DOCKER] There was an error saving result to filesystem");
                 return false;
             }
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
             if (res->status == 200)
-                std::cout << "[_DOCKER] Succesfully retrieved information" << std::endl;
+                spdlog::info("[_DOCKER] Succesfully retrieved information");
             else {
-                std::cout << "[_DOCKER] Could not retrieve information. Status Code: " << res->status << std::endl;
+                spdlog::warn("[_DOCKER] Could not retrieve information. Status Code: {0}", res->status);
 
-                std::cout << res->body << std::endl;
+                spdlog::debug(res->body);
                 if ( res.error() != httplib::Error::Success )
-                    std::cout << res.error() << std::endl;
+                    spdlog::debug(to_string(res.error()));
             }
 
             return HttpStatus::isSuccessful(res->status);
@@ -420,8 +391,7 @@ namespace Docker {
 
             json inspect_json;
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
-            std::cout << "[_DOCKER] Reading network inspect json from: '" << source_path << "'" << std::endl;
+            spdlog::info("[_DOCKER] Reading network inspect json from: '{0}'", source_path);
 
             std::filesystem::path file(source_path);
             if (std::filesystem::exists(file)) {
@@ -437,8 +407,7 @@ namespace Docker {
             inspect_json.erase("Containers");
             inspect_json.erase("IPAM");
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
-            std::cout << "[_DOCKER] Creating network: '" << inspect_json["Name"].get<std::string>() << "'" << std::endl;
+            spdlog::info("[_DOCKER] Creating network: '{0}'", inspect_json["Name"].get<std::string>());
 
             httplib::Client cli("/var/run/docker.sock");
             cli.set_address_family(AF_UNIX);
@@ -448,19 +417,18 @@ namespace Docker {
             auto res = cli.Post("/networks/create", inspect_json.dump(), "application/json");
 
             if ( res.error() == httplib::Error::Read ) {
-                std::cout << "[_DOCKER] Error: Timeout waiting for command to execute" << std::endl;
+                spdlog::error("[_DOCKER] Error: Timeout waiting for command to execute");
                 return "";
             } else if ( res.error() != httplib::Error::Success ) {
-                std::cout << "[_DOCKER] Request error: " << res.error() << std::endl;
+                spdlog::error("[_DOCKER] Request error: {0}", to_string(res.error()));
                 return "";
             }
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
             if (res->status == 201)
-                std::cout << "[_DOCKER] Succesfully executed" << std::endl;
+                spdlog::info("[_DOCKER] Succesfully executed");
             else {
-                std::cout << "[_DOCKER] An error occurred while executing" << std::endl;
-                std::cout << "[_DOCKER] Error description: " << res->body << std::endl;
+                spdlog::error("[_DOCKER] An error occurred while executing");
+                spdlog::debug("[_DOCKER] Error description: {0}", res->body);
             }
 
             auto res_json = json::parse(res->body);

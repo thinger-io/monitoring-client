@@ -4,7 +4,8 @@ project(thinger_monitor)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
 if(NOT BUILD_VERSION)
-    SET(BUILD_VERSION "Not set")
+    add_definitions( -DBUILD_VERSION="develop" )
+    message(STATUS "The program version is develop")
 else()
     add_definitions( -DBUILD_VERSION=${BUILD_VERSION} )
     message(STATUS "The program version is ${BUILD_VERSION}")
@@ -81,6 +82,21 @@ if(NOT json_POPULATED)
   add_subdirectory(${json_SOURCE_DIR} ${json_BINARY_DIR} EXCLUDE_FROM_ALL)
   list(APPEND ADDITIONAL_LIBS nlohmann_json::nlohmann_json)
 endif()
+
+# spdlog
+FetchContent_Declare(
+  spdlog
+  GIT_REPOSITORY https://github.com/gabime/spdlog.git
+  GIT_TAG v1.10.0
+)
+
+FetchContent_GetProperties(spdlog)
+if (NOT spdlog_POPULATED)
+  FetchContent_Populate(spdlog)
+  add_subdirectory(${spdlog_SOURCE_DIR} ${spdlog_BINARY_DIR} EXCLUDE_FROM_ALL)
+  list(APPEND ADDITIONAL_LIBS spdlog::spdlog)
+endif()
+
 
 # libarchive
 find_package(LibArchive REQUIRED)

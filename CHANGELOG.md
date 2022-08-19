@@ -3,10 +3,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.0.6] - 2022-07-26
+## [0.0.6] - 2022-08-19
 ### Changed
 - InfluxDB version detection for backup and restore is done through REST API
 - Removed creation of TMPDIR for influxdb2 restore as it is no longer neccesary
+- Improved log output using spdlog library
 
 ### Fix
 - When exec command fails internally function will return false

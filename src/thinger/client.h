@@ -4,14 +4,11 @@
 #include <thinger_client.h>
 
 #include <httplib.h>
+#include <spdlog/spdlog.h>
 
 #include <thread>
-//#include <chrono>
-//#include <fstream>
-//#include <ifaddrs.h>
 #include <filesystem>
 #include <linux/kernel.h>
-//#include <arpa/inet.h>
 #include <unistd.h>
 #include <thread>
 #include <future>
@@ -30,23 +27,20 @@ namespace fs = std::filesystem;
 
 #define STR_(x) #x
 #define STR(x) STR_(x)
-#ifdef BUILD_VERSION
-  #define VERSION STR(BUILD_VERSION)
-#else
-  #define VERSION "Not set"
-#endif
+
+#define VERSION STR(BUILD_VERSION) // BUILD_VERSION must always be defined
 
 constexpr int SECTOR_SIZE = 512;
 
 // Conversion constants. //
-const long minute = 60;
-const long hour = minute * 60;
-const long day = hour * 24;
+[[maybe_unused]] const long minute = 60;
+[[maybe_unused]] const long hour = minute * 60;
+[[maybe_unused]] const long day = hour * 24;
 
-const std::uintmax_t btokb = 1024;
-const std::uintmax_t kbtogb = btokb * 1024;
-const std::uintmax_t btomb = kbtogb;
-const std::uintmax_t btogb = kbtogb * 1024;
+[[maybe_unused]] const std::uintmax_t btokb = 1024;
+[[maybe_unused]] const std::uintmax_t kbtogb = btokb * 1024;
+[[maybe_unused]] const std::uintmax_t btomb = kbtogb;
+[[maybe_unused]] const std::uintmax_t btogb = kbtogb * 1024;
 
 namespace thinger::monitor {
 
@@ -55,14 +49,15 @@ namespace thinger::monitor {
     public:
 
         Client(thinger_client& client, Config& config) :
-            client_(client),
-            monitor_(client["monitor"]),
-            cmd_(client["cmd"]),
-            reboot_(client["reboot"]),
-            update_(client["update"]),
-            update_distro_(client["update_distro"]),
-            backup_(client["backup"]),
-            restore_(client["restore"]),
+            resources_{
+              {"monitor", client["monitor"]},
+              {"cmd", client["cmd"]},
+              {"reboot", client["reboot"]},
+              {"update", client["update"]},
+              {"update_distro", client["update_distro"]},
+              {"backup", client["backup"]},
+              {"restore", client["restore"]},
+            },
             config_(config)
         {
 
@@ -74,7 +69,7 @@ namespace thinger::monitor {
             system::retrieve_kernel_version(kernel_version);
             cpu::retrieve_cpu_cores(cpu_cores);
 
-            cmd_ = [this](pson& in, pson& out) {
+            resources_.at("cmd") = [this](pson& in, pson& out) {
                 std::string output = cmd(in["input"]);
                 out["output"] = output;
 
@@ -91,12 +86,12 @@ namespace thinger::monitor {
             };
 
             if (geteuid() == 0) { // is_root
-                reboot_ << [this](pson& in) { // needs declaration of input for dashboard button
+                resources_.at("reboot") << [](pson& in) { // needs declaration of input for dashboard button
                     if (in)
                         reboot();
                 };
 
-                update_ = [this](pson& in, pson& out) { // needs declaration of input for dashboard button
+                resources_.at("update") = [this](pson& in, pson& out) { // needs declaration of input for dashboard button
                     if (in) {
                         if ( f1.future.valid() && f1.future.wait_for(std::chrono::seconds(0))  != std::future_status::ready ) {
                             if ( f1.task == "update" )
@@ -106,7 +101,7 @@ namespace thinger::monitor {
                             return;
                         }
 
-                        std::packaged_task<void()> task([this]{
+                        std::packaged_task<void()> task([]{
                             update();
                         });
                         f1.task = "update";
@@ -116,7 +111,7 @@ namespace thinger::monitor {
                     }
                 };
 
-                update_distro_ = [this](pson& in, pson& out) { // needs declaration of input for dashboard button
+                resources_.at("update_distro") = [this](pson& in, pson& out) { // needs declaration of input for dashboard button
                     if (in) {
                         if ( f1.future.valid() && f1.future.wait_for(std::chrono::seconds(0))  != std::future_status::ready ) {
                             if ( f1.task == "update_distro" )
@@ -126,7 +121,7 @@ namespace thinger::monitor {
                             return;
                         }
 
-                        std::packaged_task<void()> task([this]{
+                        std::packaged_task<void()> task([]{
                             update_distro();
                         });
                         f1.task = "update_distro";
@@ -137,7 +132,7 @@ namespace thinger::monitor {
                 };
             }
 
-            backup_ = [this](pson& in, pson& out) {
+            resources_.at("backup") = [this](pson& in, pson& out) {
 
                 if (!config_.get_backup().empty()) {
 
@@ -157,12 +152,12 @@ namespace thinger::monitor {
                     }
 
                     // future from a packaged_task
-                    std::packaged_task<void(std::string,std::string)> task([this](std::string tag, std::string endpoint) {
+                    std::packaged_task<void(std::string,std::string)> task([this](const std::string& task_tag, const std::string& task_endpoint) {
 
                         std::unique_ptr<ThingerMonitorBackup> backup{}; // as nullptr
                         // Add new possible options for backup systems
                         if (config_.get_backup() == "platform") {
-                            backup = std::make_unique<PlatformBackup>(config_, hostname, tag);
+                            backup = std::make_unique<PlatformBackup>(config_, hostname, task_tag);
                         }
 
                         json data;
@@ -171,14 +166,11 @@ namespace thinger::monitor {
                         data["backup"]    = {};
                         data["backup"]["operations"] = {};
 
-                        std::cout << std::fixed << Date::millis()/1000.0 << " ";
-                        std::cout << "[_BACKUP] Creating backup" << std::endl;
+                        spdlog::info("[_BACKUP] Creating backup");
                         data["backup"]["operations"]["backup"] = backup->backup();
-                        std::cout << std::fixed << Date::millis()/1000.0 << " ";
-                        std::cout << "[_BACKUP] Uploading backup" << std::endl;
+                        spdlog::info("[_BACKUP] Uploading backup");
                         data["backup"]["operations"]["upload"] = backup->upload();
-                        std::cout << std::fixed << Date::millis()/1000.0 << " ";
-                        std::cout << "[_BACKUP] Cleaning backup temporary files" << std::endl;
+                        spdlog::info("[_BACKUP] Cleaning backup temporary files");
                         data["backup"]["operations"]["clean"] = backup->clean();
 
                         data["backup"]["status"] = true;
@@ -189,8 +181,8 @@ namespace thinger::monitor {
                             }
                         }
 
-                        if (!endpoint.empty())
-                            Thinger::call_endpoint(config_.get_endpoints_token(), config_.get_user(), endpoint, data, config_.get_url(), config_.get_ssl());
+                        if (!task_endpoint.empty())
+                            Thinger::call_endpoint(config_.get_endpoints_token(), config_.get_user(), task_endpoint, data, config_.get_url(), config_.get_ssl());
 
                     });
 
@@ -210,7 +202,7 @@ namespace thinger::monitor {
                 }
             };
 
-            restore_ = [this](pson& in, pson& out) {
+            resources_.at("restore") = [this](pson& in, pson& out) {
 
                 if (!config_.get_backup().empty()) {
 
@@ -229,12 +221,12 @@ namespace thinger::monitor {
                         return;
                     }
 
-                    std::packaged_task<void(std::string, std::string)> task([this](std::string tag, std::string endpoint) {
+                    std::packaged_task<void(std::string, std::string)> task([this](const std::string& task_tag, const std::string& task_endpoint) {
 
                         std::unique_ptr<ThingerMonitorRestore> restore{};
                         // Add new possible options for backup systems
                         if (config_.get_backup() == "platform") {
-                            restore = std::make_unique<PlatformRestore>(config_, hostname, tag);
+                            restore = std::make_unique<PlatformRestore>(config_, hostname, task_tag);
                         }
 
                         json data;
@@ -243,18 +235,15 @@ namespace thinger::monitor {
                         data["restore"]   = {};
                         data["restore"]["operations"] = {};
 
-                        std::cout << std::fixed << Date::millis()/1000.0 << " ";
-                        std::cout << "[___RSTR] Downloading backup" << std::endl;
+                        spdlog::info("[___RSTR] Downloading backup");
                         data["restore"]["operations"]["download"] = restore->download();
-                        std::cout << std::fixed << Date::millis()/1000.0 << " ";
-                        std::cout << "[___RSTR] Restoring backup" << std::endl;
+                        spdlog::info("[___RSTR] Restoring backup");
                         data["restore"]["operations"]["restore"] = restore->restore();
-                        std::cout << std::fixed << Date::millis()/1000.0 << " ";
-                        std::cout << "[___RSTR] Cleaning backup temporary files" << std::endl;
+                        spdlog::info("[___RSTR] Cleaning backup temporary files");
                         data["restore"]["operations"]["clean"] = restore->clean();
-                        if (!endpoint.empty()) {
+                        if (!task_endpoint.empty()) {
                             json payload;
-                            Thinger::call_endpoint(config_.get_endpoints_token(), config_.get_user(), endpoint, payload, config_.get_url(), config_.get_ssl());
+                            Thinger::call_endpoint(config_.get_endpoints_token(), config_.get_user(), task_endpoint, payload, config_.get_url(), config_.get_ssl());
                         }
 
                     });
@@ -275,7 +264,7 @@ namespace thinger::monitor {
                 }
             };
 
-            monitor_ >> [this](pson& out) {
+            resources_.at("monitor") >> [this](pson& out) {
 
                 unsigned long current_seconds = std::chrono::duration_cast<std::chrono::seconds>(
                     std::chrono::system_clock::now().time_since_epoch()).count();
@@ -383,11 +372,11 @@ namespace thinger::monitor {
                 out["ram_total"] = (double)ram_total / kbtogb;
                 out["ram_available"] = (double)ram_available / kbtogb;
                 out["ram_used"] = (double)(ram_total - ram_available) / kbtogb;
-                out["ram_usage"] = (double)((ram_total - ram_available) * 100) / ram_total;
+                out["ram_usage"] = (double)((ram_total - ram_available) * 100) / (double)ram_total;
                 out["ram_swaptotal"] = (double)ram_swaptotal / kbtogb;
                 out["ram_swapfree"] = (double)ram_swapfree / kbtogb;
                 out["ram_swapused"] = (double)(ram_swaptotal - ram_swapfree) / kbtogb;
-                out["ram_swapusage"] = (ram_swaptotal == 0) ? 0 : (double)((ram_swaptotal - ram_swapfree) *100) / ram_swaptotal;
+                out["ram_swapusage"] = (ram_swaptotal == 0) ? 0 : (double)((ram_swaptotal - ram_swapfree) *100) / (double)ram_swaptotal;
 
                 // CPU
                 out["cpu_cores"] = cpu_cores;
@@ -432,7 +421,7 @@ namespace thinger::monitor {
         for (const auto& ifc_name : config_.get_interfaces()) {
             network::interface ifc;
             ifc.name = ifc_name;
-            ifc.internal_ip = network::getIPAddress(ifc_name);
+            ifc.internal_ip = network::getIPAddress(ifc.name);
             interfaces_.push_back(ifc);
         }
 
@@ -466,8 +455,8 @@ protected:
         }
     }
 
-    std::string cmd(const char *in) {
-        std::array<char, 128> buffer;
+    static std::string cmd(const char *in) {
+        std::array<char, 128> buffer{};
         std::string result;
         std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(in, "r"), &pclose);
         if (!pipe) {
@@ -480,32 +469,23 @@ protected:
         return result;
     }
 
-    void reboot() {
+    static void reboot() {
         ::system("sudo reboot");
     }
 
-    void update() {
+    static void update() {
         // System upgrade. By default it does not overwrite config files if a package has a newer version
         ::system("sudo apt -y update && sudo DEBIAN_FRONTEND=noninteractive DEBIAN_PRIORITY=critical UCF_FORCE_CONFFOLD=1 apt -qq -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold upgrade");
     }
 
-    void update_distro() {
+    static void update_distro() {
         // Full unattended distro upgrade
         ::system("sudo apt -y update && sudo do-release-upgrade -f DistUpgradeViewNonInteractive");
     }
 
 private:
 
-    // thinger resources
-    thinger_client& client_;
-    // TODO: make a map of thinger resources
-    thinger_resource& monitor_;
-    thinger_resource& cmd_;
-    thinger_resource& reboot_;
-    thinger_resource& update_;
-    thinger_resource& update_distro_;
-    thinger_resource& backup_;
-    thinger_resource& restore_;
+    std::unordered_map<std::string, thinger_resource&> resources_;
 
     Config& config_;
 
@@ -530,18 +510,21 @@ private:
     std::string os_version;
     std::string kernel_version;
     std::string uptime;
-    unsigned short normal_updates = 0, security_updates = 0;
+    unsigned int normal_updates = 0;
+    unsigned int security_updates = 0;
     bool system_restart = false;
 
     // CPU
-    const float f_load = 1.f / (1 << SI_LOAD_SHIFT);
     std::array<float, 3> cpu_loads; // 1, 5 and 15 mins loads
     float cpu_usage;
-    unsigned short cpu_cores;
+    unsigned int cpu_cores;
     unsigned int cpu_procs;
 
     // ram
-    unsigned long ram_total, ram_available, ram_swaptotal, ram_swapfree;
+    unsigned long ram_total;
+    unsigned long ram_available;
+    unsigned long ram_swaptotal;
+    unsigned long ram_swapfree;
 
     // timing variables
     unsigned long every5s = 0;

@@ -2,6 +2,7 @@
 
 #include <nlohmann/json.hpp>
 #include <httplib.h>
+#include <spdlog/spdlog.h>
 
 namespace Platform::Utils::InfluxDB {
 
@@ -11,8 +12,7 @@ namespace Platform::Utils::InfluxDB {
         auto res = cli.Get("/ping");
 
         if (res.error() != httplib::Error::Success) {
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
-            std::cout << "[_INFLUX] Can't ping influxdb /ping endpoint" << std::endl;
+            spdlog::warn("[_INFLUX] Can't ping influxdb /ping endpoint");
             return "false"; // TODO: throw exception
         }
 

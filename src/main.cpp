@@ -37,6 +37,7 @@
 #include "thinger/utils/thinger.h"
 
 #include <nlohmann/json.hpp>
+#include <spdlog/spdlog.h>
 
 using json = nlohmann::json;
 
@@ -45,6 +46,8 @@ constexpr int CONFIG_DELAY = 10;
 //const std::vector<std::string> properties = {"resources","backups","storage"}; // thinger device config properties
 
 int main(int argc, char *argv[]) {
+
+    spdlog::info("Starting thinger_monitor program");
 
     std::string thinger_token;
     thinger::monitor::Config config;
@@ -89,10 +92,10 @@ int main(int argc, char *argv[]) {
 
                 auto status = Thinger::update_device_credentials(thinger_token, config.get_user(), config.get_id(), config.get_credentials(), config.get_url(), config.get_ssl());
                 if (status == 200) {
-                    std::cout << "Credentials changed succesfully! Please run the program without the token" << std::endl;
+                    spdlog::info("Credentials changed succesfully! Please run the program without the token");
                     return 0;
                 } else {
-                    std::cout << "Could not change credentials, check the token and its permissions" << std::endl;
+                    spdlog::warn("Could not change credentials, check the token and its permissions");
                     return -1;
                 }
 
@@ -101,10 +104,10 @@ int main(int argc, char *argv[]) {
                 // TODO: check if device already exists, if not create it
                 auto status = Thinger::create_device(thinger_token, config.get_user(), config.get_id(), config.get_credentials(), config.get_name(), config.get_url(), config.get_ssl());
                 if (status == 200) {
-                    std::cout << "Device created succesfully! Please run the program without the token" << std::endl;
+                    spdlog::info("Device created succesfully! Please run the program without the token");
                     return 0;
                 } else {
-                    std::cout << "Could not create device, check the connection and make sure it doesn't already exist" << std::endl;
+                    spdlog::warn("Could not create device, check the connection and make sure it doesn't already exist");
                     return -1;
                 }
             }

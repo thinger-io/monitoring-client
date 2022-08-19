@@ -6,8 +6,8 @@ namespace thinger::monitor::network {
     struct interface {
         std::string name;
         std::string internal_ip;
-        unsigned long long int total_transfer[2][3]; // before, after; b incoming, b outgoing, 3-> ts
-        unsigned long long total_packets[4]; // incoming (total, dropped), outgoing (total, dropped)
+        std::array<std::array<unsigned long long int, 2>, 3> total_transfer; // before, after; b incoming, b outgoing, 3-> ts
+        std::array<unsigned long long, 4> total_packets; // incoming (total, dropped), outgoing (total, dropped)
     };
 
     std::string getPublicIPAddress() {
@@ -20,7 +20,7 @@ namespace thinger::monitor::network {
         return res->body;
     }
 
-    std::string getIPAddress(std::string interface){
+    std::string getIPAddress(const std::string_view& interface){
         std::string ipAddress="Unable to get IP Address";
         struct ifaddrs *interfaces = nullptr;
         struct ifaddrs *temp_addr = nullptr;
@@ -56,15 +56,18 @@ namespace thinger::monitor::network {
 
             while(netinfo >> line) {
                 if (line == ifc.name+":") {
-                    netinfo >> ifc.total_transfer[1][j++]; //first bytes inc
+                    netinfo >> ifc.total_transfer[1][j]; //first bytes inc
+                    j++;
                     netinfo >> ifc.total_packets[j-1]; // total packets inc
                     netinfo >> null >> ifc.total_packets[j]; // drop packets inc
-                    netinfo >> null >> null >> null >> null >> ifc.total_transfer[1][j++]; // total bytes out
+                    netinfo >> null >> null >> null >> null >> ifc.total_transfer[1][j]; // total bytes out
+                    j++;
                     netinfo >> ifc.total_packets[j]; // total packets out
                     netinfo >> null >> ifc.total_packets[j+1]; // drop packets out
 
-                    ifc.total_transfer[1][j++] = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::system_clock::now().time_since_epoch()).count();
+                    ifc.total_transfer[1][j] = std::chrono::duration_cast<std::chrono::milliseconds>(
+                      std::chrono::system_clock::now().time_since_epoch()).count();
+                    j++;
 
                     break;
                 }
@@ -78,7 +81,7 @@ namespace thinger::monitor::io {
 
     struct drive {
         std::string name;
-        unsigned long long int total_io[2][4]; // before, after; sectors read, sectors writte, io tics, ts
+        std::array<std::array<unsigned long long int, 2>, 4> total_io; // before, after; sectors read, sectors writte, io tics, ts
     };
 
     void retrieve_dv_stats(std::vector<drive>& drives) {
@@ -88,12 +91,18 @@ namespace thinger::monitor::io {
             std::ifstream dvinfo ("/sys/block/"+dv.name+"/stat", std::ifstream::in);
             std::string null;
 
-            dvinfo >> null >> null >> dv.total_io[1][j++]; // sectors read
-            dvinfo >> null >> null >> null >> dv.total_io[1][j++]; // sectors written
-            dvinfo >> null >> null >> dv.total_io[1][j++]; // io ticks -> time spent in io
+            dvinfo >> null >> null >> dv.total_io[1][j]; // sectors read
+            j++;
 
-            dv.total_io[1][j++] = std::chrono::duration_cast<std::chrono::milliseconds>(
+            dvinfo >> null >> null >> null >> dv.total_io[1][j]; // sectors written
+            j++;
+
+            dvinfo >> null >> null >> dv.total_io[1][j]; // io ticks -> time spent in io
+            j++;
+
+            dv.total_io[1][j] = std::chrono::duration_cast<std::chrono::milliseconds>(
               std::chrono::system_clock::now().time_since_epoch()).count();
+            j++;
         }
     }
 
@@ -116,7 +125,7 @@ namespace thinger::monitor::storage {
 
 namespace thinger::monitor::cpu {
 
-    void retrieve_cpu_cores(unsigned short& cores) {
+    void retrieve_cpu_cores(unsigned int& cores) {
         cores = std::thread::hardware_concurrency();
     }
 
@@ -129,7 +138,7 @@ namespace thinger::monitor::cpu {
     }
 
     template <size_t N>
-    void retrieve_cpu_usage(float& usage, std::array<float, N> const& loads, unsigned short const& cores) {
+    void retrieve_cpu_usage(float& usage, std::array<float, N> const& loads, unsigned int const& cores) {
         usage = loads[0] * 100 / cores;
     }
 
@@ -182,8 +191,8 @@ namespace thinger::monitor::system {
         while(std::getline(osinfo,line)) {
             if (line.find("PRETTY_NAME") != std::string::npos) {
                 // get text in between "
-                unsigned first_del = line.find('"');
-                unsigned last_del = line.find_last_of('"');
+                size_t first_del = line.find('"');
+                size_t last_del = line.find_last_of('"');
                 os_version = line.substr(first_del +1, last_del - first_del -1);
             }
         }
@@ -201,7 +210,7 @@ namespace thinger::monitor::system {
     }
 
     void retrieve_uptime(std::string& uptime) {
-        std::chrono::milliseconds uptime_millis(0u);
+        //std::chrono::milliseconds uptime_millis(0u);
         double uptime_seconds;
         if (std::ifstream("/proc/uptime", std::ios::in) >> uptime_seconds) {
             int days = (int)uptime_seconds / (60*60*24);
