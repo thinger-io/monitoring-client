@@ -13,10 +13,10 @@
 
 namespace Crypto {
 
-    std::string to_hex(std::string string) {
+    std::string to_hex(const std::string &string) {
 
         unsigned int len = string.length();
-        auto hash = (unsigned char*)string.c_str();
+        auto hash = (const unsigned char*)string.c_str();
 
         std::stringstream ss;
         ss << std::hex << std::setfill('0');

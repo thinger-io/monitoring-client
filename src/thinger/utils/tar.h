@@ -9,6 +9,8 @@
 #include <pwd.h>
 #include <grp.h>
 
+namespace fs = std::filesystem;
+
 namespace Tar {
 
     namespace {

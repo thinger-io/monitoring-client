@@ -1,5 +1,6 @@
 
 #include <httplib.h>
+#include <spdlog/spdlog.h>
 
 #include "../date.h"
 #include "../crypto.h"
@@ -156,36 +157,31 @@ public:
 
         bool initiate_upload() {
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
-            std::cout << "[____AWS] Inititiating upload of "+file_path_ << std::endl;
+            spdlog::info("[____AWS] Inititiating upload of {0}", file_path_);
 
             std::string payload = "";
             auto res = request("POST", "/"+filename,"uploads=",payload, content_type);
 
             if ( res.error() != httplib::Error::Success || !HttpStatus::isSuccessful(res->status) ) {
-                std::cerr << std::fixed << Date::millis()/1000.0 << " ";
-                std::cerr << "[____AWS] Failed initiating upload "+filename << std::endl;
+                spdlog::error("[____AWS] Failed initiating upload {0}", filename);
                 return HttpStatus::isSuccessful(res->status);
             }
 
             upload_id = XML::get_element_value(res->body, "UploadId");
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
-            std::cout << "[____AWS] Upload initiated with upload id "+upload_id << std::endl;
+            spdlog::info("[____AWS] Upload initiated with upload id {0}", upload_id);
             return HttpStatus::isSuccessful(res->status);
         }
 
         bool abort_upload() {
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
-            std::cout << "[____AWS] Aborting multipart upload for file: " << file_path_ << "; and upload id: " << upload_id << std::endl;
+            spdlog::warn("[____AWS] Aborting multipart upload for file: {0}; and upload id: {1}", file_path_, upload_id);
 
             std::string payload = "";
             auto res = request("DELETE", "/"+filename,"uploadId="+upload_id,payload,"text/plain");
 
             if ( res.error() != httplib::Error::Success || !HttpStatus::isSuccessful(res->status) ) {
-                std::cerr << std::fixed << Date::millis()/1000.0 << " ";
-                std::cerr << "[____AWS] Failed aborting upload id"+upload_id << std::endl;
+                spdlog::error("[____AWS] Failed aborting upload id {0}", upload_id);
             }
 
             return HttpStatus::isSuccessful(res->status);
@@ -209,15 +205,13 @@ public:
 
                 date = Date();
 
-                std::cout << std::fixed << Date::millis()/1000.0 << " ";
-                std::cout << "[____AWS] Multipart upload of "+filename+"; Uploading part "+std::to_string(i)+" out of "+std::to_string(parts) << std::endl;
+                spdlog::info("[____AWS] Multipart upload of {0}; Uploading part {1} out of {2}", filename, std::to_string(i), std::to_string(parts));
 
                 auto res = request("PUT","/"+filename,
                     "partNumber="+std::to_string(i)+"&uploadId="+upload_id,buffer,buffer_size,content_type);
 
                 if ( res.error() != httplib::Error::Success || !HttpStatus::isSuccessful(res->status) ) {
-                    std::cerr << std::fixed << Date::millis()/1000.0 << " ";
-                    std::cerr << "[____AWS] Failed Multipart upload "+filename+"; Part "+std::to_string(i)+" out of "+std::to_string(parts) << std::endl;
+                    spdlog::error("[____AWS] Failed Multipart upload {0}; Part {1} out of {2}", filename, std::to_string(i), std::to_string(parts));
                     return HttpStatus::isSuccessful(res->status);
                 }
 
@@ -226,8 +220,7 @@ public:
             }
 
             // Upload last part
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
-            std::cout << "[____AWS] Multipart upload of "+filename+"; Uploading part "+std::to_string(parts)+" out of "+std::to_string(parts) << std::endl;
+            spdlog::info("[____AWS] Multipart upload of {0}; Uploading part {1} out of {2}", filename, std::to_string(parts), std::to_string(parts));
 
             file.read(buffer, buffer_size);
 
@@ -235,8 +228,7 @@ public:
                 "partNumber="+std::to_string(parts)+"&uploadId="+upload_id,buffer,last_part_size,content_type);
 
             if ( res.error() != httplib::Error::Success || !HttpStatus::isSuccessful(res->status) ) {
-                std::cerr << std::fixed << Date::millis()/1000.0 << " ";
-                std::cerr << "[____AWS] Failed Multipart upload "+filename+"; Part "+std::to_string(parts)+" out of "+std::to_string(parts) << std::endl;
+                spdlog::error("[____AWS] Failed Multipart upload {0}; Part {1} out of {2}", filename, std::to_string(parts), std::to_string(parts));
                 return HttpStatus::isSuccessful(res->status);
             }
 
@@ -249,8 +241,7 @@ public:
 
             std::string complete_xml = generate_xml_complete_mpu();
 
-            std::cout << std::fixed << Date::millis()/1000.0 << " ";
-            std::cout << "[____AWS] Finishing upload of "+file_path_ << std::endl;
+            spdlog::info("[____AWS] Finishing upload of {0}", file_path_);
 
             return request("POST","/"+filename,"uploadId="+upload_id,complete_xml, "text/xml");
         }

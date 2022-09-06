@@ -21,12 +21,15 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+
 #if OPEN_SSL
   #define CPPHTTPLIB_OPENSSL_SUPPORT
 #endif
 
+#define DEBUG
+
 #include <thinger.h>
-#include "thinger/thinger_monitor_client.h"
+#include "thinger/client.h"
 
 #include <unistd.h>
 
@@ -34,23 +37,26 @@
 #include "thinger/utils/thinger.h"
 
 #include <nlohmann/json.hpp>
+#include <spdlog/spdlog.h>
 
 using json = nlohmann::json;
 
 constexpr int CONFIG_DELAY = 10;
 
-const std::vector<std::string> properties = {"resources","backups","storage"}; // thinger device config properties
+//const std::vector<std::string> properties = {"resources","backups","storage"}; // thinger device config properties
 
 int main(int argc, char *argv[]) {
 
+    spdlog::info("Starting thinger_monitor program");
+
     std::string thinger_token;
-    ThingerMonitorConfig config;
+    thinger::monitor::Config config;
 
     int opt;
     while ((opt = getopt(argc, argv, "u:t:c:s:k")) != -1) {
         switch (opt) {
             case 'c':
-                config.set_config_path(optarg);
+                config.set_path(optarg);
                 break;
             case 't':
                 thinger_token = optarg;
@@ -59,10 +65,10 @@ int main(int argc, char *argv[]) {
                 config.set_user(optarg);
                 break;
             case 's':
-                config.set_server_url(optarg);
+                config.set_url(optarg);
                 break;
             case 'k':
-                config.set_server_secure(false);
+                config.set_ssl(false);
                 break;
             default: /* '?' */
                 fprintf(stderr, "Usage: %s [-c config_path] [-t token] [-u user] [-s server] [-k]\n",
@@ -76,32 +82,32 @@ int main(int argc, char *argv[]) {
 
         json token = JWT::get_payload(thinger_token);
         if (token.contains("svr"))
-            config.set_server_url(token["svr"]);
-        config.set_user(token["usr"]);
+            config.set_url(token["svr"].get<std::string>());
+        config.set_user(token["usr"].get<std::string>());
 
-        if (config.has_user()) {
+        if (config.get_user().empty()) {
             config.set_device();
 
-            if (Thinger::device_exists(thinger_token, config.get_user(), config.get_device_id(), config.get_server_url(), config.get_server_secure())) {
+            if (Thinger::device_exists(thinger_token, config.get_user(), config.get_id(), config.get_url(), config.get_ssl())) {
 
-                auto status = Thinger::update_device_credentials(thinger_token, config.get_user(), config.get_device_id(), config.get_device_credentials(), config.get_server_url(), config.get_server_secure());
+                auto status = Thinger::update_device_credentials(thinger_token, config.get_user(), config.get_id(), config.get_credentials(), config.get_url(), config.get_ssl());
                 if (status == 200) {
-                    std::cout << "Credentials changed succesfully! Please run the program without the token" << std::endl;
+                    spdlog::info("Credentials changed succesfully! Please run the program without the token");
                     return 0;
                 } else {
-                    std::cout << "Could not change credentials, check the token and its permissions" << std::endl;
+                    spdlog::warn("Could not change credentials, check the token and its permissions");
                     return -1;
                 }
 
             } else {
 
                 // TODO: check if device already exists, if not create it
-                auto status = Thinger::create_device(thinger_token, config.get_user(), config.get_device_id(), config.get_device_credentials(), config.get_device_name(), config.get_server_url(), config.get_server_secure());
+                auto status = Thinger::create_device(thinger_token, config.get_user(), config.get_id(), config.get_credentials(), config.get_name(), config.get_url(), config.get_ssl());
                 if (status == 200) {
-                    std::cout << "Device created succesfully! Please run the program without the token" << std::endl;
+                    spdlog::info("Device created succesfully! Please run the program without the token");
                     return 0;
                 } else {
-                    std::cout << "Could not create device, check the connection and make sure it doesn't already exist" << std::endl;
+                    spdlog::warn("Could not create device, check the connection and make sure it doesn't already exist");
                     return -1;
                 }
             }
@@ -110,9 +116,9 @@ int main(int argc, char *argv[]) {
 
     // Connect to thinger
     const std::string user = config.get_user();
-    const std::string device_id = config.get_device_id();
-    const std::string device_credentials = config.get_device_credentials();
-    const std::string server = config.get_server_url();
+    const std::string device_id = config.get_id();
+    const std::string device_credentials = config.get_credentials();
+    const std::string server = config.get_url();
     thinger_device thing(
         user.c_str(),
         device_id.c_str(),
@@ -120,7 +126,7 @@ int main(int argc, char *argv[]) {
         server.c_str()
     );
 
-    ThingerMonitor monitor(thing, config);
+    thinger::monitor::Client monitor(thing, config);
 
     // TODO: clean once get property returns empty message instead of hanging onto the connection
     // For each reconnection align settings between remote and local
@@ -143,15 +149,15 @@ int main(int argc, char *argv[]) {
    thing.handle();
 
     // On start Check if properties are online and update config file, or viceversa
-    for (auto property : properties) {
+    for (auto const& property : config.remote_properties) {
 
         pson data;
         thing.get_property(property.c_str(), data);
         if (!data.is_empty()) {
-            config.update_with_remote(property, data);
+            config.update(property, data);
         } else {
             thing.handle();
-            pson c_data = config.in_pson(property);
+            pson c_data = config.get(property); // in pson
             thing.set_property(property.c_str(), c_data);
         }
     }
@@ -165,10 +171,10 @@ int main(int argc, char *argv[]) {
         if (current_seconds >= (delay+CONFIG_DELAY)) {
             // Retrieve remote property
             bool updated = false;
-            for (auto property : properties) {
+            for (auto const& property : config.remote_properties) {
                 pson r_data;
                 thing.get_property(property.c_str(), r_data);
-                updated = updated || config.update_with_remote(property, r_data);
+                updated = updated || config.update(property, r_data);
 
             }
 

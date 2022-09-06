@@ -4,7 +4,8 @@ project(thinger_monitor)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
 if(NOT BUILD_VERSION)
-    SET(BUILD_VERSION "Not set")
+    add_definitions( -DBUILD_VERSION="develop" )
+    message(STATUS "The program version is develop")
 else()
     add_definitions( -DBUILD_VERSION=${BUILD_VERSION} )
     message(STATUS "The program version is ${BUILD_VERSION}")
@@ -53,8 +54,12 @@ if(CROSS)
   SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static -pthread")
 
   # strip binary for smaller size
-  set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -s")
-  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
+  if (NOT CMAKE_BUILD_TYPE MATCHES "Debug")
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -s")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
+  else()
+      message(STATUS "Debug mode")
+  endif()
 else()
   SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pthread")
 endif()
@@ -67,8 +72,8 @@ add_definitions( -DOPEN_SSL=${OPEN_SSL} )
 # json
 include(FetchContent)
 FetchContent_Declare(json
-  GIT_REPOSITORY https://github.com/nlohmann/json.git
-  GIT_TAG v3.10.3
+  GIT_REPOSITORY  https://github.com/nlohmann/json.git
+  GIT_TAG         v3.10.5
 )
 
 FetchContent_GetProperties(json)
@@ -78,6 +83,22 @@ if(NOT json_POPULATED)
   list(APPEND ADDITIONAL_LIBS nlohmann_json::nlohmann_json)
 endif()
 
+# spdlog
+FetchContent_Declare(
+  spdlog
+  GIT_REPOSITORY https://github.com/gabime/spdlog.git
+  GIT_TAG v1.10.0
+)
+
+FetchContent_GetProperties(spdlog)
+if (NOT spdlog_POPULATED)
+  FetchContent_Populate(spdlog)
+  add_subdirectory(${spdlog_SOURCE_DIR} ${spdlog_BINARY_DIR} EXCLUDE_FROM_ALL)
+  list(APPEND ADDITIONAL_LIBS spdlog::spdlog)
+endif()
+
+
+# libarchive
 find_package(LibArchive REQUIRED)
 if (LibArchive_FOUND)
   include_directories(${LibArchive_INCLUDE_DIRS})
@@ -89,11 +110,24 @@ add_executable(thinger_monitor ${SOURCE_FILES})
 target_link_libraries(thinger_monitor ${ADDITIONAL_LIBS})
 set_target_properties(thinger_monitor PROPERTIES COMPILE_DEFINITIONS "DAEMON=0")
 
+# Catch2
+FetchContent_Declare(
+  Catch2
+  GIT_REPOSITORY  https://github.com/catchorg/Catch2.git
+  GIT_TAG         v3.1.0
+)
+
+FetchContent_MakeAvailable(Catch2)
+
+add_executable(tests test/thinger/config.cpp)
+#target_link_libraries(tests PRIVATE Catch2::Catch2WithMain)
+list(APPEND ADDITIONAL_LIBS Catch2::Catch2WithMain)
+target_link_libraries(tests ${ADDITIONAL_LIBS})
+
 if(BIN_EXTENSION)
   set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${PROJECT_NAME}.${BIN_EXTENSION}")
   message(STATUS "Binary name is ${PROJECT_NAME}.${BIN_EXTENSION}")
 endif()
-
 
 # Add thinger libraries
 FetchContent_Declare(
@@ -103,14 +137,13 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(thinger)
 target_include_directories(thinger_monitor PRIVATE ${thinger_SOURCE_DIR}/src/thinger )
+target_include_directories(tests PRIVATE ${thinger_SOURCE_DIR}/src/thinger )
 
 # Add cpp_httplib library
-# Added localy as an external library until it implements unix sockets
-#FetchContent_Declare(
-#  cpp_httplib
-#  GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
-#  GIT_TAG v0.10.1
-#)
-#FetchContent_MakeAvailable(cpp_httplib)
-#target_include_directories(thinger_monitor PRIVATE ${cpp_httplib_SOURCE_DIR})
-target_include_directories(thinger_monitor PRIVATE ${CMAKE_SOURCE_DIR}/external/cpp-httplib/)
+FetchContent_Declare(
+  cpp_httplib
+  GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
+  GIT_TAG v0.11.1
+)
+FetchContent_MakeAvailable(cpp_httplib)
+target_include_directories(thinger_monitor PRIVATE ${cpp_httplib_SOURCE_DIR})

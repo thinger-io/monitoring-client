@@ -8,18 +8,22 @@
 #include "../../utils/docker.h"
 #include "../../utils/tar.h"
 
+#include "./utils.h"
+
+namespace fs = std::filesystem;
+
 class PlatformBackup : public ThingerMonitorBackup {
 
 public:
 
-    PlatformBackup(ThingerMonitorConfig& config, const std::string& hostname, const std::string& tag)
+    PlatformBackup(thinger::monitor::Config& config, const std::string& hostname, const std::string& tag)
       : ThingerMonitorBackup(config,hostname, tag) {
 
-        storage = this->config().get_backups_storage();
-        bucket = this->config().get_storage_bucket(storage);
-        region = this->config().get_storage_region(storage);
-        access_key = this->config().get_storage_access_key(storage);
-        secret_key = this->config().get_storage_secret_key(storage);
+        storage = this->config().get_storage();
+        bucket = this->config().get_bucket(storage);
+        region = this->config().get_region(storage);
+        access_key = this->config().get_access_key(storage);
+        secret_key = this->config().get_secret_key(storage);
 
         file_to_upload = this->name()+"_"+this->tag()+".tar.gz";
 
@@ -116,8 +120,8 @@ private:
 
         // With tar creation instead of copying to folder we maintain ownership and permissions
         data["status"] = true;
-        if (std::filesystem::exists(config().get_backups_data_path()+"/thinger/users"))
-            data["status"] = Tar::create(config().get_backups_data_path()+"/thinger/users", backup_folder+"/"+tag()+"/thinger-"+tag()+".tar");
+        if (std::filesystem::exists(config().get_data_path()+"/thinger/users"))
+            data["status"] = Tar::create(config().get_data_path()+"/thinger/users", backup_folder+"/"+tag()+"/thinger-"+tag()+".tar");
 
         return data;
     }
@@ -125,7 +129,7 @@ private:
     json backup_mongodb() const {
         json data;
         // get mongodb root password
-        std::ifstream compose (config().get_backups_compose_path()+"/docker-compose.yml", std::ifstream::in);
+        std::ifstream compose (config().get_compose_path()+"/docker-compose.yml", std::ifstream::in);
         std::string line;
 
         std::string mongo_password;
@@ -158,10 +162,14 @@ private:
     json backup_influxdb() const {
         json data;
 
-        if (std::filesystem::exists(config().get_backups_data_path()+"/influxdb2")) {
+        std::string influxdb_version = Platform::Utils::InfluxDB::get_version();
+
+        if (influxdb_version.starts_with("v2.")) {
             // get influx token
-            std::ifstream compose (config().get_backups_compose_path()+"/docker-compose.yml", std::ifstream::in);
+            std::ifstream compose (config().get_compose_path()+"/docker-compose.yml", std::ifstream::in);
             std::string line;
+
+            // TODO: docker_task Docker::Container::exec("influxdb2", "printenv --null DOCKER_INFLUXDB_INIT_ADMIN_TOKEN");
 
             std::string influx_token;
 
@@ -182,7 +190,7 @@ private:
                 data["error"].push_back("Failed copying influxdb2 backup from container");
                 return data;
             }
-        } else {
+        } else if (influxdb_version.starts_with("1.")){
             if (!Docker::Container::exec("influxdb", "influxd backup --portable /dump")) {
                 data["status"]  = false;
                 data["error"].push_back("Failed executing influxdb backup");
@@ -211,13 +219,13 @@ private:
             return data;
         }
 
-        if (! std::filesystem::exists(config().get_backups_data_path()+"/thinger/users")) {
+        if (! std::filesystem::exists(config().get_data_path()+"/thinger/users")) {
             data["status"] = true;
             data["msg"].push_back("Platform has no users");
             return data;
         }
 
-        for (const auto & p1 : fs::directory_iterator(config().get_backups_data_path()+"/thinger/users/")) { // users
+        for (const auto & p1 : fs::directory_iterator(config().get_data_path()+"/thinger/users/")) { // users
             if (! std::filesystem::exists(p1.path().string()+"/plugins/")) continue;
 
             std::string user = p1.path().filename().string();
@@ -261,7 +269,7 @@ private:
         status = status && std::filesystem::remove_all(backup_folder+"/"+tag());
         status = status && std::filesystem::remove_all(backup_folder+"/"+file_to_upload);
         status = status && Docker::Container::exec("mongodb", "rm -rf /dump");
-        if (std::filesystem::exists(config().get_backups_data_path()+"/influxdb2")) {
+        if (std::filesystem::exists(config().get_data_path()+"/influxdb2")) {
             status = status && Docker::Container::exec("influxdb2", "rm -rf /dump");
         } else {
             status = status && Docker::Container::exec("influxdb", "rm -rf /dump");

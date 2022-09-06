@@ -26,7 +26,6 @@ jobs:
         echo "tag_version=`grep -oE '(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?' run.sh | head -1`" >> $GITHUB_ENV
 
     - name: Check if tag is for develop and if it already exists
-      id: check_tag
       run: |
         git fetch --prune --tags
         if [ ${{ steps.extract_branch.outputs.branch }} == 'develop' ]; then

@@ -1,0 +1,45 @@
+{
+  "backups": {
+    "compose_path": "/compose/test",
+    "data_path": "/data/test",
+    "endpoints_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJtb25pdG9yX3Rlc3QiLCJzdnIiOiIxOTIuMTY4LjEuMSIsInVzciI6InRoaW5nZXIifQ.by4zF0i8tfMz8MsQOxDoy-q1IY3yeChKGSxHlQucKD0",
+    "storage": "S3",
+    "system": "platform"
+  },
+  "device": {
+    "credentials": "6OO$Cj#VH_S_6slz",
+    "id": "test",
+    "name": "test name"
+  },
+  "resources": {
+    "defaults": true,
+    "drives": [
+      "nvme0n1"
+    ],
+    "filesystems": [
+      "/"
+    ],
+    "interfaces": [
+      "wlan0"
+    ]
+  },
+  "server": {
+    "ssl": false,
+    "url": "test.aws.thinger.io",
+    "user": "thinger"
+  },
+  "storage": {
+    "GC": {
+      "access_key": "access_key_gc",
+      "bucket": "monitor_gc",
+      "region": "region_gc",
+      "secret_key": "secret_key_gc"
+    },
+    "S3": {
+      "access_key": "access_key_s3",
+      "bucket": "monitor_s3",
+      "region": "region_s3",
+      "secret_key": "secret_key_s3"
+    }
+  }
+}

@@ -54,14 +54,6 @@ public:
 
     }
 
-    // TODO change this to a monotonic clock implementation. Using c++11?
-    static unsigned long millis() {
-        struct timeval te;
-        gettimeofday(&te, nullptr);
-        unsigned long milliseconds = te.tv_sec*1000LL + te.tv_usec/1000;
-        return milliseconds;
-    }
-
 private:
     time_t date;
     struct tm time;
