@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.0.6] - 2022-08-19
+## [0.0.6] - 2022-09-06
 ### Changed
 - InfluxDB version detection for backup and restore is done through REST API
 - Removed creation of TMPDIR for influxdb2 restore as it is no longer neccesary
