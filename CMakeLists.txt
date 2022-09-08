@@ -24,7 +24,7 @@ else()
 endif()
 
 OPTION(ENABLE_OPENSSL "Enable use of OpenSSL" ON)
-OPTION(CROSS "Enable cross compilation and static linkin" OFF)
+OPTION(CROSS "Enable cross compilation and static linking" OFF)
 OPTION(BIN_EXTENSION "Set binary file extension" OFF)
 
 # OpenSSL

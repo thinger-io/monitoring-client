@@ -218,7 +218,7 @@ namespace thinger::monitor {
         }
 
         [[nodiscard]] bool get_defaults() const {
-            return config::get(config_, "/resources/default"_json_pointer, false);
+            return config::get(config_, "/resources/defaults"_json_pointer, false);
         }
 
         [[nodiscard]] json get_filesystems() const {

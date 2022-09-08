@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.0.6] - 2022-09-06
+## [0.0.6] - 2022-09-08
 ### Changed
 - InfluxDB version detection for backup and restore is done through REST API
 - Removed creation of TMPDIR for influxdb2 restore as it is no longer neccesary
@@ -14,6 +14,9 @@ All notable changes to this project will be documented in this file.
 - Restore on influxdb2 was not restarting container
 - Memory swap was not being correctly monitored
 - Resources were being duplicated with default and own name
+
+### Security
+- Replace weak algorithm SHA1 with SHA256 for AWS S3 requests
 
 ## [0.0.5] - 2022-04-25
 ### Added
