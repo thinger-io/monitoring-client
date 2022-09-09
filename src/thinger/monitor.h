@@ -81,7 +81,7 @@ namespace thinger::monitor::io {
 
     struct drive {
         std::string name;
-        std::array<std::array<unsigned long long int, 2>, 4> total_io; // before, after; sectors read, sectors writte, io tics, ts
+        std::array<std::array<unsigned long long int, 4>, 2> total_io; // before, after; sectors read, sectors writte, io tics, ts
     };
 
     void retrieve_dv_stats(std::vector<drive>& drives) {
@@ -91,18 +91,17 @@ namespace thinger::monitor::io {
             std::ifstream dvinfo ("/sys/block/"+dv.name+"/stat", std::ifstream::in);
             std::string null;
 
-            dvinfo >> null >> null >> dv.total_io[1][j]; // sectors read
+            dvinfo >> null >> null >> dv.total_io[1][j]; // sectors read [0]
             j++;
 
-            dvinfo >> null >> null >> null >> dv.total_io[1][j]; // sectors written
+            dvinfo >> null >> null >> null >> dv.total_io[1][j]; // sectors written [1]
             j++;
 
-            dvinfo >> null >> null >> dv.total_io[1][j]; // io ticks -> time spent in io
+            dvinfo >> null >> null >> dv.total_io[1][j]; // io ticks -> time spent in io [2]
             j++;
 
-            dv.total_io[1][j] = std::chrono::duration_cast<std::chrono::milliseconds>(
+            dv.total_io[1][j] = std::chrono::duration_cast<std::chrono::milliseconds>( // millis [3]
               std::chrono::system_clock::now().time_since_epoch()).count();
-            j++;
         }
     }
 
