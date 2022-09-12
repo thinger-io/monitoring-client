@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <random>
+#include <regex>
 
 #include <thinger_client.h>
 
@@ -26,6 +27,10 @@ namespace thinger::monitor::config {
 }
 
 namespace thinger::monitor::utils {
+
+    bool is_placeholder(const std::string& value) {
+        return std::regex_match(value, std::regex("(<.*>)"));
+    }
 
     std::string generate_credentials(std::size_t length) {
 
@@ -174,11 +179,11 @@ namespace thinger::monitor {
 
         void set_device() {
             // Check if device name exists, if not set it to hostname
-            if (config_["device"]["id"].empty()) {
+            if (this->get_id().empty()) {
                 std::string hostname;
                 std::ifstream hostinfo ("/etc/hostname", std::ifstream::in);
                 hostinfo >> hostname;
-                if (config_["device"]["name"].empty())
+                if (this->get_name().empty())
                     config_["device"]["name"] = hostname;
 
                 // TODO: When forcing C++20 replace for std::ranges::replace
@@ -186,7 +191,7 @@ namespace thinger::monitor {
                 std::replace(hostname.begin(), hostname.end(),'-','_');
                 config_["device"]["id"] = hostname;
             }
-            if (config_["device"]["credentials"].empty()) {
+            if (this->get_credentials().empty()) {
                 config_["device"]["credentials"] = utils::generate_credentials(16);
             }
             save_config();
@@ -194,23 +199,27 @@ namespace thinger::monitor {
 
         /* Getters */
         [[nodiscard]] std::string get_url() const {
-          return config::get(config_, "/server/url"_json_pointer, std::string(""));
+            return config::get(config_, "/server/url"_json_pointer, std::string(""));
         }
 
         [[nodiscard]] std::string get_user() const {
+
             return config::get(config_, "/server/user"_json_pointer, std::string(""));
         }
 
         [[nodiscard]] std::string get_id() const {
-            return config::get(config_, "/device/id"_json_pointer, std::string(""));
+            const std::string id = config::get(config_, "/device/id"_json_pointer, std::string(""));
+            return utils::is_placeholder(id) ? "" : id;
         }
 
         [[nodiscard]] std::string get_name() const {
-            return config::get(config_, "/device/name"_json_pointer, std::string(""));
+            const std::string name = config::get(config_, "/device/name"_json_pointer, std::string(""));
+            return utils::is_placeholder(name) ? "" : name;
         }
 
         [[nodiscard]] std::string get_credentials() const {
-            return config::get(config_, "/device/credentials"_json_pointer, std::string(""));
+            const std::string credentials = config::get(config_, "/device/credentials"_json_pointer, std::string(""));
+            return utils::is_placeholder(credentials) ? "" : credentials;
         }
 
         [[nodiscard]] bool get_ssl() const {
