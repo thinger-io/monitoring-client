@@ -85,33 +85,32 @@ int main(int argc, char *argv[]) {
             config.set_url(token["svr"].get<std::string>());
         config.set_user(token["usr"].get<std::string>());
 
-        if (config.get_user().empty()) {
-            config.set_device();
+        config.set_device(); // checks if it's empty
 
-            if (Thinger::device_exists(thinger_token, config.get_user(), config.get_id(), config.get_url(), config.get_ssl())) {
+        if (Thinger::device_exists(thinger_token, config.get_user(), config.get_id(), config.get_url(), config.get_ssl())) {
 
-                auto status = Thinger::update_device_credentials(thinger_token, config.get_user(), config.get_id(), config.get_credentials(), config.get_url(), config.get_ssl());
-                if (status == 200) {
-                    spdlog::info("Credentials changed succesfully! Please run the program without the token");
-                    return 0;
-                } else {
-                    spdlog::warn("Could not change credentials, check the token and its permissions");
-                    return -1;
-                }
-
+            auto status = Thinger::update_device_credentials(thinger_token, config.get_user(), config.get_id(), config.get_credentials(), config.get_url(), config.get_ssl());
+            if (status == 200) {
+                spdlog::info("Credentials changed succesfully! Please run the program without the token");
+                return 0;
             } else {
+                spdlog::warn("Could not change credentials, check the token and its permissions");
+                return -1;
+            }
 
-                // TODO: check if device already exists, if not create it
-                auto status = Thinger::create_device(thinger_token, config.get_user(), config.get_id(), config.get_credentials(), config.get_name(), config.get_url(), config.get_ssl());
-                if (status == 200) {
-                    spdlog::info("Device created succesfully! Please run the program without the token");
-                    return 0;
-                } else {
-                    spdlog::warn("Could not create device, check the connection and make sure it doesn't already exist");
-                    return -1;
-                }
+        } else {
+
+            // TODO: check if device already exists, if not create it
+            auto status = Thinger::create_device(thinger_token, config.get_user(), config.get_id(), config.get_credentials(), config.get_name(), config.get_url(), config.get_ssl());
+            if (status == 200) {
+                spdlog::info("Device created succesfully! Please run the program without the token");
+                return 0;
+            } else {
+                spdlog::warn("Could not create device, check the connection and make sure it doesn't already exist");
+                return -1;
             }
         }
+
     }
 
     // Connect to thinger

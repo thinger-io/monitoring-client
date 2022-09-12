@@ -1,5 +1,4 @@
 {
-  "user" : "<user_id>",
   "device" :
   {
     "credentials" : "<device_credentials>",
@@ -7,8 +6,9 @@
     "name": "<device_name>"
   },
   "server": {
-    "secure": true,
-    "url": "<thinger server url>"
+    "ssl": true,
+    "url": "<thinger server url>",
+    "user" : "<user_id>"
   },
   "resources" : {
     "defaults": true,
