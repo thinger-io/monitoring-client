@@ -47,6 +47,7 @@ constexpr int CONFIG_DELAY = 10;
 
 int main(int argc, char *argv[]) {
 
+    spdlog::set_level(spdlog::level::debug); // Set global log level to debug
     spdlog::info("Starting thinger_monitor program");
 
     std::string thinger_token;

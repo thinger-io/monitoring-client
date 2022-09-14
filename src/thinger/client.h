@@ -181,6 +181,7 @@ namespace thinger::monitor {
                             }
                         }
 
+                        spdlog::debug("[_BACKUP] Backup status: {1}:", data.get<std::string>());
                         if (!task_endpoint.empty())
                             Thinger::call_endpoint(config_.get_endpoints_token(), config_.get_user(), task_endpoint, data, config_.get_url(), config_.get_ssl());
 
@@ -241,9 +242,10 @@ namespace thinger::monitor {
                         data["restore"]["operations"]["restore"] = restore->restore();
                         spdlog::info("[___RSTR] Cleaning backup temporary files");
                         data["restore"]["operations"]["clean"] = restore->clean();
+                        spdlog::debug("[___RSTR] Restore status: {1}:", data.get<std::string>());
                         if (!task_endpoint.empty()) {
                             json payload;
-                            Thinger::call_endpoint(config_.get_endpoints_token(), config_.get_user(), task_endpoint, payload, config_.get_url(), config_.get_ssl());
+                            Thinger::call_endpoint(config_.get_endpoints_token(), config_.get_user(), task_endpoint, data, config_.get_url(), config_.get_ssl());
                         }
 
                     });
