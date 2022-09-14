@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file.
 - Restore on influxdb2 was not restarting container
 - Memory swap was not being correctly monitored
 - Resources were being duplicated with default and own name
+- Endpoint calling in restore not sending payload
 
 ### Security
 - Replace weak algorithm SHA1 with SHA256 for AWS S3 requests
