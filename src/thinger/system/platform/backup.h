@@ -102,7 +102,7 @@ private:
 
     std::string file_to_upload;
 
-   json create_backup_folder() const {
+    json create_backup_folder() const {
         json data;
 
         std::filesystem::remove_all(backup_folder+"/"+tag());
@@ -269,9 +269,12 @@ private:
         status = status && std::filesystem::remove_all(backup_folder+"/"+tag());
         status = status && std::filesystem::remove_all(backup_folder+"/"+file_to_upload);
         status = status && Docker::Container::exec("mongodb", "rm -rf /dump");
-        if (std::filesystem::exists(config().get_data_path()+"/influxdb2")) {
+
+        std::string influxdb_version = Platform::Utils::InfluxDB::get_version();
+
+        if (influxdb_version.starts_with("v2.")) {
             status = status && Docker::Container::exec("influxdb2", "rm -rf /dump");
-        } else {
+        } else if (influxdb_version.starts_with("1.")){
             status = status && Docker::Container::exec("influxdb", "rm -rf /dump");
         }
 

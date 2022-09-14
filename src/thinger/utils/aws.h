@@ -38,7 +38,7 @@ namespace AWS {
         std::string filename = std::filesystem::path(file_path).filename();
 
         const std::string signature_string = "PUT\n\n"+content_type+","+content_type+"\n"+date_string+"\n/"+bucket+"/"+filename;
-        const std::string signature_hash = Crypto::base64::encode(Crypto::hash::hmac_sha256(secret_key, signature_string));
+        const std::string signature_hash = Crypto::base64::encode(Crypto::hash::hmac_sha1(secret_key, signature_string));
 
         httplib::Headers headers = {
             { "Host", bucket+".s3.amazonaws.com" },
@@ -72,7 +72,7 @@ namespace AWS {
 
         const std::string signature_string = "GET\n\n"+content_type+"\n"+date_string+"\n/"+bucket+"/"+filename;
 
-        const std::string signature_hash = Crypto::base64::encode(Crypto::hash::hmac_sha256(secret_key, signature_string));
+        const std::string signature_hash = Crypto::base64::encode(Crypto::hash::hmac_sha1(secret_key, signature_string));
 
         httplib::Headers headers = {
             { "Host", bucket+".s3.amazonaws.com" },
