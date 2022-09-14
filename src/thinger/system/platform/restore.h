@@ -7,7 +7,7 @@
 #include "../../utils/date.h"
 #include "../../utils/aws.h"
 #include "../../utils/tar.h"
-#include "../../utils/tar.h"
+#include "../../utils/docker.h"
 
 #include "./utils.h"
 
@@ -276,9 +276,12 @@ private:
         status = status && std::filesystem::remove_all(backup_folder+"/"+file_to_download);
         status = status && std::filesystem::remove_all(backup_folder+"/"+tag());
         status = status && Docker::Container::exec("mongodb", "rm -rf /dump");
-        if (std::filesystem::exists(config().get_data_path()+"/influxdb2")) {
+
+        std::string influxdb_version = Platform::Utils::InfluxDB::get_version();
+
+        if (influxdb_version.starts_with("v2.")) {
             status = status && Docker::Container::exec("influxdb2", "rm -rf /dump");
-        } else {
+        } else if (influxdb_version.starts_with("1.")){
             status = status && Docker::Container::exec("influxdb", "rm -rf /dump");
         }
         return status;
