@@ -231,7 +231,7 @@ private:
         // Executed after restore_thinger
         if (!std::filesystem::exists(config().get_data_path()+"/thinger/users/")) {
             data["status"] = true;
-            data["msg"].push_back("Platform has no users");
+            data["msg"].push_back("Platform has no plugins");
             return data;
         }
 
@@ -287,14 +287,17 @@ private:
         return status;
     }
 
-    bool restart_platform() const {
+    json restart_platform() const {
         json data;
+
+        std::string influxdb_version = Platform::Utils::InfluxDB::get_version();
+
         if (!Docker::Container::restart("mongodb"))
             data["error"].push_back("Failed restaring mongodb container");
-        if (std::filesystem::exists(config().get_data_path()+"/influxdb2")) {
+        if (influxdb_version.starts_with("v2.")) {
             if (!Docker::Container::restart("influxdb2"))
                 data["error"].push_back("Failed restarting influxdb2 container");
-        } else {
+        } else if (influxdb_version.starts_with("1.")){
             if (!Docker::Container::restart("influxdb"))
                 data["error"].push_back("Failed restarting influxdb container");
         }
