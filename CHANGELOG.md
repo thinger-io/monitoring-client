@@ -16,9 +16,6 @@ All notable changes to this project will be documented in this file.
 - Resources were being duplicated with default and own name
 - Endpoint calling in restore not sending payload
 
-### Security
-- Replace weak algorithm SHA1 with SHA256 for AWS S3 requests
-
 ## [0.0.5] - 2022-04-25
 ### Added
 - Backup and restore available for influxdb 2.1

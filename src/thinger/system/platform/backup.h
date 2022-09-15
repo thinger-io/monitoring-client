@@ -221,7 +221,7 @@ private:
 
         if (! std::filesystem::exists(config().get_data_path()+"/thinger/users")) {
             data["status"] = true;
-            data["msg"].push_back("Platform has no users");
+            data["msg"].push_back("Platform has no plugins");
             return data;
         }
 
