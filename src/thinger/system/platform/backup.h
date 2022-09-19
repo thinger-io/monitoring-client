@@ -221,7 +221,7 @@ private:
 
         if (! std::filesystem::exists(config().get_data_path()+"/thinger/users")) {
             data["status"] = true;
-            data["msg"].push_back("Platform has no plugins");
+            data["msg"].push_back("Platform has no users folder");
             return data;
         }
 
@@ -266,8 +266,8 @@ private:
 
     bool clean_backup() const {
         bool status = true;
-        status = status && std::filesystem::remove_all(backup_folder+"/"+tag());
-        status = status && std::filesystem::remove_all(backup_folder+"/"+file_to_upload);
+        std::filesystem::remove_all(backup_folder+"/"+tag());
+        std::filesystem::remove_all(backup_folder+"/"+file_to_upload);
         status = status && Docker::Container::exec("mongodb", "rm -rf /dump");
 
         std::string influxdb_version = Platform::Utils::InfluxDB::get_version();
