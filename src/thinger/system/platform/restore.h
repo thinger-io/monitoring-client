@@ -46,7 +46,7 @@ public:
             return data;
         }
 
-        data["operation"]["retore_thinger"]   = restore_thinger();
+        data["operation"]["restore_thinger"]  = restore_thinger();
         data["operation"]["restore_mongodb"]  = restore_mongodb();
         data["operation"]["restore_influxdb"] = restore_influxdb();
         data["operation"]["restore_plugins"]  = restore_plugins();
@@ -94,7 +94,7 @@ public:
 
         clean_restore() ? data["status"] = true : data["status"] = false;
 
-       return data;
+        return data;
     }
 
 private:
@@ -140,7 +140,10 @@ private:
         }
 
         if (std::filesystem::exists(backup_folder+"/"+tag()+"/thinger-"+tag()+".tar")) {
-            if (!std::filesystem::remove_all(config().get_data_path()+"/thinger/users")) {
+            try {
+                std::filesystem::remove_all(config().get_data_path()+"/thinger/users");
+            } catch (std::filesystem::filesystem_error &e) {
+                spdlog::debug(e.what());
                 data["status"]  = false;
                 data["error"].push_back("Failed removing thinger installed directories");
                 return data;
@@ -231,7 +234,7 @@ private:
         // Executed after restore_thinger
         if (!std::filesystem::exists(config().get_data_path()+"/thinger/users/")) {
             data["status"] = true;
-            data["msg"].push_back("Platform has no plugins");
+            data["msg"].push_back("Platform has no users folder");
             return data;
         }
 
@@ -273,8 +276,8 @@ private:
 
     bool clean_restore() const {
         bool status = true;
-        status = status && std::filesystem::remove_all(backup_folder+"/"+file_to_download);
-        status = status && std::filesystem::remove_all(backup_folder+"/"+tag());
+        std::filesystem::remove_all(backup_folder+"/"+file_to_download);
+        std::filesystem::remove_all(backup_folder+"/"+tag());
         status = status && Docker::Container::exec("mongodb", "rm -rf /dump");
 
         std::string influxdb_version = Platform::Utils::InfluxDB::get_version();
