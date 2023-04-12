@@ -1,6 +1,7 @@
 
-build/
+/*build*/
 config/thinger_monitor.json_*
 cmake-*
 .idea
 .vscode
+*_bk

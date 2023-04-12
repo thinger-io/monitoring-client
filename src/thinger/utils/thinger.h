@@ -74,23 +74,4 @@ namespace Thinger {
 
     }
 
-    int call_endpoint(const std::string& token, const std::string& user, const std::string& endpoint, const json& payload, const std::string& server = THINGER_SERVER, const bool secure = true) {
-
-        std::string protocol = secure ? "https://" : "http://";
-        httplib::Client cli(protocol+server);
-        #if OPEN_SSL
-          if (!secure) {
-            cli.enable_server_certificate_verification(false);
-          }
-        #endif
-
-        const httplib::Headers headers = {
-            { "Authorization", "Bearer "+token}
-        };
-
-        auto res = cli.Post(("/v1/users/"+user+"/endpoints/"+endpoint+"/call").c_str(), headers, payload.dump(), "application/json");
-
-        return res->status;
-
-    }
 };

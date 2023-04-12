@@ -9,11 +9,5 @@
     "ssl": true,
     "url": "<thinger server url>",
     "user" : "<user_id>"
-  },
-  "resources" : {
-    "defaults": true,
-    "interfaces": ["eth0"],
-    "filesystems": ["/"],
-    "drives": ["xvda"]
   }
 }

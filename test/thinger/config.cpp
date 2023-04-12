@@ -103,6 +103,9 @@ namespace thinger::monitor {
               REQUIRE( empty.get_ssl() == ssl );
               REQUIRE( config.get_ssl() == ssl );
 
+
+              //empty.set_device("
+
               // TODO: set device (is machine dependant)
 
         }

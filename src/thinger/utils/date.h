@@ -10,7 +10,7 @@ class Date {
 
 public:
 
-    // Intanciates a new Date object with the current time and date
+    // Instantiates a new Date object with the current time and date
     Date() {
 
         auto now = std::chrono::system_clock::now();
@@ -56,6 +56,6 @@ public:
 
 private:
     time_t date;
-    struct tm time;
+    struct tm time{};
 
 };

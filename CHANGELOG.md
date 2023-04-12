@@ -1,7 +1,31 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [0.0.7] - 2023-04-12
+### Added
+- Added verbosity level (up to 3) as parameter option
+- New network resources: network total speed and network total data transfer
+- Monitor resource is accessible through localhost endpoint
+
+### Changed
+- Connection to Thinger Console is done through IOTMP protocol
+- Renamed `nw_default_total_incoming` to `nw_default_transfer_incoming`
+- Renamed `nw_default_total_outgoing` to `nw_default_transfer_outgoing
+- Round metrics to two decimals
+- Call endpoint from cmd, backup and restore resources is done through client method
+- Replaced to_json and to_pson functions with the ones provided by the IOTMP firmware
+
+### Fix
+- Network speed was not reporting correctly
+- Network data transfer not reporting decimals
+- Network, filesystem and drive stats on first retrieval are not real
+- Storage metrics not reporting decimals
+
+### Security
+- Integrated with OpenSSL 3
+
+### Removed
+- Resources, backups and storage properties from local configuration
 
 ## [0.0.6] - 2022-09-08
 ### Changed
@@ -78,7 +102,7 @@ All notable changes to this project will be documented in this file.
 - Module configuration
 - Execution of commands
 
-[Unreleased]: https://github.com/thinger-io/monitoring-client/0.0.6...HEAD
+[0.0.7]: https://github.com/thinger-io/monitoring-client/compare/0.0.6...0.0.7
 [0.0.6]: https://github.com/thinger-io/monitoring-client/compare/0.0.5...0.0.6
 [0.0.5]: https://github.com/thinger-io/monitoring-client/compare/0.0.4...0.0.5
 [0.0.4]: https://github.com/thinger-io/monitoring-client/compare/0.0.3...0.0.4
