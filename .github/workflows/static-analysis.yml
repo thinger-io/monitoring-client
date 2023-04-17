@@ -20,7 +20,7 @@ jobs:
       - name: Set up dependencies
         run: |
           sudo apt update
-          sudo apt install -y libarchive-tools libarchive-dev
+          sudo apt install -y libarchive-tools libarchive-dev libboost-all-dev
 
       - uses: actions/checkout@v3
         with:

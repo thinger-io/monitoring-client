@@ -52,7 +52,7 @@ jobs:
         ref: ${{ needs.build_version.outputs.version }}
 
     - name: Configure CMake
-      run: cmake -B /build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DBUILD_VERSION=${{ needs.build_version.outputs.version }} -DCROSS=ON -DOPENSSL_ROOT_DIR=${{ env.OPENSSL_ROOT_DIR }} -DOPENSSL_LIBRARIES=${{ env.OPENSSL_ROOT_DIR }} -DBIN_EXTENSION=${{ matrix.architecture }}
+      run: cmake -B /build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DBUILD_VERSION=${{ needs.build_version.outputs.version }} -DCROSS=ON -DOPENSSL_ROOT_DIR=${{ env.OPENSSL_ROOT_DIR }} -DOPENSSL_LIBRARIES=${{ env.OPENSSL_ROOT_DIR }} -DBIN_EXTENSION=${{ matrix.architecture }} -DBoost_NO_WARN_NEW_VERSIONS=1
 
     - name: Build
       # Build your program with the given configuration
