@@ -27,9 +27,11 @@ jobs:
       id : version
       run: |
         if [ ${{ github.event_name }} == 'release' ]; then
-          echo "##[set-output name=version;]$(echo ${GITHUB_REF#refs/tags/})"
+          echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          #echo "##[set-output name=version;]$(echo ${GITHUB_REF#refs/tags/})"
         elif [ ${{ github.event_name }} == 'pull_request' ]; then
-          echo "##[set-output name=version;]$(echo ${GITHUB_REF#refs/heads/})"
+          echo "version=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
+          #echo "##[set-output name=version;]$(echo ${GITHUB_REF#refs/heads/})"
         fi
 
   build:
@@ -37,9 +39,9 @@ jobs:
     needs: build_version
     strategy:
       matrix:
-        architecture: ["x86_64", "armv7m_eabi"]
+        architecture: ["x86_64", "armv7m_eabi", "aarch64"]
     container:
-      image: bautisflow/toolchains:monitoring-client_${{ matrix.architecture }}
+      image: thinger/toolchains:monitoring-client_${{ matrix.architecture }}
 
     steps:
 
@@ -73,7 +75,7 @@ jobs:
     needs: [build_version, build]
     strategy:
       matrix:
-        architecture: ["x86_64", "armv7m_eabi"]
+        architecture: ["x86_64", "armv7m_eabi", "aarch64"]
 
     steps:
 

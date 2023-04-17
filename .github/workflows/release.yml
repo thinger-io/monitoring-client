@@ -12,14 +12,14 @@ jobs:
 
     - name: Extract branch name
       shell: bash
-      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+      run: echo "branch=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
       id: extract_branch
 
     - name: Checkout repository
       uses: actions/checkout@v3
       with:
         fetch-depth: 0
-        ref: ${{ steps.extract_branch.outputs.branch }}
+        ref: ${{ env.branch }}
 
     - name: Get tag version
       run: | # official regex for semantic version: https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
@@ -48,7 +48,8 @@ jobs:
         release_body="${release_body//'%'/'%25'}"
         release_body="${release_body//$'\n'/'%0A'}"
         release_body="${release_body//$'\r'/'%0D'}"
-        echo "::set-output name=RELEASE_BODY::$release_body"
+        #echo "::set-output name=RELEASE_BODY::$release_body"
+        echo "RELEASE_BODY=$release_body"
 
     - name: Set pre-release boolean
       id: is_prerelease
@@ -57,17 +58,18 @@ jobs:
         if [ ${{ steps.extract_branch.outputs.branch }} == 'develop' ]; then
             prerelease=true
         fi
-        echo "::set-output name=prerelease::$prerelease"
+        #echo "::set-output name=prerelease::$prerelease"
+        echo "prerelease=$prerelease"
 
     - name: Create GitHub release
       uses: ncipollo/release-action@v1
       with:
-        prerelease: ${{ steps.is_prerelease.outputs.prerelease }}
-        commit: ${{ steps.extract_branch.outputs.branch }}
+        prerelease: ${{ env.prerelease }}
+        commit: ${{ env.branch }}
         tag: ${{ env.tag_version }}
         name: ${{ env.tag_version }}
         token: ${{ secrets.GH_PAT }} # can't use GITHUB_TOKEN as it will not trigger additional events
         artifacts: "install/install_thinger_monitor.sh"
         body: |
-          ${{ steps.get_changelog.outputs.RELEASE_BODY }}
+          ${{ env.RELEASE_BODY }}
 
