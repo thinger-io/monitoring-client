@@ -37,7 +37,7 @@ endif()
 
 # configure Thinger.io parameters
 OPTION(ENABLE_OPENSSL "Enable use of OpenSSL" ON)
-OPTION(CROSS "Enable cross compilation and static linking" OFF)
+OPTION(STATIC "Enable cross compilation and static linking" OFF)
 OPTION(BIN_EXTENSION "Set binary file extension" OFF)
 OPTION(ASIO_CLIENT "Enable ASIO CLIENT" ON)
 
@@ -57,7 +57,7 @@ endif()
 # OpenSSL
 if(ENABLE_OPENSSL)
   SET(OPEN_SSL 1)
-  if(CROSS)
+  if(STATIC)
     set(OPENSSL_USE_STATIC_LIBS TRUE)
   endif()
   find_package(OpenSSL REQUIRED)
@@ -71,7 +71,7 @@ else()
   SET(OPEN_SSL 0)
 endif()
 
-if(CROSS)
+if(STATIC)
   set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
   set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
   set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
