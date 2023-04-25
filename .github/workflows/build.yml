@@ -39,6 +39,7 @@ jobs:
     needs: build_version
     strategy:
       matrix:
+        fail-fast: false # continues with matrix even if an element fails
         architecture: ["x86_64", "armv7m_eabi", "aarch64"]
     container:
       image: thinger/toolchains:monitoring-client_${{ matrix.architecture }}
@@ -52,7 +53,7 @@ jobs:
         ref: ${{ needs.build_version.outputs.version }}
 
     - name: Configure CMake
-      run: cmake -B /build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DBUILD_VERSION=${{ needs.build_version.outputs.version }} -DCROSS=ON -DOPENSSL_ROOT_DIR=${{ env.OPENSSL_ROOT_DIR }} -DOPENSSL_LIBRARIES=${{ env.OPENSSL_ROOT_DIR }} -DBIN_EXTENSION=${{ matrix.architecture }} -DBoost_NO_WARN_NEW_VERSIONS=1
+      run: cmake -B /build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DBUILD_VERSION=${{ needs.build_version.outputs.version }} -DSTATIC=ON -DOPENSSL_ROOT_DIR=${{ env.OPENSSL_ROOT_DIR }} -DOPENSSL_LIBRARIES=${{ env.OPENSSL_ROOT_DIR }} -DBIN_EXTENSION=${{ matrix.architecture }} -DBoost_NO_WARN_NEW_VERSIONS=1
 
     - name: Build
       # Build your program with the given configuration
@@ -75,6 +76,7 @@ jobs:
     needs: [build_version, build]
     strategy:
       matrix:
+        fail-fast: false # continues with matrix even if an element fails
         architecture: ["x86_64", "armv7m_eabi", "aarch64"]
 
     steps:
