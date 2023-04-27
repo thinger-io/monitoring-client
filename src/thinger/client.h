@@ -413,6 +413,9 @@ namespace thinger::monitor {
                 return;
           }
           THINGER_LOG("Creating local server in %s and port %hd", config_.get_svr_host(), config_.get_svr_port());
+          while ( server_.is_running() )
+            std::this_thread::sleep_for(std::chrono::milliseconds{10});
+
           server_.listen(config_.get_svr_host(), config_.get_svr_port());
         }
       );

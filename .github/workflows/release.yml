@@ -47,7 +47,7 @@ jobs:
         release_body="${release_body//$'\n'/'%0A'}"
         release_body="${release_body//$'\r'/'%0D'}"
         #echo "::set-output name=RELEASE_BODY::$release_body"
-        echo "RELEASE_BODY=$release_body"
+        echo "RELEASE_BODY=$release_body" >> $GITHUB_ENV
 
     - name: Set pre-release boolean
       run: |
@@ -56,7 +56,7 @@ jobs:
             prerelease=true
         fi
         #echo "::set-output name=prerelease::$prerelease"
-        echo "prerelease=$prerelease"
+        echo "prerelease=$prerelease" >> $GITHUB_ENV
 
     - name: Create GitHub release
       uses: ncipollo/release-action@v1
