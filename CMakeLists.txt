@@ -8,12 +8,7 @@ endif()
 # set package version
 set(VERSION_MAJOR 0)
 set(VERSION_MINOR 0)
-set(VERSION_PATCH 1)
-
-# add version for source code
-add_definitions(-DVERSION_MAJOR=${VERSION_MAJOR})
-add_definitions(-DVERSION_MINOR=${VERSION_MINOR})
-add_definitions(-DVERSION_PATCH=${VERSION_PATCH})
+set(VERSION_PATCH 7)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
@@ -41,9 +36,11 @@ OPTION(STATIC "Enable cross compilation and static linking" OFF)
 OPTION(BIN_EXTENSION "Set binary file extension" OFF)
 OPTION(ASIO_CLIENT "Enable ASIO CLIENT" ON)
 
+SET(ARCH "x86_64" CACHE STRING "Compiler architecure")
+
 set(Boost_USE_MULTITHREADED      ON)
 set(Boost_USE_STATIC_LIBS        ON)
-find_package(Boost REQUIRED COMPONENTS system thread regex program_options date_time filesystem)
+find_package(Boost REQUIRED COMPONENTS program_options)
 if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
   list(APPEND ADDITIONAL_LIBS ${Boost_LIBRARIES})
@@ -52,6 +49,12 @@ endif()
 # required for GCC < 9.0
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
   list(APPEND ADDITIONAL_LIBS "stdc++fs")
+endif()
+
+# Add atomic for 32 bit arm
+if("${ARCH}" STREQUAL "armv7m")
+  message(STATUS "Linking against libatomic")
+  list(APPEND ADDITIONAL_LIBS atomic)
 endif()
 
 # OpenSSL
@@ -172,7 +175,7 @@ export(TARGETS spdlog
 FetchContent_Declare(
   Catch2
   GIT_REPOSITORY  https://github.com/catchorg/Catch2.git
-  GIT_TAG         v3.1.0
+  GIT_TAG         v3.3.2
 )
 FetchContent_MakeAvailable(Catch2)
 add_executable(tests test/thinger/config.cpp)
@@ -181,6 +184,6 @@ list(APPEND ADDITIONAL_LIBS Catch2::Catch2WithMain)
 target_link_libraries(tests ${ADDITIONAL_LIBS})
 
 if(BIN_EXTENSION)
-  set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${PROJECT_NAME}.${BIN_EXTENSION}")
-  message(STATUS "Binary name is ${PROJECT_NAME}.${BIN_EXTENSION}")
+  set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${PROJECT_NAME}.${ARCH}")
+  message(STATUS "Binary name is ${PROJECT_NAME}.${ARCH}")
 endif()

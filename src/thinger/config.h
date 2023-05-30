@@ -6,8 +6,6 @@
 #include <random>
 #include <regex>
 
-
-
 constexpr std::string_view DF_CONFIG_PATH = "/etc/thinger_io/thinger_monitor.json";
 
 namespace thinger::monitor::config {
@@ -61,8 +59,6 @@ namespace thinger::monitor {
             load_config();
         }
 
-        //Config(json config) : config_(config) {}
-
         explicit Config(std::string_view path) : path_(path) {
             load_config();
         }
@@ -104,13 +100,21 @@ namespace thinger::monitor {
                 std::string hostname;
                 std::ifstream hostinfo ("/etc/hostname", std::ifstream::in);
                 hostinfo >> hostname;
+
                 if (this->get_name().empty())
                     config_local_["device"]["name"] = hostname;
 
-                // TODO: When forcing C++20 replace for std::ranges::replace
-                std::replace(hostname.begin(), hostname.end(),'.','_');
-                std::replace(hostname.begin(), hostname.end(),'-','_');
-                config_local_["device"]["id"] = hostname;
+                // device_id can't use some chars
+                std::ranges::replace(hostname.begin(), hostname.end(),'.','_');
+                std::ranges::replace(hostname.begin(), hostname.end(),'-','_');
+
+                // device_id has a max of 32 chars
+                std::string device_id = hostname.substr(0,32);
+                if ( ! hostname.substr(32).starts_with('_') ) {
+                  size_t pos = device_id.find_last_of('_');
+                  device_id = hostname.substr(0,pos);
+                }
+                config_local_["device"]["id"] = device_id;
             }
             if (this->get_credentials().empty()) {
                 config_local_["device"]["credentials"] = utils::generate_credentials(16);
@@ -168,7 +172,7 @@ namespace thinger::monitor {
         }
 
         [[nodiscard]] unsigned short get_svr_port() const {
-          return config::get(config_remote_, "/resources/server/port"_json_pointer, 2222);
+          return config::get(config_remote_, "/resources/server/port"_json_pointer, (unsigned short) 2222);
         }
 
         [[nodiscard]] std::string get_storage() const {
@@ -180,7 +184,7 @@ namespace thinger::monitor {
         }
 
         [[nodiscard]] std::string get_compose_path() const {
-            return config::get(config_remote_, "/backups/compose_path"_json_pointer, std::string("/"));
+            return config::get(config_remote_, "/backups/compose_path"_json_pointer, std::string("/root/"));
         }
 
         [[nodiscard]] std::string get_bucket(std::string const& st) const {
@@ -212,8 +216,7 @@ namespace thinger::monitor {
             pson p;
 
             // only remote properties in json
-            // TODO: When forcing C++20 replace for std::ranges::replace
-            if (std::find(remote_properties.begin(), remote_properties.end(), property) == remote_properties.end())
+            if (std::ranges::find(remote_properties.begin(), remote_properties.end(), property) == remote_properties.end())
                 return p;
 
             auto jp = nlohmann::json::json_pointer("/"+property);

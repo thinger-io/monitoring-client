@@ -143,7 +143,7 @@ private:
             try {
                 std::filesystem::remove_all(config().get_data_path()+"/thinger/users");
             } catch (std::filesystem::filesystem_error &e) {
-                spdlog::debug(e.what());
+                LOG_LEVEL(1, e.what());
                 data["status"]  = false;
                 data["error"].push_back("Failed removing thinger installed directories");
                 return data;

@@ -16,7 +16,7 @@ namespace Platform::Utils::InfluxDB {
         for (int i = 0; i < 6; i++) {
 
             if (res.error() != httplib::Error::Success) {
-              spdlog::warn("[_INFLUX] Can't ping influxdb /ping endpoint. Trying again in 10 seconds.");
+              LOG_WARNING("[_INFLUX] Can't ping influxdb /ping endpoint. Trying again in 10 seconds.");
               std::this_thread::sleep_for(std::chrono::seconds(10));
               res = cli.Get("/ping");
             } else {
@@ -26,7 +26,7 @@ namespace Platform::Utils::InfluxDB {
         }
 
         if (res.error() != httplib::Error::Success) {
-            spdlog::error("[_INFLUX] Can't ping influxdb /ping endpoint.");
+            LOG_ERROR("[_INFLUX] Can't ping influxdb /ping endpoint.");
             return "false"; // TODO: throw exception
         }
 

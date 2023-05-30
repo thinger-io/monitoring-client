@@ -1,9 +1,7 @@
 #include "config.h"
 #include "monitor.h"
 
-
 #include <httplib.h>
-#include <spdlog/spdlog.h>
 
 #include <filesystem>
 #include <linux/kernel.h>
@@ -162,11 +160,11 @@ namespace thinger::monitor {
                         data["backup"]    = {};
                         data["backup"]["operations"] = {};
 
-                        spdlog::info("[_BACKUP] Creating backup");
+                        LOG_INFO("[_BACKUP] Creating backup");
                         data["backup"]["operations"]["backup"] = backup->backup();
-                        spdlog::info("[_BACKUP] Uploading backup");
+                        LOG_INFO("[_BACKUP] Uploading backup");
                         data["backup"]["operations"]["upload"] = backup->upload();
-                        spdlog::info("[_BACKUP] Cleaning backup temporary files");
+                        LOG_INFO("[_BACKUP] Cleaning backup temporary files");
                         data["backup"]["operations"]["clean"] = backup->clean();
 
                         data["backup"]["status"] = true;
@@ -177,7 +175,8 @@ namespace thinger::monitor {
                             }
                         }
 
-                        spdlog::debug("[_BACKUP] Backup status: {0}", data.dump());
+                        //LOG_LEVEL(1, "[_BACKUP] Backup status: {0}", data.dump());
+                        LOG_LEVEL(1, "[_BACKUP] Backup status: %s", data.dump());
                         if (!task_endpoint.empty()) {
                             protoson::pson payload;
                             protoson::json_decoder::parse(data, payload);
@@ -235,13 +234,14 @@ namespace thinger::monitor {
                         data["restore"]   = {};
                         data["restore"]["operations"] = {};
 
-                        spdlog::info("[___RSTR] Downloading backup");
+                        LOG_INFO("[___RSTR] Downloading backup");
                         data["restore"]["operations"]["download"] = restore->download();
-                        spdlog::info("[___RSTR] Restoring backup");
+                        LOG_INFO("[___RSTR] Restoring backup");
                         data["restore"]["operations"]["restore"] = restore->restore();
-                        spdlog::info("[___RSTR] Cleaning backup temporary files");
+                        LOG_INFO("[___RSTR] Cleaning backup temporary files");
                         data["restore"]["operations"]["clean"] = restore->clean();
-                        spdlog::debug("[___RSTR] Restore status: {0}", data.dump());
+                        //LOG_LEVEL(1, "[___RSTR] Restore status: {0}", data.dump());
+                        LOG_LEVEL(1, "[___RSTR] Restore status: %s", data.dump());
                         if (!task_endpoint.empty()) {
                             protoson::pson payload;
                             protoson::json_decoder::parse(data, payload);

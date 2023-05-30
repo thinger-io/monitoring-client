@@ -1,7 +1,7 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [0.0.7] - 2023-04-12
+## [0.0.7] - 2023-05-30
 ### Added
 - Added verbosity level (up to 3) as parameter option
 - New network resources: network total speed and network total data transfer
@@ -14,12 +14,16 @@ All notable changes to this project will be documented in this file.
 - Round metrics to two decimals
 - Call endpoint from cmd, backup and restore resources is done through client method
 - Replaced to_json and to_pson functions with the ones provided by the IOTMP firmware
+- Use boost program_options and remove user and url as options
+- No direct calls to spdlog, instead it call the IOTMP LOG macros
 
 ### Fix
 - Network speed was not reporting correctly
 - Network data transfer not reporting decimals
 - Network, filesystem and drive stats on first retrieval are not real
 - Storage metrics not reporting decimals
+- Limit max device id to 32 chars
+- Add libatomic for armv7 static compilation
 
 ### Security
 - Integrated with OpenSSL 3
