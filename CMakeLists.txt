@@ -52,7 +52,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 endif()
 
 # Add atomic for 32 bit arm
-if("${ARCH}" STREQUAL "armv7m")
+if("${ARCH}" MATCHES "^armv7m")
   message(STATUS "Linking against libatomic")
   list(APPEND ADDITIONAL_LIBS atomic)
 endif()

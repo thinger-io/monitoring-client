@@ -43,9 +43,9 @@ jobs:
         $(awk '/^## \[[0-9]+/,EOF' CHANGELOG.md | awk '(NR>1)' | awk '1;/^## \[[0-9]+/{exit}' | sed '$d')
         EOF
         )
-        release_body="${release_body//'%'/'%25'}"
-        release_body="${release_body//$'\n'/'%0A'}"
-        release_body="${release_body//$'\r'/'%0D'}"
+        #release_body="${release_body//'%'/'%25'}"
+        #release_body="${release_body//$'\n'/'%0A'}"
+        #release_body="${release_body//$'\r'/'%0D'}"
         #echo "::set-output name=RELEASE_BODY::$release_body"
         echo "RELEASE_BODY=$release_body" >> $GITHUB_ENV
 
