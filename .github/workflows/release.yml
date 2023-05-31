@@ -38,18 +38,10 @@ jobs:
         elif [ `git tag --list | grep -q ${{ env.tag_version }}` -ne 0 ]; then exit 1; fi
 
     - name: Get changelog body
-      id: get_changelog
       run: |
-        release_body=$(cat << EOF
-        $(awk '/^## \[[0-9]+/,EOF' CHANGELOG.md | awk '(NR>1)' | awk '1;/^## \[[0-9]+/{exit}' | sed '$d')
-        EOF
-        )
-        release_body="${release_body//'%'/'%25'}"
-        release_body="${release_body//$'\n'/'%0A'}"
-        release_body="${release_body//$'\r'/'%0D'}"
-        echo "RELEASE_BODY=$release_body" >> "$GITHUB_OUTPUT"
-        #echo "::set-output name=RELEASE_BODY::$release_body"
-        #echo "RELEASE_BODY=$release_body" >> $GITHUB_ENV
+        echo 'release_body<<EOF' >> $GITHUB_ENV
+        awk '/^## \[[0-9]+/,EOF' CHANGELOG.md | awk '(NR>1)' | awk '1;/^## \[[0-9]+/{exit}' | sed '$d'
+        echo 'EOF' >> $GITHUB_ENV
 
     - name: Set pre-release boolean
       run: |
@@ -57,7 +49,6 @@ jobs:
         if [ ${{ env.branch }} == 'develop' ]; then
             prerelease=true
         fi
-        #echo "::set-output name=prerelease::$prerelease"
         echo "prerelease=$prerelease" >> $GITHUB_ENV
 
     - name: Create GitHub release
@@ -70,5 +61,5 @@ jobs:
         token: ${{ secrets.GH_PAT }} # can't use GITHUB_TOKEN as it will not trigger additional events
         artifacts: "install/install_thinger_monitor.sh"
         body: |
-          ${{ steps.get_changelog.outputs.RELEASE_BODY }}
+          ${{ env.RELEASE_BODY }}
 
