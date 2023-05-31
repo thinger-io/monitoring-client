@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 - Connection to Thinger Console is done through IOTMP protocol
 - Renamed `nw_default_total_incoming` to `nw_default_transfer_incoming`
-- Renamed `nw_default_total_outgoing` to `nw_default_transfer_outgoing
+- Renamed `nw_default_total_outgoing` to `nw_default_transfer_outgoing`
 - Round metrics to two decimals
 - Call endpoint from cmd, backup and restore resources is done through client method
 - Replaced to_json and to_pson functions with the ones provided by the IOTMP firmware
