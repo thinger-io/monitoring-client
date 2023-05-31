@@ -13,8 +13,8 @@ All notable changes to this project will be documented in this file.
 - Renamed `nw_default_total_outgoing` to `nw_default_transfer_outgoing`
 - Round metrics to two decimals
 - Call endpoint from cmd, backup and restore resources is done through client method
-- Replaced to_json and to_pson functions with the ones provided by the IOTMP firmware
-- Use boost program_options and remove user and url as options
+- Replaced `to_json` and `to_pson` functions with the ones provided by the IOTMP firmware
+- Use boost `program_options` and remove user and url as options
 - No direct calls to spdlog, instead it call the IOTMP LOG macros
 
 ### Fix
