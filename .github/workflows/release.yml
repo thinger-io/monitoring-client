@@ -70,5 +70,5 @@ jobs:
         token: ${{ secrets.GH_PAT }} # can't use GITHUB_TOKEN as it will not trigger additional events
         artifacts: "install/install_thinger_monitor.sh"
         body: |
-          ${{ env.RELEASE_BODY }}
+          ${{ steps.get_changelog.outputs.RELEASE_BODY }}
 

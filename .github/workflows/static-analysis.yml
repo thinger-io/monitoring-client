@@ -3,8 +3,8 @@ name: Static Analysis
 on:
   release:
     types: [ published ]
-  push:
-    branches: [ "master", "develop" ]
+  #push:
+  #  branches: [ "master", "develop" ]
   pull_request:
     branches: [ "master" ]
   workflow_dispatch:
