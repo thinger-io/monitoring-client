@@ -1,8 +1,8 @@
 name: Static Analysis
 
 on:
-  #release:
-  #  types: [ published ]
+  release:
+    types: [ published ]
   push:
     branches: [ "master", "develop" ]
   pull_request:
@@ -39,6 +39,9 @@ jobs:
           elif [ ${{ github.event_name }} == 'pull_request' ]; then
             #echo "##[set-output name=version;]$(echo ${GITHUB_REF#refs/heads/})"
             echo "version=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
+          elif [ ${{ github.event_name }} == 'push' ]; then
+            #echo "##[set-output name=version;]$(echo ${GITHUB_REF#refs/heads/})"
+            echo "version=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
           fi
 
       - name: Install sonar-scanner and build-wrapper
@@ -58,14 +61,12 @@ jobs:
           if [[ ${{ env.version }} == *"-alpha"* ]]; then
             branch="develop"
             sonar-scanner \
-              --define sonar.host.url="${{ env.SONAR_SERVER_URL }}" \
               --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}" \
               --define sonar.projectVersion="${{ env.version }}" \
               --define sonar.branch.name="$branch" \
               --define sonar.branch.target="$branch"
           else
             sonar-scanner \
-              --define sonar.host.url="${{ env.SONAR_SERVER_URL }}" \
               --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}" \
               --define sonar.projectVersion="${{ env.version }}"
           fi
