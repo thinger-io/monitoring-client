@@ -99,6 +99,14 @@ esac; shift; done
 set_directories
 mkdir -p $bin_dir $config_dir $service_dir
 
+# Set SSL_CERT_DIR if exists
+if [ -n "${SSL_CERT_DIR+x}" ]; then
+    export certs_dir_env="Environment=SSL_CERT_DIR=$SSL_CERT_DIR"
+fi
+
+# Get home dir to set env variable in service
+export home_dir="$HOME"
+
 if [ -z "${version+x}" ]; then
   version="`wget --quiet -qO- --header="Accept: application/vnd.github.v3+json" https://"$_github_api_url"/repos/thinger-io/"$_repo"/releases/latest | grep "tag_name" | cut -d '"' -f4`"
 fi
@@ -109,7 +117,7 @@ if [ -f "$service_dir"/"$_module".service ]; then
     systemctl $sys_user disable "$_module".service
 fi
 wget -q --header="Accept: application/vnd.github.VERSION.raw" https://"$_github_api_url"/repos/thinger-io/"$_repo"/contents/install/"$_module".template?ref="$version" -P "$service_dir" -O "$service_dir"/"$_module".template
-cat "$service_dir"/"$_module".template | envsubst '$certs_dir,$bin_dir,$config_dir' > "$service_dir"/"$_module".service
+cat "$service_dir"/"$_module".template | envsubst '$home_dir,$certs_dir_env,$bin_dir,$config_dir' > "$service_dir"/"$_module".service
 rm -f "$service_dir"/"$_module".template
 
 # Download bin
@@ -122,11 +130,6 @@ chmod +x "$bin_dir"/"$_module"
 # Download config
 if [ ! -f "$config_dir"/thinger_monitor.json ]; then
   wget -q --header="Accept: application/vnd.github.VERSION.raw" https://"$_github_api_url"/repos/thinger-io/"$_repo"/contents/config/thinger_monitor.json?ref="$version" -P "$config_dir" -O "$config_dir"/thinger_monitor.json
-fi
-
-# Set SSL_CERT_DIR if exists
-if [ -n "${SSL_CERT_DIR+x}" ]; then
-    export certs_dir="SSL_CERT_DIR=$SSL_CERT_DIR"
 fi
 
 # First run with token for autoprovision

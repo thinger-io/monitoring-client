@@ -5,7 +5,8 @@ StartLimitIntervalSec=500
 StartLimitBurst=5
 
 [Service]
-Environment=$certs_dir
+$certs_dir_env
+Environment=HOME=$home_dir
 ExecStart=$bin_dir/thinger_monitor -c $config_dir/thinger_monitor.json
 ExecReload=/bin/kill -s HUP $MAINPID
 ExecStop=/bin/kill -s TERM $MAINPID

@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
     ("help,h", "show this help")
     ("verbosity,v", po::value<int>(&verbosity_level)->default_value(1), "set verbosity level")
     ("token,t", po::value<std::string>(), "autoprovisioning token")
-    ("ssl,k", po::value<bool>()->default_value(true), "secure connection")
+    ("insecure,k", "insecure connection")
     ("config,c", po::value<std::string>()->default_value("/etc/thinger_io/thinger_monitor.json"), "configuration file path")
     ("transport,p", po::value<std::string>(&transport)->default_value(""), "connection transport, i.e., 'websocket'");
 
@@ -88,8 +88,12 @@ int main(int argc, char *argv[]) {
 #endif
 
   // Check options and call functions
-  if (vm.count("ssl")) {
-    config.set_ssl(vm["ssl"].as<bool>());
+  if (vm.count("help")) {
+    std::cout << desc << std::endl;
+    return 1;
+  }
+  if (vm.count("insecure")) {
+    config.set_ssl(false);
   }
   if (vm.count("config")) {
     config.set_path(vm["config"].as<std::string>());
