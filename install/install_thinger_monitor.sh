@@ -42,11 +42,13 @@ set_directories() {
     if [ "$UID" -eq 0 ]; then
         export bin_dir="/usr/local/bin/"
         export config_dir="/etc/thinger_io/"
+        export home_dir="$HOME"
         service_dir="/etc/systemd/system/"
         sys_user=""
     else
         export bin_dir="$HOME/.local/bin/"
         export config_dir="$HOME/.config/thinger_io"
+        export home_dir="$HOME"
         service_dir="$HOME/.config/systemd/user/"
         sys_user="--user"
 
@@ -103,9 +105,6 @@ mkdir -p $bin_dir $config_dir $service_dir
 if [ -n "${SSL_CERT_DIR+x}" ]; then
     export certs_dir_env="Environment=SSL_CERT_DIR=$SSL_CERT_DIR"
 fi
-
-# Get home dir to set env variable in service
-export home_dir="$HOME"
 
 if [ -z "${version+x}" ]; then
   version="`wget --quiet -qO- --header="Accept: application/vnd.github.v3+json" https://"$_github_api_url"/repos/thinger-io/"$_repo"/releases/latest | grep "tag_name" | cut -d '"' -f4`"
