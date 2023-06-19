@@ -48,7 +48,6 @@ namespace thinger::monitor::network {
 
     void retrieve_ifc_stats(std::vector<interface>& interfaces) {
         for (auto & ifc : interfaces) {
-            int j = 0;
 
             std::ifstream netinfo ("/proc/net/dev", std::ifstream::in);
             std::string line;
@@ -56,18 +55,15 @@ namespace thinger::monitor::network {
 
             while(netinfo >> line) {
                 if (line == ifc.name+":") {
-                    netinfo >> ifc.total_transfer[1][j]; //first bytes inc
-                    j++;
-                    netinfo >> ifc.total_packets[j-1]; // total packets inc
-                    netinfo >> null >> ifc.total_packets[j]; // drop packets inc
-                    netinfo >> null >> null >> null >> null >> ifc.total_transfer[1][j]; // total bytes out
-                    j++;
-                    netinfo >> ifc.total_packets[j]; // total packets out
-                    netinfo >> null >> ifc.total_packets[j+1]; // drop packets out
+                    netinfo >> ifc.total_transfer[0][1]; //first bytes inc
+                    netinfo >> ifc.total_packets[0]; // total packets inc
+                    netinfo >> null >> ifc.total_packets[1]; // drop packets inc
+                    netinfo >> null >> null >> null >> null >> ifc.total_transfer[1][1]; // total bytes out
+                    netinfo >> ifc.total_packets[2]; // total packets out
+                    netinfo >> null >> ifc.total_packets[3]; // drop packets out
 
-                    ifc.total_transfer[1][j] = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    ifc.total_transfer[2][1] = std::chrono::duration_cast<std::chrono::milliseconds>(
                       std::chrono::system_clock::now().time_since_epoch()).count();
-                    j++;
 
                     break;
                 }
@@ -86,21 +82,15 @@ namespace thinger::monitor::io {
 
     void retrieve_dv_stats(std::vector<drive>& drives) {
         for(auto & dv : drives) {
-            int j = 0;
 
             std::ifstream dvinfo ("/sys/block/"+dv.name+"/stat", std::ifstream::in);
             std::string null;
 
-            dvinfo >> null >> null >> dv.total_io[1][j]; // sectors read [0]
-            j++;
+            dvinfo >> null >> null >> dv.total_io[1][0]; // sectors read [0]
+            dvinfo >> null >> null >> null >> dv.total_io[1][1]; // sectors written [1]
+            dvinfo >> null >> null >> dv.total_io[1][2]; // io ticks -> time spent in io [2]
 
-            dvinfo >> null >> null >> null >> dv.total_io[1][j]; // sectors written [1]
-            j++;
-
-            dvinfo >> null >> null >> dv.total_io[1][j]; // io ticks -> time spent in io [2]
-            j++;
-
-            dv.total_io[1][j] = std::chrono::duration_cast<std::chrono::milliseconds>( // millis [3]
+            dv.total_io[1][3] = std::chrono::duration_cast<std::chrono::milliseconds>( // millis [3]
               std::chrono::system_clock::now().time_since_epoch()).count();
         }
     }
@@ -231,7 +221,7 @@ namespace thinger::monitor::platform {
         if (res.error() != httplib::Error::Success) {
             console_version = "Could not retrieve";
         } else {
-            auto res_json = json::parse(res->body);
+            auto res_json = nlohmann::json::parse(res->body);
             console_version = res_json["version"].get<std::string>();
         }
   }

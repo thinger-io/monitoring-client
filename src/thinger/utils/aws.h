@@ -53,7 +53,7 @@ namespace AWS {
         std::stringstream body;
         body << file.rdbuf();
 
-        spdlog::info("[____AWS] Uploading file {0} to {1} bucket", filename, bucket);
+        LOG_INFO("[____AWS] Uploading file {0} to {1} bucket", filename, bucket);
         auto res = cli.Put(("/"+filename).c_str(), headers, body.str(), content_type.c_str());
 
         return HttpStatus::isSuccessful(res->status);
@@ -83,7 +83,7 @@ namespace AWS {
 
         std::ofstream file(file_path);
 
-        spdlog::info("[____AWS] Downloading file {0} from {1} bucket", filename, bucket);
+        LOG_INFO("[____AWS] Downloading file {0} from {1} bucket", filename, bucket);
 
         cli.set_default_headers(headers);
         auto res = cli.Get(("/"+filename).c_str(),

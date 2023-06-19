@@ -10,6 +10,10 @@
 // hash
 #include <openssl/sha.h>
 #include <openssl/hmac.h>
+#include <openssl/evp.h>
+#include <openssl/params.h>
+#include <openssl/err.h>
+#include <openssl/core_names.h>
 
 namespace Crypto {
 
@@ -113,46 +117,29 @@ namespace Crypto {
 
     namespace hash {
 
-        std::string hmac_sha1(std::string key, std::string msg) {
+        std::string hmac(std::string key, std::string msg, std::string digest) {
 
-            unsigned char hash[32];
-
-            HMAC_CTX *hmac = HMAC_CTX_new();
-            HMAC_Init_ex(hmac, &key[0], key.length(), EVP_sha1(), nullptr);
-            HMAC_Update(hmac, (unsigned char*)&msg[0], msg.length());
-            unsigned int len = 32;
-            HMAC_Final(hmac, hash, &len);
-            HMAC_CTX_free(hmac);
-
-            /* HEX
-            std::stringstream ss;
-            ss << std::hex << std::setfill('0');
-            for (int i = 0; i < len; i++) {
-                ss << std::hex << std::setw(2)  << (unsigned int)hash[i];
-            }
-            */
-
-            std::stringstream ss;
-            ss << std::setfill('0');
-            for (int i = 0; i < len; i++) {
-                ss  << hash[i];
-            }
-
-            //return (base64_encode(ss.str()));
-            return ss.str();
-
-        }
-
-        std::string hmac_sha256(std::string key, std::string msg) {
+            EVP_MAC *mac = EVP_MAC_fetch(NULL, "HMAC", NULL);
+            EVP_MAC_CTX *ctx = NULL;
 
             unsigned char hash[64];
+            size_t final_l;
 
-            HMAC_CTX *hmac = HMAC_CTX_new();
-            HMAC_Init_ex(hmac, &key[0], key.length(), EVP_sha256(), nullptr);
-            HMAC_Update(hmac, (unsigned char*)&msg[0], msg.length());
-            unsigned int len = 64;
-            HMAC_Final(hmac, hash, &len);
-            HMAC_CTX_free(hmac);
+            OSSL_PARAM params[2];
+            size_t params_n = 0;
+
+            params[params_n++] = OSSL_PARAM_construct_utf8_string("digest", (char*)digest.c_str(), 0);
+            params[params_n] = OSSL_PARAM_construct_end();
+
+            ctx = EVP_MAC_CTX_new(mac);
+            EVP_MAC_init(ctx, (const unsigned char *)&key[0], key.length(), params);
+
+            EVP_MAC_update(ctx, (unsigned char*)&msg[0], msg.length());
+
+            EVP_MAC_final(ctx, hash, &final_l, sizeof(hash));
+
+            EVP_MAC_CTX_free(ctx);
+            EVP_MAC_free(mac);
 
             // HEX
             /*std::stringstream ss;
@@ -164,22 +151,44 @@ namespace Crypto {
 
             std::stringstream ss;
             ss << std::setfill('0');
-            for (int i = 0; i < len; i++) {
-                ss  << hash[i];
+            for (int i = 0; i < final_l; i++) {
+              ss  << hash[i];
             }
 
             return ss.str();
+          }
+
+        std::string hmac_sha1(std::string key, std::string msg) {
+
+            return hmac(key, msg, "SHA1");
 
         }
 
+        std::string hmac_sha256(std::string key, std::string msg) {
+
+            return hmac(key, msg, "SHA256");
+
+        }
+
+
         std::string sha256(const char* str, const size_t length) {
-            unsigned char hash[SHA256_DIGEST_LENGTH];
-            SHA256_CTX sha256;
-            SHA256_Init(&sha256);
-            SHA256_Update(&sha256, str, length);
-            SHA256_Final(hash, &sha256);
+
+            EVP_MD *sha256 = NULL;
+            EVP_MD_CTX *ctx = NULL;
+
+            unsigned char *hash = NULL;
+            unsigned int hash_length = 0;
+
+            ctx = EVP_MD_CTX_new();
+            sha256 = EVP_MD_fetch(NULL, "SHA256", NULL);
+            EVP_DigestInit_ex(ctx, sha256, NULL);
+            EVP_DigestUpdate(ctx, str, length);
+            hash = (unsigned char *) OPENSSL_malloc(EVP_MD_get_size(sha256));
+            EVP_DigestFinal_ex(ctx, hash, &hash_length);
+            EVP_MD_free(sha256);
+
             std::stringstream ss;
-            for(int i = 0; i < SHA256_DIGEST_LENGTH; i++)
+            for(int i = 0; i < hash_length; i++)
             {
                 ss << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
             }

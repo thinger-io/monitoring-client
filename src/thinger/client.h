@@ -1,12 +1,8 @@
 #include "config.h"
 #include "monitor.h"
 
-#include <thinger_client.h>
-
 #include <httplib.h>
-#include <spdlog/spdlog.h>
 
-#include <thread>
 #include <filesystem>
 #include <linux/kernel.h>
 #include <unistd.h>
@@ -48,9 +44,9 @@ namespace thinger::monitor {
 
     public:
 
-        Client(thinger_client& client, Config& config) :
+        Client(thinger::iotmp::client& client, Config& config) :
             resources_{
-              {"monitor", client["monitor"]},
+              {"monitor", client["monitor"](server_)},
               {"cmd", client["cmd"]},
               {"reboot", client["reboot"]},
               {"update", client["update"]},
@@ -61,15 +57,13 @@ namespace thinger::monitor {
             config_(config)
         {
 
-            reload_configuration();
-
             // Executed only once
             system::retrieve_hostname(hostname);
             system::retrieve_os_version(os_version);
             system::retrieve_kernel_version(kernel_version);
             cpu::retrieve_cpu_cores(cpu_cores);
 
-            resources_.at("cmd") = [this](pson& in, pson& out) {
+            resources_.at("cmd") = [this, &client](iotmp::input& in, iotmp::output& out) {
                 std::string output = cmd(in["input"]);
                 out["output"] = output;
 
@@ -77,21 +71,21 @@ namespace thinger::monitor {
                 in["endpoint"] = "cmd_finished";
 
                 if (!endpoint.empty()) {
-                    json payload;
+                    pson payload;
                     payload["device"] = config_.get_id();
                     payload["hostname"] = hostname;
                     payload["payload"] = output;
-                    Thinger::call_endpoint(config_.get_endpoints_token(), config_.get_user(), endpoint, payload, config_.get_url(), config_.get_ssl());
+                    client.call_endpoint(endpoint.c_str(), payload);
                 }
             };
 
             if (geteuid() == 0) { // is_root
-                resources_.at("reboot") << [](pson& in) { // needs declaration of input for dashboard button
+                resources_.at("reboot") = [](iotmp::input& in) { // needs declaration of input for dashboard button
                     if (in)
                         reboot();
                 };
 
-                resources_.at("update") = [this](pson& in, pson& out) { // needs declaration of input for dashboard button
+                resources_.at("update") = [this](iotmp::input& in, iotmp::output& out) { // needs declaration of input for dashboard button
                     if (in) {
                         if ( f1.future.valid() && f1.future.wait_for(std::chrono::seconds(0))  != std::future_status::ready ) {
                             if ( f1.task == "update" )
@@ -111,7 +105,7 @@ namespace thinger::monitor {
                     }
                 };
 
-                resources_.at("update_distro") = [this](pson& in, pson& out) { // needs declaration of input for dashboard button
+                resources_.at("update_distro") = [this](iotmp::input& in, iotmp::output& out) { // needs declaration of input for dashboard button
                     if (in) {
                         if ( f1.future.valid() && f1.future.wait_for(std::chrono::seconds(0))  != std::future_status::ready ) {
                             if ( f1.task == "update_distro" )
@@ -132,7 +126,7 @@ namespace thinger::monitor {
                 };
             }
 
-            resources_.at("backup") = [this](pson& in, pson& out) {
+            resources_.at("backup") = [this, &client](iotmp::input& in, iotmp::output& out) {
 
                 if (!config_.get_backup().empty()) {
 
@@ -152,7 +146,7 @@ namespace thinger::monitor {
                     }
 
                     // future from a packaged_task
-                    std::packaged_task<void(std::string,std::string)> task([this](const std::string& task_tag, const std::string& task_endpoint) {
+                    std::packaged_task<void(std::string,std::string)> task([this, &client](const std::string& task_tag, const std::string& task_endpoint) {
 
                         std::unique_ptr<ThingerMonitorBackup> backup{}; // as nullptr
                         // Add new possible options for backup systems
@@ -166,11 +160,11 @@ namespace thinger::monitor {
                         data["backup"]    = {};
                         data["backup"]["operations"] = {};
 
-                        spdlog::info("[_BACKUP] Creating backup");
+                        LOG_INFO("[_BACKUP] Creating backup");
                         data["backup"]["operations"]["backup"] = backup->backup();
-                        spdlog::info("[_BACKUP] Uploading backup");
+                        LOG_INFO("[_BACKUP] Uploading backup");
                         data["backup"]["operations"]["upload"] = backup->upload();
-                        spdlog::info("[_BACKUP] Cleaning backup temporary files");
+                        LOG_INFO("[_BACKUP] Cleaning backup temporary files");
                         data["backup"]["operations"]["clean"] = backup->clean();
 
                         data["backup"]["status"] = true;
@@ -181,9 +175,13 @@ namespace thinger::monitor {
                             }
                         }
 
-                        spdlog::debug("[_BACKUP] Backup status: {0}", data.dump());
-                        if (!task_endpoint.empty())
-                            Thinger::call_endpoint(config_.get_endpoints_token(), config_.get_user(), task_endpoint, data, config_.get_url(), config_.get_ssl());
+                        //LOG_LEVEL(1, "[_BACKUP] Backup status: {0}", data.dump());
+                        LOG_LEVEL(1, "[_BACKUP] Backup status: %s", data.dump());
+                        if (!task_endpoint.empty()) {
+                            protoson::pson payload;
+                            protoson::json_decoder::parse(data, payload);
+                            client.call_endpoint(task_endpoint.c_str(), payload);
+                        }
 
                     });
 
@@ -203,7 +201,7 @@ namespace thinger::monitor {
                 }
             };
 
-            resources_.at("restore") = [this](pson& in, pson& out) {
+            resources_.at("restore") = [this, &client](iotmp::input& in, iotmp::output& out) {
 
                 if (!config_.get_backup().empty()) {
 
@@ -222,7 +220,7 @@ namespace thinger::monitor {
                         return;
                     }
 
-                    std::packaged_task<void(std::string, std::string)> task([this](const std::string& task_tag, const std::string& task_endpoint) {
+                    std::packaged_task<void(std::string, std::string)> task([this, &client](const std::string& task_tag, const std::string& task_endpoint) {
 
                         std::unique_ptr<ThingerMonitorRestore> restore{};
                         // Add new possible options for backup systems
@@ -236,16 +234,18 @@ namespace thinger::monitor {
                         data["restore"]   = {};
                         data["restore"]["operations"] = {};
 
-                        spdlog::info("[___RSTR] Downloading backup");
+                        LOG_INFO("[___RSTR] Downloading backup");
                         data["restore"]["operations"]["download"] = restore->download();
-                        spdlog::info("[___RSTR] Restoring backup");
+                        LOG_INFO("[___RSTR] Restoring backup");
                         data["restore"]["operations"]["restore"] = restore->restore();
-                        spdlog::info("[___RSTR] Cleaning backup temporary files");
+                        LOG_INFO("[___RSTR] Cleaning backup temporary files");
                         data["restore"]["operations"]["clean"] = restore->clean();
-                        spdlog::debug("[___RSTR] Restore status: {0}", data.dump());
+                        //LOG_LEVEL(1, "[___RSTR] Restore status: {0}", data.dump());
+                        LOG_LEVEL(1, "[___RSTR] Restore status: %s", data.dump());
                         if (!task_endpoint.empty()) {
-                            json payload;
-                            Thinger::call_endpoint(config_.get_endpoints_token(), config_.get_user(), task_endpoint, data, config_.get_url(), config_.get_ssl());
+                            protoson::pson payload;
+                            protoson::json_decoder::parse(data, payload);
+                            client.call_endpoint(task_endpoint.c_str(), payload);
                         }
 
                     });
@@ -266,7 +266,7 @@ namespace thinger::monitor {
                 }
             };
 
-            resources_.at("monitor") >> [this](pson& out) {
+            resources_.at("monitor") = [this](iotmp::output& out) {
 
                 unsigned long current_seconds = std::chrono::duration_cast<std::chrono::seconds>(
                     std::chrono::system_clock::now().time_since_epoch()).count();
@@ -288,13 +288,14 @@ namespace thinger::monitor {
                 if (current_seconds >= (every5m + 60*5)) {
                     retrieve_restart_status();
                     retrieve_updates();
+                    if (config_.get_backup() == "platform")
+                      platform::getConsoleVersion(console_version);
                     every5m = current_seconds;
                 }
 
                 if (current_seconds >= (every1d + 60*60*24)) {
                     public_ip = network::getPublicIPAddress();
-                    if (config_.get_backup() == "platform")
-                        platform::getConsoleVersion(console_version);
+                    // FIXME: config get_backup is not set on first execution since
                     every1d = current_seconds;
                 }
 
@@ -304,10 +305,10 @@ namespace thinger::monitor {
                     if ( config_.get_defaults() && &fs == &filesystems_.front()) {
                         name = "default";
                     }
-                    out[("st_"+name+"_capacity").c_str()] = fs.space_info.capacity / btogb;
-                    out[("st_"+name+"_used").c_str()] = (fs.space_info.capacity - fs.space_info.free) / btogb;
-                    out[("st_"+name+"_free").c_str()] = fs.space_info.free / btogb;
-                    out[("st_"+name+"_usage").c_str()] = ((fs.space_info.capacity - fs.space_info.free)*100) / fs.space_info.capacity; // usaged based on time of io spend doing io operations
+                    out[("st_"+name+"_capacity").c_str()] = std::trunc( (float)fs.space_info.capacity / (float)btogb * 100 ) / 100;
+                    out[("st_"+name+"_used").c_str()] = std::trunc( (float)(fs.space_info.capacity - fs.space_info.free) / (float)btogb * 100 ) / 100;
+                    out[("st_"+name+"_free").c_str()] = std::trunc( (float)fs.space_info.free / (float)btogb * 100 ) / 100;
+                    out[("st_"+name+"_usage").c_str()] = std::trunc( ((float)(fs.space_info.capacity - fs.space_info.free)*100) / (float)fs.space_info.capacity * 100 ) / 100; // usage based on time of io spend doing io operations
                 }
 
                 // IO
@@ -324,9 +325,9 @@ namespace thinger::monitor {
                         (float)(dv.total_io[1][3] - dv.total_io[0][3]))*1000;
                     float usage = (float)(dv.total_io[1][2] - dv.total_io[0][2]) / (float)(dv.total_io[1][3] - dv.total_io[0][3]);
 
-                    out[("dv_"+name+"_speed_read").c_str()] = speed_reading / btokb;
-                    out[("dv_"+name+"_speed_written").c_str()] = speed_writing / btokb;
-                    out[("dv_"+name+"_usage").c_str()] = usage < 1 ? usage * 100 : 100;
+                    out[("dv_"+name+"_speed_read").c_str()] = std::trunc( speed_reading / btokb * 100 ) / 100;
+                    out[("dv_"+name+"_speed_written").c_str()] = std::trunc( speed_writing / btokb * 100 ) / 100;
+                    out[("dv_"+name+"_usage").c_str()] = usage < 1 ? std::trunc( usage * 100 * 100 ) / 100 : 100;
 
                     // flip matrix for speed and usage calculations
                     for (int z = 0; z < 4; z++) {
@@ -344,23 +345,25 @@ namespace thinger::monitor {
 
                     out[("nw_"+name+"_internal_ip").c_str()] = ifc.internal_ip;
 
-                    out[("nw_"+name+"_total_incoming").c_str()] = ifc.total_transfer[1][0] / btogb;
-                    out[("nw_"+name+"_total_outgoing").c_str()] = ifc.total_transfer[1][1] / btogb;
-                    out[("nw_"+name+"_packetloss_incoming").c_str()] = ifc.total_packets[1];
-                    out[("nw_"+name+"_packetloss_outgoing").c_str()] = ifc.total_packets[3];
+                    out[("nw_"+name+"_transfer_incoming").c_str()]    = std::trunc( (float)ifc.total_transfer[0][1] / (float)btogb * 100 ) / 100;
+                    out[("nw_"+name+"_transfer_outgoing").c_str()]    = std::trunc( (float)ifc.total_transfer[1][1] / (float)btogb * 100 ) / 100;
+                    out[("nw_"+name+"_transfer_total").c_str()]       = std::trunc( ((float)ifc.total_transfer[0][1] + (float)ifc.total_transfer[1][1]) / (float)btogb * 100 ) / 100;
+                    out[("nw_"+name+"_packetloss_incoming").c_str()]  = ifc.total_packets[1];
+                    out[("nw_"+name+"_packetloss_outgoing").c_str()]  = ifc.total_packets[3];
 
                     // speeds in B/s
-                    float speed_incoming = ((float)(ifc.total_transfer[1][0] - ifc.total_transfer[0][0]) /
-                        (float)(ifc.total_transfer[1][2] - ifc.total_transfer[0][2]))*1000;
-                    float speed_outgoing = ((float)(ifc.total_transfer[1][1] - ifc.total_transfer[0][1]) /
-                        (float)(ifc.total_transfer[1][2] - ifc.total_transfer[0][2]))*1000;
+                    float speed_incoming = ((float)(ifc.total_transfer[0][1] - ifc.total_transfer[0][0]) /
+                        (float)(ifc.total_transfer[2][1] - ifc.total_transfer[2][0]))*1000;
+                    float speed_outgoing = ((float)(ifc.total_transfer[1][1] - ifc.total_transfer[1][0]) /
+                        (float)(ifc.total_transfer[2][1] - ifc.total_transfer[2][0]))*1000;
 
-                    out[("nw_"+name+"_speed_incoming").c_str()] = speed_incoming * 8 / btokb;
-                    out[("nw_"+name+"_speed_outgoing").c_str()] = speed_outgoing * 8 / btokb;
+                    out[("nw_"+name+"_speed_incoming").c_str()] = std::trunc( speed_incoming * 8 / btokb * 100 ) / 100;
+                    out[("nw_"+name+"_speed_outgoing").c_str()] = std::trunc( speed_outgoing * 8 / btokb * 100 ) / 100;
+                    out[("nw_"+name+"_speed_total").c_str()]    = std::trunc( ((speed_incoming + speed_outgoing) * 8) / btokb * 100 ) / 100;
 
                     // flip matrix for speed and usage calculations
-                    for (int j = 0; j < 3; j++) {
-                        ifc.total_transfer[0][j] = ifc.total_transfer[1][j];
+                    for (int i = 0; i < 3; i++) {
+                        ifc.total_transfer[i][0] = ifc.total_transfer[i][1];
                     }
                 }
                 out["nw_public_ip"] = public_ip;
@@ -371,21 +374,21 @@ namespace thinger::monitor {
 
                 // RAM
                 memory::retrieve_ram(ram_total, ram_available, ram_swaptotal, ram_swapfree);
-                out["ram_total"] = (double)ram_total / kbtogb;
-                out["ram_available"] = (double)ram_available / kbtogb;
-                out["ram_used"] = (double)(ram_total - ram_available) / kbtogb;
-                out["ram_usage"] = (double)((ram_total - ram_available) * 100) / (double)ram_total;
-                out["ram_swaptotal"] = (double)ram_swaptotal / kbtogb;
-                out["ram_swapfree"] = (double)ram_swapfree / kbtogb;
-                out["ram_swapused"] = (double)(ram_swaptotal - ram_swapfree) / kbtogb;
-                out["ram_swapusage"] = (ram_swaptotal == 0) ? 0 : (double)((ram_swaptotal - ram_swapfree) *100) / (double)ram_swaptotal;
+                out["ram_total"] = std::trunc( (float)ram_total / kbtogb * 100 ) / 100;
+                out["ram_available"] = std::trunc( (float)ram_available / kbtogb * 100) / 100;
+                out["ram_used"] = std::trunc( (float)(ram_total - ram_available) / kbtogb * 100 ) / 100;
+                out["ram_usage"] = std::trunc( (float)((ram_total - ram_available) * 100) / (float)ram_total * 100 ) / 100;
+                out["ram_swaptotal"] = std::trunc( (float)ram_swaptotal / (float)kbtogb * 100 ) / 100;
+                out["ram_swapfree"] = std::trunc( (float)ram_swapfree / kbtogb * 100 ) / 100;
+                out["ram_swapused"] = std::trunc( (float)(ram_swaptotal - ram_swapfree) / kbtogb * 100) / 100;
+                out["ram_swapusage"] = (ram_swaptotal == 0) ? 0 : std::trunc( (float)((ram_swaptotal - ram_swapfree) *100) / (double)ram_swaptotal * 100 ) / 100;
 
                 // CPU
                 out["cpu_cores"] = cpu_cores;
                 out["cpu_load_1m"] = cpu_loads[0];
                 out["cpu_load_5m"] = cpu_loads[1];
                 out["cpu_load_15m"] = cpu_loads[2];
-                out["cpu_usage"] = cpu_usage;
+                out["cpu_usage"] = std::trunc(cpu_usage*100)/100;
                 out["cpu_procs"] = cpu_procs;
 
                 // System information
@@ -399,32 +402,68 @@ namespace thinger::monitor {
                 out["si_sw_version"] = VERSION;
 
             };
+
+            start_local_server();
     }
 
-    virtual ~Client() = default;
+    void start_local_server() {
+        svr_jthread = std::jthread( [this](std::stop_token stoken) {
+          if (stoken.stop_requested()) { // FIXME: the thread hangs onto the server_.listen and can never get here
+                server_.stop();
+                return;
+          }
+          THINGER_LOG("Creating local server in %s and port %hd", config_.get_svr_host(), config_.get_svr_port());
+          while ( server_.is_running() )
+            std::this_thread::sleep_for(std::chrono::milliseconds{10});
 
-    void reload_configuration() {
-        interfaces_.clear();
-        filesystems_.clear();
-        drives_.clear();
+          server_.listen(config_.get_svr_host(), config_.get_svr_port());
+        }
+      );
+    }
 
-        for (const auto& fs_path : config_.get_filesystems()) {
+    virtual ~Client() {
+        THINGER_LOG("stopping monitoring client");
+
+        // stop httplib server on shutdown
+        server_.stop();//TODO: svr_jthread.request_stop();
+    }
+
+    // Recreates and fills up structures
+    void reload_configuration(std::string const& property) {
+
+        if ( "resources" == property ) {
+          interfaces_.clear();
+          filesystems_.clear();
+          drives_.clear();
+
+          for (const auto& fs_path : config_.get_filesystems()) {
             storage::filesystem fs;
             fs.path = fs_path;
             filesystems_.push_back(fs);
-        }
+          }
+          retrieve_fs_stats(filesystems_);
 
-        for (const auto& dv_name : config_.get_drives()) {
+          for (const auto& dv_name : config_.get_drives()) {
             io::drive dv;
             dv.name = dv_name;
             drives_.push_back(dv);
-        }
+          }
+          retrieve_dv_stats(drives_);
 
-        for (const auto& ifc_name : config_.get_interfaces()) {
+          for (const auto& ifc_name : config_.get_interfaces()) {
             network::interface ifc;
             ifc.name = ifc_name;
             ifc.internal_ip = network::getIPAddress(ifc.name);
             interfaces_.push_back(ifc);
+          }
+          retrieve_ifc_stats(interfaces_);
+
+          // stop monitor server
+          server_.stop();//TODO: svr_jthread.request_stop();
+          start_local_server();
+
+        } else {
+          every5s = every1m = every5m = every1d = 0;
         }
 
     }
@@ -487,7 +526,7 @@ protected:
 
 private:
 
-    std::unordered_map<std::string, thinger_resource&> resources_;
+    std::unordered_map<std::string, iotmp::iotmp_resource&> resources_;
 
     Config& config_;
 
@@ -537,6 +576,10 @@ private:
     // thinger.io platform
     std::string console_version;
 
-};
+    // local server for resources
+    httplib::Server server_;
+    std::jthread svr_jthread;
+
+    };
 
 }

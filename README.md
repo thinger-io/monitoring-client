@@ -10,7 +10,7 @@ Documentation regarding this software can be found [here](https://docs.thinger.i
 
 There is no additional requirements for the monitoring client besides the ones needed for the Linux Client.
 
-Note that the compiler must be at least of version C++17.
+Note that the compiler must be at least of version C++20.
 
 ## Backups
 
