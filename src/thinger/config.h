@@ -110,7 +110,10 @@ namespace thinger::monitor {
 
                 // device_id has a max of 32 chars
                 std::string device_id = hostname.substr(0,32);
-                if ( device_id.find('_') != std::string::npos && ! hostname.substr(32).starts_with('_') ) {
+                if ( device_id.length() == 32 &&
+                     device_id.find('_') != std::string::npos &&
+                     ! hostname.substr(32).starts_with('_') )
+                {
                   size_t pos = device_id.find_last_of('_');
                   device_id = hostname.substr(0,pos);
                 }

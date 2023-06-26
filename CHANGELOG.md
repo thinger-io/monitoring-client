@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.0.8] - 2023-06-26
+### Fix
+- Auto provisioning of servers when hostname is less than 32 chars
+
 ## [0.0.7] - 2023-05-30
 ### Added
 - Added verbosity level (up to 3) as parameter option
@@ -106,6 +110,7 @@ All notable changes to this project will be documented in this file.
 - Module configuration
 - Execution of commands
 
+[0.0.8]: https://github.com/thinger-io/monitoring-client/compare/0.0.7...0.0.8
 [0.0.7]: https://github.com/thinger-io/monitoring-client/compare/0.0.6...0.0.7
 [0.0.6]: https://github.com/thinger-io/monitoring-client/compare/0.0.5...0.0.6
 [0.0.5]: https://github.com/thinger-io/monitoring-client/compare/0.0.4...0.0.5
