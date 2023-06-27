@@ -239,11 +239,27 @@ private:
 
             // backup plugins
             for (const auto & p2 : fs::directory_iterator(p1.path().string()+"/plugins/")) { // plugins
-                std::string container_name = user+"-"+p2.path().filename().string();
-                if (Docker::Container::inspect(container_name, backup_folder+"/"+tag()+"/plugins")) {
-                    data["msg"].push_back("Backed up "+container_name+" docker container");
+                std::string container_name = user + "-" + p2.path().filename().string();
+
+                // Parse plugin.json to check if plugins are docker
+                nlohmann::json j;
+                std::filesystem::path f(p2.path().filename().string() + "/files/plugin.json");
+
+                if (std::filesystem::exists(f)) {
+                    std::ifstream config_file(f.string());
+                    config_file >> j;
+                }
+
+                if ( thinger::monitor::config::get(j, "/task/type"_json_pointer, std::string("")) == "docker" ) {
+
+                    if (Docker::Container::inspect(container_name, backup_folder + "/" + tag() + "/plugins")) {
+                        data["msg"].push_back("Backed up " + container_name + " docker container");
+                    } else {
+                      data["error"].push_back("Failed backing up " + container_name + " docker container");
+                    }
+
                 } else {
-                    data["error"].push_back("Failed backing up "+container_name+" docker container");
+                    data["msg"].push_back("Ignored  " + container_name + " backup as it has no container associated");
                 }
             }
         }

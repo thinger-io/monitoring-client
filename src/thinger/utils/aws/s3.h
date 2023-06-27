@@ -157,31 +157,31 @@ public:
 
         bool initiate_upload() {
 
-            LOG_INFO("[____AWS] Inititiating upload of {0}", file_path_);
+            LOG_INFO(fmt::format("[____AWS] Inititiating upload of {0}", file_path_));
 
             std::string payload = "";
             auto res = request("POST", "/"+filename,"uploads=",payload, content_type);
 
             if ( res.error() != httplib::Error::Success || !HttpStatus::isSuccessful(res->status) ) {
-                LOG_ERROR("[____AWS] Failed initiating upload {0}", filename);
+                LOG_ERROR(fmt::format("[____AWS] Failed initiating upload {0}", filename));
                 return HttpStatus::isSuccessful(res->status);
             }
 
             upload_id = XML::get_element_value(res->body, "UploadId");
 
-            LOG_INFO("[____AWS] Upload initiated with upload id {0}", upload_id);
+            LOG_INFO(fmt::format("[____AWS] Upload initiated with upload id {0}", upload_id));
             return HttpStatus::isSuccessful(res->status);
         }
 
         bool abort_upload() {
 
-            LOG_WARNING("[____AWS] Aborting multipart upload for file: {0}; and upload id: {1}", file_path_, upload_id);
+            LOG_WARNING(fmt::format("[____AWS] Aborting multipart upload for file: {0}; and upload id: {1}", file_path_, upload_id));
 
             std::string payload = "";
             auto res = request("DELETE", "/"+filename,"uploadId="+upload_id,payload,"text/plain");
 
             if ( res.error() != httplib::Error::Success || !HttpStatus::isSuccessful(res->status) ) {
-                LOG_ERROR("[____AWS] Failed aborting upload id {0}", upload_id);
+                LOG_ERROR(fmt::format("[____AWS] Failed aborting upload id {0}", upload_id));
             }
 
             return HttpStatus::isSuccessful(res->status);
@@ -205,13 +205,13 @@ public:
 
                 date = Date();
 
-                LOG_INFO("[____AWS] Multipart upload of {0}; Uploading part {1} out of {2}", filename, std::to_string(i), std::to_string(parts));
+                LOG_INFO(fmt::format("[____AWS] Multipart upload of {0}; Uploading part {1} out of {2}", filename, std::to_string(i), std::to_string(parts)));
 
                 auto res = request("PUT","/"+filename,
                     "partNumber="+std::to_string(i)+"&uploadId="+upload_id,buffer,buffer_size,content_type);
 
                 if ( res.error() != httplib::Error::Success || !HttpStatus::isSuccessful(res->status) ) {
-                    LOG_ERROR("[____AWS] Failed Multipart upload {0}; Part {1} out of {2}", filename, std::to_string(i), std::to_string(parts));
+                    LOG_ERROR(fmt::format("[____AWS] Failed Multipart upload {0}; Part {1} out of {2}", filename, std::to_string(i), std::to_string(parts)));
                     return HttpStatus::isSuccessful(res->status);
                 }
 
@@ -220,7 +220,7 @@ public:
             }
 
             // Upload last part
-            LOG_INFO("[____AWS] Multipart upload of {0}; Uploading part {1} out of {2}", filename, std::to_string(parts), std::to_string(parts));
+            LOG_INFO(fmt::format("[____AWS] Multipart upload of {0}; Uploading part {1} out of {2}", filename, std::to_string(parts), std::to_string(parts)));
 
             file.read(buffer, buffer_size);
 
@@ -228,7 +228,7 @@ public:
                 "partNumber="+std::to_string(parts)+"&uploadId="+upload_id,buffer,last_part_size,content_type);
 
             if ( res.error() != httplib::Error::Success || !HttpStatus::isSuccessful(res->status) ) {
-                LOG_ERROR("[____AWS] Failed Multipart upload {0}; Part {1} out of {2}", filename, std::to_string(parts), std::to_string(parts));
+                LOG_ERROR(fmt::format("[____AWS] Failed Multipart upload {0}; Part {1} out of {2}", filename, std::to_string(parts), std::to_string(parts)));
                 return HttpStatus::isSuccessful(res->status);
             }
 
@@ -241,7 +241,7 @@ public:
 
             std::string complete_xml = generate_xml_complete_mpu();
 
-            LOG_INFO("[____AWS] Finishing upload of {0}", file_path_);
+            LOG_INFO(fmt::format("[____AWS] Finishing upload of {0}", file_path_));
 
             return request("POST","/"+filename,"uploadId="+upload_id,complete_xml, "text/xml");
         }

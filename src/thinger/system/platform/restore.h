@@ -254,10 +254,26 @@ private:
             // restore plugins
             for (const auto & p2 : fs::directory_iterator(p1.path().string()+"/plugins/")) { // plugins
                 std::string container_name = user+"-"+p2.path().filename().string();
-                if (Docker::Container::create_from_inspect(backup_folder+"/"+tag()+"/plugins/"+container_name+".json", network_id))
-                    data["msg"].push_back("Restored "+container_name+" docker container");
-                else
-                    data["error"].push_back("Failed restoring "+container_name+" docker container");
+
+                // Parse plugin.json to check if plugins are docker
+                nlohmann::json j;
+                std::filesystem::path f(p2.path().filename().string() + "/files/plugin.json");
+
+                if (std::filesystem::exists(f)) {
+                  std::ifstream config_file(f.string());
+                  config_file >> j;
+                }
+
+                if ( thinger::monitor::config::get(j, "/task/type"_json_pointer, std::string("")) == "docker" ) {
+
+                    if (Docker::Container::create_from_inspect(backup_folder+"/"+tag()+"/plugins/"+container_name+".json", network_id))
+                        data["msg"].push_back("Restored "+container_name+" docker container");
+                    else
+                        data["error"].push_back("Failed restoring "+container_name+" docker container");
+
+                } else {
+                    data["msg"].push_back("Ignored  " + container_name + " restore as it has no container associated");
+                }
 
                 if (Docker::Container::start(container_name))
                     data["msg"].push_back("Started "+container_name+" docker containeer");
