@@ -407,7 +407,7 @@ namespace thinger::monitor {
     }
 
     void start_local_server() {
-        svr_jthread = std::jthread( [this](std::stop_token stoken) {
+        svr_jthread = std::jthread( [this](const std::stop_token& stoken) {
           if (stoken.stop_requested()) { // FIXME: the thread hangs onto the server_.listen and can never get here
                 server_.stop();
                 return;
@@ -429,7 +429,7 @@ namespace thinger::monitor {
     }
 
     // Recreates and fills up structures
-    void reload_configuration(std::string const& property) {
+    void reload_configuration(std::string_view const& property) {
 
         if ( "resources" == property ) {
           interfaces_.clear();
@@ -505,7 +505,7 @@ protected:
         }
 
         while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
-            result += buffer.data();
+            result += std::string(buffer.data());
         }
         return result;
     }

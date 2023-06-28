@@ -30,7 +30,7 @@ public:
 
     }
 
-    json restore() {
+    json restore() override {
 
         json data;
         data["operation"] = {};
@@ -63,19 +63,19 @@ public:
         return data;
     }
 
-    json download()  {
+    json download() override {
 
         json data;
 
-        if ( storage == "S3" )
+        if ( storage == "S3" ) {
             data["operation"]["download_s3"] = {};
-            if (AWS::download_from_s3(backup_folder+"/"+file_to_download, bucket, region, access_key, secret_key)) {
+            if (AWS::download_from_s3(backup_folder + "/" + file_to_download, bucket, region, access_key, secret_key)) {
                 data["operation"]["download_s3"]["status"] = true;
             } else {
                 data["operation"]["download_s3"]["status"] = false;
                 data["operation"]["download_s3"]["error"].push_back("Failed downloading from S3");
             }
-        // else if
+        }
 
         data["status"] = true;
         for (auto& element : data["operation"]) {
@@ -88,7 +88,7 @@ public:
         return data;
     }
 
-    json clean() {
+    json clean() override {
 
         json data;
 
@@ -98,7 +98,7 @@ public:
     }
 
 private:
-    const std::string backup_folder = "/tmp/backup";
+    const std::string backup_folder = "/data/thinger_backup";
 
     std::string file_to_download;
 
@@ -108,7 +108,7 @@ private:
     std::string access_key;
     std::string secret_key;
 
-    json create_backup_folder() const {
+    [[nodiscard]] json create_backup_folder() const {
         json data;
 
         data["status"] = true;
@@ -122,7 +122,7 @@ private:
         return data;
     }
 
-    json decompress_backup() const {
+    [[nodiscard]] json decompress_backup() const {
         json data;
 
         data["status"] = Tar::extract(backup_folder+"/"+file_to_download);
@@ -130,7 +130,7 @@ private:
         return data;
     }
 
-    json restore_thinger() const {
+    [[nodiscard]] json restore_thinger() const {
         json data;
 
         if (!Docker::Container::stop("thinger")) {
@@ -161,7 +161,7 @@ private:
         return data;
     }
 
-    json restore_mongodb() const {
+    [[nodiscard]] json restore_mongodb() const {
         json data;
         // get mongodb root password
         std::ifstream compose (config().get_compose_path()+"/docker-compose.yml", std::ifstream::in);
@@ -171,8 +171,8 @@ private:
 
         while(std::getline(compose,line,'\n')) {
             if (line.find("- MONGO_INITDB_ROOT_PASSWORD") != std::string::npos) {
-                unsigned first_del = line.find('=');
-                unsigned last_del = line.find('\n');
+                auto first_del = line.find('=');
+                auto last_del = line.find('\n');
                 mongo_password = line.substr(first_del+1, last_del - first_del-1);
             }
         }
@@ -193,7 +193,7 @@ private:
         return data;
     }
 
-    json restore_influxdb() const {
+    [[nodiscard]] json restore_influxdb() const {
         json data;
 
         std::string influxdb_version = Platform::Utils::InfluxDB::get_version();
@@ -227,7 +227,7 @@ private:
         return data;
     }
 
-    json restore_plugins() const {
+    [[nodiscard]] json restore_plugins() const {
 
         json data;
 
@@ -290,11 +290,11 @@ private:
         return data;
     }
 
-    bool clean_restore() const {
-        bool status = true;
+    [[nodiscard]] bool clean_restore() const {
         std::filesystem::remove_all(backup_folder+"/"+file_to_download);
         std::filesystem::remove_all(backup_folder+"/"+tag());
-        status = status && Docker::Container::exec("mongodb", "rm -rf /dump");
+        std::filesystem::remove_all(backup_folder);
+        bool status = Docker::Container::exec("mongodb", "rm -rf /dump");
 
         std::string influxdb_version = Platform::Utils::InfluxDB::get_version();
 
@@ -306,7 +306,7 @@ private:
         return status;
     }
 
-    json restart_platform() const {
+    [[nodiscard]] static json restart_platform() {
         json data;
 
         std::string influxdb_version = Platform::Utils::InfluxDB::get_version();

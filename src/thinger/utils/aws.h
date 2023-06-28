@@ -54,7 +54,7 @@ namespace AWS {
         body << file.rdbuf();
 
         LOG_INFO(fmt::format("[____AWS] Uploading file {0} to {1} bucket", filename, bucket));
-        auto res = cli.Put(("/"+filename).c_str(), headers, body.str(), content_type.c_str());
+        auto res = cli.Put("/"+filename, headers, body.str(), content_type);
 
         return HttpStatus::isSuccessful(res->status);
 
@@ -72,7 +72,8 @@ namespace AWS {
 
         const std::string signature_string = "GET\n\n"+content_type+"\n"+date_string+"\n/"+bucket+"/"+filename;
 
-        const std::string signature_hash = Crypto::base64::encode(Crypto::hash::hmac_sha1(secret_key, signature_string));
+        const std::string signature_hash = Crypto::base64::encode(Crypto::hash::hmac_sha1(
+            const_cast<std::string &>(secret_key), const_cast<std::string &>(signature_string)));
 
         httplib::Headers headers = {
             { "Host", bucket+".s3.amazonaws.com" },
@@ -86,14 +87,14 @@ namespace AWS {
         LOG_INFO(fmt::format("[____AWS] Downloading file {0} from {1} bucket", filename, bucket));
 
         cli.set_default_headers(headers);
-        auto res = cli.Get(("/"+filename).c_str(),
-          [&](const char *data, size_t data_length) {
-            file.write(data, data_length);
+        auto res = cli.Get("/"+filename,
+          [&file](const char *data, size_t data_length) {
+            file.write(data, static_cast<int>(data_length));
             return true;
           });
 
         return HttpStatus::isSuccessful(res->status);
     }
 
-};
+}
 

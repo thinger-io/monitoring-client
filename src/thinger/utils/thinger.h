@@ -21,9 +21,9 @@ namespace Thinger {
             { "Authorization", "Bearer "+token}
         };
 
-        auto res = cli.Get(("/v1/users/"+user+"/devices/"+device).c_str(), headers);
+        auto res = cli.Get("/v1/users/"+user+"/devices/"+device, headers);
 
-        return res->status == 200 ? true : false;
+        return res->status == 200;
     }
 
     int update_device_credentials(const std::string &token, const std::string &user, const std::string &device, const std::string &credentials, const std::string &server = THINGER_SERVER, const bool secure = true) {
@@ -42,7 +42,7 @@ namespace Thinger {
         json body;
         body["credentials"] = credentials;
 
-        auto res = cli.Put(("/v1/users/"+user+"/devices/"+device).c_str(), headers, body.dump(), "application/json");
+        auto res = cli.Put("/v1/users/"+user+"/devices/"+device, headers, body.dump(), "application/json");
 
         return res->status;
     }
@@ -68,10 +68,10 @@ namespace Thinger {
         body["description"] = "Linux Monitoring autoprovision";
         body["type"] = "Generic";
 
-        auto res = cli.Post(("/v1/users/"+user+"/devices").c_str(), headers, body.dump(), "application/json");
+        auto res = cli.Post("/v1/users/"+user+"/devices", headers, body.dump(), "application/json");
 
         return res->status;
 
     }
 
-};
+}

@@ -1,10 +1,13 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [0.0.9] - 2023-06-27
+## [1.0.0] - 2023-06-28
 ### Fix
 - Format logs before calling log macro
 - Don't fail when backing up and restoring plugins without docker images
+
+### Security
+- Switched to boost random in device credentials generator due to weak cryptography
 
 ## [0.0.8] - 2023-06-26
 ### Fix
@@ -115,7 +118,7 @@ All notable changes to this project will be documented in this file.
 - Module configuration
 - Execution of commands
 
-[0.0.9]: https://github.com/thinger-io/monitoring-client/compare/0.0.8...0.0.9
+[1.0.0]: https://github.com/thinger-io/monitoring-client/compare/0.0.8...1.0.0
 [0.0.8]: https://github.com/thinger-io/monitoring-client/compare/0.0.7...0.0.8
 [0.0.7]: https://github.com/thinger-io/monitoring-client/compare/0.0.6...0.0.7
 [0.0.6]: https://github.com/thinger-io/monitoring-client/compare/0.0.5...0.0.6

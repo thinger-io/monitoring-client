@@ -6,9 +6,9 @@ if (${CMAKE_VERSION} VERSION_GREATER "3.24")
 endif()
 
 # set package version
-set(VERSION_MAJOR 0)
-set(VERSION_MINOR 0)
-set(VERSION_PATCH 7)
+set(VERSION_MAJOR "1" CACHE STRING "Major version number")
+set(VERSION_MINOR "0" CACHE STRING "Minor version number")
+set(VERSION_PATCH "0" CACHE STRING "Patch version number")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
@@ -40,7 +40,7 @@ SET(ARCH "x86_64" CACHE STRING "Compiler architecure")
 
 set(Boost_USE_MULTITHREADED      ON)
 set(Boost_USE_STATIC_LIBS        ON)
-find_package(Boost REQUIRED COMPONENTS program_options)
+find_package(Boost REQUIRED COMPONENTS program_options random)
 if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
   list(APPEND ADDITIONAL_LIBS ${Boost_LIBRARIES})
