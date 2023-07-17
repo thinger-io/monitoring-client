@@ -15,12 +15,12 @@ namespace Tar {
 
     namespace {
 
-        bool write_archive(const std::string source_path, const std::string outname, const std::vector<std::string> filename, const bool compression) {
+        bool write_archive(const std::string& source_path, const std::string& outname, const std::vector<std::string> filename, const bool compression) {
             struct archive *a;
             struct archive_entry *entry;
-            struct stat st;
+            struct stat st{};
             char buff[8192];
-            int len;
+            size_t len;
             int fd;
 
             // It writes and compresses on disk
@@ -29,7 +29,7 @@ namespace Tar {
                 archive_write_add_filter_gzip(a);
             archive_write_set_format_pax_restricted(a);
             archive_write_open_filename(a, outname.c_str());
-            for (std::string f : filename ){
+            for (const std::string& f : filename ){
                 stat(f.c_str(), &st);
                 entry = archive_entry_new();
                 //TODO: relative path does not work: https://stackoverflow.com/questions/65100774/how-to-create-a-libarchive-archive-on-a-directory-path-instead-of-a-list-of-file
@@ -64,16 +64,16 @@ namespace Tar {
                if (r == ARCHIVE_EOF)
                  return (ARCHIVE_OK);
                if (r < ARCHIVE_OK)
-                 return (r);
+                 return r;
                r = archive_write_data_block(aw, buff, size, offset);
                if (r < ARCHIVE_OK) {
                  fprintf(stderr, "%s\n", archive_error_string(aw));
-                 return (r);
+                 return r;
                }
             }
         }
 
-        bool extract_archive(const std::string file) {
+        bool extract_archive(const std::string& file) {
             // I believe extraction happens in the same folder
             // at the moment we are fine as paths inside archive contain
             // full path. See: https://github.com/libarchive/libarchive/issues/1531
@@ -100,7 +100,7 @@ namespace Tar {
             ext = archive_write_disk_new(); // writes into disk
             archive_write_disk_set_options(ext, flags);
             archive_write_disk_set_standard_lookup(ext);
-            if ((r = archive_read_open_filename(a, file.c_str(), 10240))) {
+            if (archive_read_open_filename(a, file.c_str(), 10240)) {
               //exit(1);
               return false;
             }
@@ -152,11 +152,10 @@ namespace Tar {
 
     }
 
-    bool create(const std::string source_path, const std::string dest_file) {
+    bool create(const std::string& source_path, const std::string& dest_file) {
 
         bool compression = false;
-        if (dest_file.substr(dest_file.find_last_of(".") + 1) == "tgz" ||
-            dest_file.substr(dest_file.find_last_of(".") + 1) == "gz")
+        if ( dest_file.ends_with("tgz") || dest_file.ends_with("gz") )
         {
             compression = true;
         }
@@ -176,7 +175,7 @@ namespace Tar {
     }
 
     // Global extractor
-    bool extract(const std::string file) {
+    bool extract(const std::string& file) {
 
         // TODO: should not need to copy to root folder, but we needed it until the relative path is saved into the file
         return extract_archive(file);

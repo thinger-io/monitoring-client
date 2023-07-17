@@ -16,7 +16,7 @@ namespace Docker {
 
         bool inspect(const std::string& container_id, const std::string& dest_path) {
 
-            LOG_INFO("[_DOCKER] Inspecting container: '{0}' and saving result to: '{1}'", container_id, dest_path+"/"+container_id+".json");
+            LOG_INFO(fmt::format("[_DOCKER] Inspecting container: '{0}' and saving result to: '{1}'", container_id, dest_path+"/"+container_id+".json"));
 
             httplib::Client cli("/var/run/docker.sock");
             cli.set_address_family(AF_UNIX);
@@ -27,7 +27,7 @@ namespace Docker {
             auto res = cli.Get(("/containers/"+container_id+"/json").c_str());
 
             if ( res.error() != httplib::Error::Success ) {
-                LOG_ERROR("[_DOCKER] Request error: {0}", to_string(res.error()));
+                LOG_ERROR(fmt::format("[_DOCKER] Request error: {0}", to_string(res.error())));
                 return false;
             }
 
@@ -41,7 +41,7 @@ namespace Docker {
             if (res->status == 200)
                 LOG_INFO("[_DOCKER] Succesfully retrieved information");
             else {
-                LOG_WARNING("[_DOCKER] Could not retrieve information. Status Code: {0}", res->status);
+                LOG_WARNING(fmt::format("[_DOCKER] Could not retrieve information. Status Code: {0}", res->status));
 
                 LOG_LEVEL(1, res->body);
                 if ( res.error() != httplib::Error::Success )
@@ -56,7 +56,7 @@ namespace Docker {
 
             json inspect_json;
 
-            LOG_INFO("[_DOCKER] Reading docker inspect json from: '{0}'", source_path);
+            LOG_INFO(fmt::format("[_DOCKER] Reading docker inspect json from: '{0}'", source_path));
 
             std::filesystem::path file(source_path);
             if (std::filesystem::exists(file)) {
@@ -70,13 +70,13 @@ namespace Docker {
             cli.set_read_timeout(600, 0); // 10 minutes for commands to execute
 
             // TODO: move to its own function
-            LOG_INFO("[_DOCKER] Downloading image: '{0}'", inspect_json["Config"]["Image"].get<std::string>());
+            LOG_INFO(fmt::format("[_DOCKER] Downloading image: '{0}'", inspect_json["Config"]["Image"].get<std::string>()));
             auto res = cli.Post(("/images/create?fromImage="+inspect_json["Config"]["Image"].get<std::string>()).c_str());
             if ( res.error() == httplib::Error::Read ) {
                 LOG_ERROR("[_DOCKER] Error: Timeout waiting for image to download");
                 return false;
             } else if ( res.error() != httplib::Error::Success ) {
-                LOG_ERROR("[_DOCKER] Request error: {0}", to_string(res.error()));
+                LOG_ERROR(fmt::format("[_DOCKER] Request error: {0}", to_string(res.error())));
                 return false;
             }
 
@@ -96,7 +96,7 @@ namespace Docker {
                 }
             }
 
-            LOG_INFO("[_DOCKER] Creating container: '{0}'", inspect_json["Name"].get<std::string>());
+            LOG_INFO(fmt::format("[_DOCKER] Creating container: '{0}'", inspect_json["Name"].get<std::string>()));
 
             res = cli.Post(("/containers/create?name="+inspect_json["Name"].get<std::string>()).c_str(),
               body.dump(), "application/json");
@@ -105,7 +105,7 @@ namespace Docker {
                 LOG_ERROR("[_DOCKER] Error: Timeout waiting for command to execute");
                 return false;
             } else if ( res.error() != httplib::Error::Success ) {
-                LOG_ERROR("[_DOCKER] Request error: {0}", to_string(res.error()));
+                LOG_ERROR(fmt::format("[_DOCKER] Request error: {0}", to_string(res.error())));
                 return false;
             }
 
@@ -126,7 +126,7 @@ namespace Docker {
             // POST request: https://docs.docker.com/engine/api/v1.41/#operation/ContainerExec
             // To exec a command in a container, you first need to create an exec instance, then start it.
 
-            LOG_INFO("[_DOCKER] Executing command: '{0}' in container '{1}'", command, container_id);
+            LOG_INFO(fmt::format("[_DOCKER] Executing command: '{0}' in container '{1}'", command, container_id));
 
             // Create exec instance
             httplib::Client cli("/var/run/docker.sock");
@@ -169,7 +169,7 @@ namespace Docker {
                 LOG_ERROR("[_DOCKER] Error: Timeout waiting for command to execute");
                 return false;
             } else if ( res.error() != httplib::Error::Success ) {
-                LOG_ERROR("[_DOCKER] Request error: {0}", to_string(res.error()));
+                LOG_ERROR(fmt::format("[_DOCKER] Request error: {0}", to_string(res.error())));
                 return false;
             }
 
@@ -195,7 +195,7 @@ namespace Docker {
 
         bool restart(const std::string container_id) {
 
-            LOG_INFO("[_DOCKER] Restarting container: '{0}'", container_id);
+            LOG_INFO(fmt::format("[_DOCKER] Restarting container: '{0}'", container_id));
 
             httplib::Client cli("/var/run/docker.sock");
             cli.set_address_family(AF_UNIX);
@@ -205,7 +205,7 @@ namespace Docker {
             auto res = cli.Post(("/containers/"+container_id+"/restart").c_str(), "t=0", "application/x-www-form-urlencoded");
 
             if ( res.error() != httplib::Error::Success ) {
-                LOG_ERROR("[_DOCKER] Request error: {0}", to_string(res.error()));
+                LOG_ERROR(fmt::format("[_DOCKER] Request error: {0}", to_string(res.error())));
                 return false;
             }
 
@@ -219,7 +219,7 @@ namespace Docker {
 
         bool start(const std::string container_id) {
 
-            LOG_INFO("[_DOCKER] Starting container: '{0}'", container_id);
+            LOG_INFO(fmt::format("[_DOCKER] Starting container: '{0}'", container_id));
 
             httplib::Client cli("/var/run/docker.sock");
             cli.set_address_family(AF_UNIX);
@@ -229,7 +229,7 @@ namespace Docker {
             auto res = cli.Post(("/containers/"+container_id+"/start").c_str(), "t=0", "application/x-www-form-urlencoded");
 
             if ( res.error() != httplib::Error::Success ) {
-                LOG_ERROR("[_DOCKER] Request error: {0}", to_string(res.error()));
+                LOG_ERROR(fmt::format("[_DOCKER] Request error: {0}", to_string(res.error())));
                 return false;
             }
 
@@ -243,7 +243,7 @@ namespace Docker {
 
         bool stop(const std::string container_id) {
 
-            LOG_INFO("[_DOCKER] Stopping container: '{0}'", container_id);
+            LOG_INFO(fmt::format("[_DOCKER] Stopping container: '{0}'", container_id));
 
             httplib::Client cli("/var/run/docker.sock");
             cli.set_address_family(AF_UNIX);
@@ -253,7 +253,7 @@ namespace Docker {
             auto res = cli.Post(("/containers/"+container_id+"/stop").c_str(), "t=0", "application/x-www-form-urlencoded");
 
             if ( res.error() != httplib::Error::Success ) {
-                LOG_ERROR("[_DOCKER] Request error: {0}", to_string(res.error()));
+                LOG_ERROR(fmt::format("[_DOCKER] Request error: {0}", to_string(res.error())));
                 return false;
             }
 
@@ -268,7 +268,7 @@ namespace Docker {
         // It seems that the path has to be relative to the access point
         bool copy_from_container(const std::string container_id, const std::string source_path, const std::string dest_path) {
 
-            LOG_INFO("[_DOCKER] Copying from container: '{0}' path: '{1}' to host path: '{2}'", container_id, source_path, dest_path);
+            LOG_INFO(fmt::format("[_DOCKER] Copying from container: '{0}' path: '{1}' to host path: '{2}'", container_id, source_path, dest_path));
 
             // https://docs.docker.com/engine/api/v1.41/#operation/ContainerArchive
             httplib::Client cli("/var/run/docker.sock");
@@ -284,7 +284,7 @@ namespace Docker {
               });
 
             if ( res.error() != httplib::Error::Success ) {
-                LOG_ERROR("[_DOCKER] Request error: ", to_string(res.error()));
+                LOG_ERROR(fmt::format("[_DOCKER] Request error: {0}", to_string(res.error())));
                 return false;
             }
 
@@ -298,7 +298,7 @@ namespace Docker {
 
         bool copy_to_container(const std::string container_id, const std::string source_path, const std::string dest_path) {
 
-            LOG_INFO("[_DOCKER] Copying from host path: '{0}' to container '{1}' path: '{2}'", source_path, container_id, dest_path);
+            LOG_INFO(fmt::format("[_DOCKER] Copying from host path: '{0}' to container '{1}' path: '{2}'", source_path, container_id, dest_path));
 
             // https://docs.docker.com/engine/api/v1.41/#operation/PutContainerArchive
             httplib::Client cli("/var/run/docker.sock");
@@ -337,7 +337,7 @@ namespace Docker {
             );
 
             if ( res.error() != httplib::Error::Success ) {
-                LOG_ERROR("[_DOCKER] Request error: ", to_string(res.error()));
+                LOG_ERROR(fmt::format("[_DOCKER] Request error: {0}", to_string(res.error())));
                 return false;
             }
 
@@ -354,7 +354,7 @@ namespace Docker {
 
         bool inspect(const std::string& network_id, const std::string& dest_path) {
 
-            LOG_INFO("[_DOCKER] Inspecting network: '{0}' and saving result to: '{1}'", network_id, dest_path+"/"+network_id+"-network.json");
+            LOG_INFO(fmt::format("[_DOCKER] Inspecting network: '{0}' and saving result to: '{1}'", network_id, dest_path+"/"+network_id+"-network.json"));
 
             httplib::Client cli("/var/run/docker.sock");
             cli.set_address_family(AF_UNIX);
@@ -365,7 +365,7 @@ namespace Docker {
             auto res = cli.Get(("/networks/"+network_id).c_str());
 
             if ( res.error() != httplib::Error::Success ) {
-                LOG_ERROR("[_DOCKER] Request error: {0}", to_string(res.error()));
+                LOG_ERROR(fmt::format("[_DOCKER] Request error: {0}", to_string(res.error())));
                 return false;
             }
 
@@ -379,7 +379,7 @@ namespace Docker {
             if (res->status == 200)
                 LOG_INFO("[_DOCKER] Succesfully retrieved information");
             else {
-                LOG_WARNING("[_DOCKER] Could not retrieve information. Status Code: {0}", res->status);
+                LOG_WARNING(fmt::format("[_DOCKER] Could not retrieve information. Status Code: {0}", res->status));
 
                 LOG_LEVEL(1, res->body);
                 if ( res.error() != httplib::Error::Success )
@@ -422,14 +422,14 @@ namespace Docker {
                 LOG_ERROR("[_DOCKER] Error: Timeout waiting for command to execute");
                 return "";
             } else if ( res.error() != httplib::Error::Success ) {
-                LOG_ERROR("[_DOCKER] Request error: {0}", to_string(res.error()));
+                LOG_ERROR(fmt::format("[_DOCKER] Request error: {0}", to_string(res.error())));
                 return "";
             }
 
             if (res->status == 201)
                 spdlog::info("[_DOCKER] Succesfully executed");
             else {
-                LOG_ERROR("[_DOCKER] An error occurred while executing");
+                LOG_ERROR(fmt::format("[_DOCKER] An error occurred while executing"));
                 //LOG_LEVEL(1, "[_DOCKER] Error description: {0}", res->body);
                 LOG_LEVEL(1, "[_DOCKER] Error description: %s", res->body);
             }

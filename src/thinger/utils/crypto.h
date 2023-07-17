@@ -19,7 +19,7 @@ namespace Crypto {
 
     std::string to_hex(const std::string &string) {
 
-        unsigned int len = string.length();
+        auto len = string.length();
         auto hash = (const unsigned char*)string.c_str();
 
         std::stringstream ss;
@@ -50,7 +50,7 @@ namespace Crypto {
             41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 64, 64, 64, 64, 64
         };
 
-        ::std::string encode(const ::std::string &bindata)
+        ::std::string encode(const ::std::string_view& bindata)
         {
             using ::std::string;
             using ::std::numeric_limits;
@@ -65,9 +65,9 @@ namespace Crypto {
             ::std::size_t outpos = 0;
             int bits_collected = 0;
             unsigned int accumulator = 0;
-            const string::const_iterator binend = bindata.end();
+            const auto binend = bindata.end();
 
-            for (string::const_iterator i = bindata.begin(); i != binend; ++i) {
+            for (auto i = bindata.begin(); i != binend; ++i) {
                 accumulator = (accumulator << 8) | (*i & 0xffu);
                 bits_collected += 8;
                 while (bits_collected >= 6) {
@@ -87,16 +87,16 @@ namespace Crypto {
             return retval;
         }
 
-        static ::std::string decode(const ::std::string &ascdata)
+        static ::std::string decode(const ::std::string_view& ascdata)
         {
             using ::std::string;
             string retval;
-            const string::const_iterator last = ascdata.end();
+            const auto last = ascdata.end();
             int bits_collected = 0;
             unsigned int accumulator = 0;
 
-            for (string::const_iterator i = ascdata.begin(); i != last; ++i) {
-                const int c = *i;
+            for (auto i = ascdata.begin(); i != last; ++i) {
+                auto c = static_cast<int>(std::distance( ascdata.begin(), i ));
                 if (::std::isspace(c) || c == '=') {
                     // Skip whitespace and padding. Be liberal in what you accept.
                     continue;
@@ -117,10 +117,10 @@ namespace Crypto {
 
     namespace hash {
 
-        std::string hmac(std::string key, std::string msg, std::string digest) {
+        std::string hmac(const std::string& key, const std::string& msg, const std::string& digest) {
 
-            EVP_MAC *mac = EVP_MAC_fetch(NULL, "HMAC", NULL);
-            EVP_MAC_CTX *ctx = NULL;
+            EVP_MAC *mac = EVP_MAC_fetch(nullptr, "HMAC", nullptr);
+            EVP_MAC_CTX *ctx = nullptr;
 
             unsigned char hash[64];
             size_t final_l;
@@ -128,7 +128,9 @@ namespace Crypto {
             OSSL_PARAM params[2];
             size_t params_n = 0;
 
-            params[params_n++] = OSSL_PARAM_construct_utf8_string("digest", (char*)digest.c_str(), 0);
+            auto digest_c = std::make_unique<char[]>(digest.size() + 1);
+            memcpy(digest_c.get(), digest.c_str(), digest.size() + 1);
+            params[params_n++] = OSSL_PARAM_construct_utf8_string("digest", digest_c.get(), 0);
             params[params_n] = OSSL_PARAM_construct_end();
 
             ctx = EVP_MAC_CTX_new(mac);
@@ -141,14 +143,6 @@ namespace Crypto {
             EVP_MAC_CTX_free(ctx);
             EVP_MAC_free(mac);
 
-            // HEX
-            /*std::stringstream ss;
-            ss << std::hex << std::setfill('0');
-            for (int i = 0; i < len; i++) {
-                ss << std::hex << std::setw(2)  << (unsigned int)hash[i];
-            }
-            */
-
             std::stringstream ss;
             ss << std::setfill('0');
             for (int i = 0; i < final_l; i++) {
@@ -158,13 +152,13 @@ namespace Crypto {
             return ss.str();
           }
 
-        std::string hmac_sha1(std::string key, std::string msg) {
+        std::string hmac_sha1(const std::string& key, const std::string& msg) {
 
             return hmac(key, msg, "SHA1");
 
         }
 
-        std::string hmac_sha256(std::string key, std::string msg) {
+        std::string hmac_sha256(std::basic_string<char> key, std::basic_string<char> msg) {
 
             return hmac(key, msg, "SHA256");
 
@@ -173,15 +167,15 @@ namespace Crypto {
 
         std::string sha256(const char* str, const size_t length) {
 
-            EVP_MD *sha256 = NULL;
-            EVP_MD_CTX *ctx = NULL;
+            EVP_MD *sha256 = nullptr;
+            EVP_MD_CTX *ctx = nullptr;
 
-            unsigned char *hash = NULL;
+            unsigned char *hash = nullptr;
             unsigned int hash_length = 0;
 
             ctx = EVP_MD_CTX_new();
-            sha256 = EVP_MD_fetch(NULL, "SHA256", NULL);
-            EVP_DigestInit_ex(ctx, sha256, NULL);
+            sha256 = EVP_MD_fetch(nullptr, "SHA256", nullptr);
+            EVP_DigestInit_ex(ctx, sha256, nullptr);
             EVP_DigestUpdate(ctx, str, length);
             hash = (unsigned char *) OPENSSL_malloc(EVP_MD_get_size(sha256));
             EVP_DigestFinal_ex(ctx, hash, &hash_length);
@@ -195,19 +189,7 @@ namespace Crypto {
             return ss.str();
         }
 
-        std::string sha256(const std::string str) {
-            /*unsigned char hash[SHA256_DIGEST_LENGTH];
-            SHA256_CTX sha256;
-            SHA256_Init(&sha256);
-            SHA256_Update(&sha256, str.c_str(), str.size());
-            SHA256_Final(hash, &sha256);
-            std::stringstream ss;
-            for(int i = 0; i < SHA256_DIGEST_LENGTH; i++)
-            {
-                ss << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
-            }
-            return ss.str();
-            */
+        std::string sha256(const std::string& str) {
             return sha256(str.c_str(), str.length());
         }
     };

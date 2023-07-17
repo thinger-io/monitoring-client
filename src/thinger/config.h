@@ -1,5 +1,8 @@
 #include <nlohmann/json.hpp>
 
+#include <boost/random/random_device.hpp>
+#include <boost/random/uniform_int_distribution.hpp>
+
 #include <map>
 #include <iostream>
 #include <fstream>
@@ -39,7 +42,7 @@ namespace thinger::monitor::utils {
         std::string random_string;
 
         for (std::size_t i = 0; i < length; ++i) {
-            random_string += CHARACTERS[distribution(generator)];
+          random_string += CHARACTERS[distribution(generator)];
         }
 
         return random_string;

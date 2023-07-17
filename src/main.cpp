@@ -26,15 +26,10 @@
   #define CPPHTTPLIB_OPENSSL_SUPPORT
 #endif
 
-#define DEBUG
-
 #include <thinger/thinger.h>
 #include "thinger/client.h"
 
-#include <fmt/format.h>
 #include <boost/program_options.hpp>
-
-#include <unistd.h>
 
 #include "thinger/utils/jwt.h"
 #include "thinger/utils/thinger.h"
@@ -162,7 +157,7 @@ int main(int argc, char *argv[]) {
   // Retrieve properties on connection and any update
   for (auto const &property: config.remote_properties) {
     client.property_stream(property.c_str(), true) = [&config, &property, &monitor](iotmp::input& in) {
-      LOG_INFO("Received property (%s) update value", property);
+      LOG_INFO(fmt::format("Received property {0} update value", property));
       config.update(property, in["value"]);
       monitor.reload_configuration(property);
     };

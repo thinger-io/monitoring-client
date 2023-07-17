@@ -18,9 +18,9 @@ public:
     }
 
 private:
-    static std::string get_payload_substring(std::string const& jwt) {
-        unsigned first_del = jwt.find('.');
-        unsigned last_del = jwt.find_last_of('.');
+    static std::string get_payload_substring(const std::string& jwt) {
+        auto first_del = jwt.find('.');
+        auto last_del = jwt.find_last_of('.');
         return jwt.substr(first_del+1, last_del - first_del - 1);
     }
 

@@ -199,7 +199,6 @@ namespace thinger::monitor::system {
     }
 
     void retrieve_uptime(std::string& uptime) {
-        //std::chrono::milliseconds uptime_millis(0u);
         double uptime_seconds;
         if (std::ifstream("/proc/uptime", std::ios::in) >> uptime_seconds) {
             int days = (int)uptime_seconds / (60*60*24);

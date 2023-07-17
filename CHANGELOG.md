@@ -1,6 +1,11 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.0.9] - 2023-07-17
+### Fix
+- Format logs before calling log macro
+- Don't fail when backing up and restoring plugins without docker images
+
 ## [0.0.8] - 2023-06-26
 ### Fix
 - Auto provisioning of servers when hostname is less than 32 chars
@@ -110,6 +115,7 @@ All notable changes to this project will be documented in this file.
 - Module configuration
 - Execution of commands
 
+[1.0.0]: https://github.com/thinger-io/monitoring-client/compare/0.0.8...1.0.0
 [0.0.8]: https://github.com/thinger-io/monitoring-client/compare/0.0.7...0.0.8
 [0.0.7]: https://github.com/thinger-io/monitoring-client/compare/0.0.6...0.0.7
 [0.0.6]: https://github.com/thinger-io/monitoring-client/compare/0.0.5...0.0.6

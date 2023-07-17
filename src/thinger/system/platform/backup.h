@@ -29,7 +29,7 @@ public:
 
     }
 
-    json backup() {
+    json backup() override {
 
         json data;
         data["operation"] = {};
@@ -57,19 +57,20 @@ public:
         return data;
     }
 
-    json upload()  {
+    json upload() override  {
 
         json data;
 
-        if ( storage == "S3" )
+        if ( storage == "S3" ) {
             data["operation"]["upload_s3"] = {};
-            if(AWS::multipart_upload_to_s3(backup_folder+"/"+file_to_upload, bucket, region, access_key, secret_key)) {
+            if (AWS::multipart_upload_to_s3(backup_folder + "/" + file_to_upload, bucket, region, access_key,
+                                          secret_key)) {
                 data["operation"]["upload_s3"]["status"] = true;
             } else {
                 data["operation"]["upload_s3"]["status"] = false;
                 data["operation"]["upload_s3"]["error"].push_back("Failed uploading to S3");
-            }
-        // else if
+          }
+        }
 
         data["status"] = true;
         for (auto& element : data["operation"]) {
@@ -82,7 +83,7 @@ public:
         return data;
     }
 
-    json clean() {
+    json clean() override {
 
         json data;
 
@@ -92,7 +93,7 @@ public:
     }
 
 private:
-    const std::string backup_folder = "/tmp/backup";
+    const std::string backup_folder = "/data/thinger_backup";
 
     std::string storage;
     std::string bucket;
@@ -102,7 +103,7 @@ private:
 
     std::string file_to_upload;
 
-    json create_backup_folder() const {
+    [[nodiscard]] json create_backup_folder() const {
         json data;
 
         std::filesystem::remove_all(backup_folder+"/"+tag());
@@ -115,7 +116,7 @@ private:
         return data;
     }
 
-    json backup_thinger() const {
+    [[nodiscard]] json backup_thinger() const {
         json data;
 
         // With tar creation instead of copying to folder we maintain ownership and permissions
@@ -126,7 +127,7 @@ private:
         return data;
     }
 
-    json backup_mongodb() const {
+    [[nodiscard]] json backup_mongodb() const {
         json data;
         // get mongodb root password
         std::ifstream compose (config().get_compose_path()+"/docker-compose.yml", std::ifstream::in);
@@ -136,8 +137,8 @@ private:
 
         while(std::getline(compose,line,'\n')) {
             if (line.find("- MONGO_INITDB_ROOT_PASSWORD") != std::string::npos) {
-                unsigned first_del = line.find('=');
-                unsigned last_del = line.find('\n');
+                auto first_del = line.find('=');
+                auto last_del = line.find('\n');
                 mongo_password = line.substr(first_del+1, last_del - first_del-1);
             }
         }
@@ -159,7 +160,7 @@ private:
         return data;
     }
 
-    json backup_influxdb() const {
+    [[nodiscard]] json backup_influxdb() const {
         json data;
 
         std::string influxdb_version = Platform::Utils::InfluxDB::get_version();
@@ -169,14 +170,12 @@ private:
             std::ifstream compose (config().get_compose_path()+"/docker-compose.yml", std::ifstream::in);
             std::string line;
 
-            // TODO: docker_task Docker::Container::exec("influxdb2", "printenv --null DOCKER_INFLUXDB_INIT_ADMIN_TOKEN");
-
             std::string influx_token;
 
             while (std::getline(compose,line,'\n')) {
                 if (line.find("- DOCKER_INFLUXDB_INIT_ADMIN_TOKEN") != std::string::npos) {
-                    unsigned first_del = line.find('=');
-                    unsigned last_del = line.find('\n');
+                    auto first_del = line.find('=');
+                    auto last_del = line.find('\n');
                     influx_token = line.substr(first_del+1, last_del - first_del-1);
                 }
             }
@@ -209,7 +208,7 @@ private:
 
     }
 
-    json backup_plugins() const {
+    [[nodiscard]] json backup_plugins() const {
 
         json data;
 
@@ -239,11 +238,27 @@ private:
 
             // backup plugins
             for (const auto & p2 : fs::directory_iterator(p1.path().string()+"/plugins/")) { // plugins
-                std::string container_name = user+"-"+p2.path().filename().string();
-                if (Docker::Container::inspect(container_name, backup_folder+"/"+tag()+"/plugins")) {
-                    data["msg"].push_back("Backed up "+container_name+" docker container");
+                std::string container_name = user + "-" + p2.path().filename().string();
+
+                // Parse plugin.json to check if plugins are docker
+                nlohmann::json j;
+                std::filesystem::path f(p2.path().filename().string() + "/files/plugin.json");
+
+                if (std::filesystem::exists(f)) {
+                    std::ifstream config_file(f.string());
+                    config_file >> j;
+                }
+
+                if ( thinger::monitor::config::get(j, "/task/type"_json_pointer, std::string("")) == "docker" ) {
+
+                    if (Docker::Container::inspect(container_name, backup_folder + "/" + tag() + "/plugins")) {
+                        data["msg"].push_back("Backed up " + container_name + " docker container");
+                    } else {
+                      data["error"].push_back("Failed backing up " + container_name + " docker container");
+                    }
+
                 } else {
-                    data["error"].push_back("Failed backing up "+container_name+" docker container");
+                    data["msg"].push_back("Ignored  " + container_name + " backup as it has no container associated");
                 }
             }
         }
@@ -256,7 +271,7 @@ private:
         return data;
     }
 
-    json compress_backup() const {
+    [[nodiscard]] json compress_backup() const {
         json data;
 
         data["status"] = Tar::create(backup_folder+"/"+tag(), backup_folder+"/"+file_to_upload);
@@ -264,11 +279,11 @@ private:
         return data;
     }
 
-    bool clean_backup() const {
-        bool status = true;
+    [[nodiscard]] bool clean_backup() const {
         std::filesystem::remove_all(backup_folder+"/"+tag());
         std::filesystem::remove_all(backup_folder+"/"+file_to_upload);
-        status = status && Docker::Container::exec("mongodb", "rm -rf /dump");
+        std::filesystem::remove_all(backup_folder);
+        bool status = Docker::Container::exec("mongodb", "rm -rf /dump");
 
         std::string influxdb_version = Platform::Utils::InfluxDB::get_version();
 

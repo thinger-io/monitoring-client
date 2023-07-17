@@ -2,6 +2,8 @@
 #include <httplib.h>
 #include <spdlog/spdlog.h>
 
+#include <utility>
+
 #include "../date.h"
 #include "../crypto.h"
 #include "../http_status.h"
@@ -15,18 +17,18 @@ public:
 
         public:
 
-        AWSV4(std::string& access_key, std::string& secret_key, std::string& region, const std::string& service) :
-            access_key_(access_key),
-            secret_key_(secret_key),
-            region_(region),
-            service_(service)
+        AWSV4(std::string  access_key, std::string  secret_key, std::string  region, std::string  service) :
+            access_key_(std::move(access_key)),
+            secret_key_(std::move(secret_key)),
+            region_(std::move(region)),
+            service_(std::move(service))
         {}
 
-        std::string get_auth_header(Date date, std::string& canonical_request) {
+        std::string get_auth_header(Date date, std::string const& canonical_request) {
 
             std::string signed_string = sign_string(date, canonical_request);
 
-            const std::string auth_header = std::string("AWS4-HMAC-SHA256 ")+
+            std::string auth_header = std::string("AWS4-HMAC-SHA256 ")+
                 "Credential="+access_key_+"/"+date.to_iso8601('\0',false,"utc")+"/"+region_+"/"+service_+"/aws4_request,"+
                 "SignedHeaders=host;x-amz-content-sha256;x-amz-date,"+
                 "Signature="+signed_string;
@@ -36,21 +38,24 @@ public:
 
         private:
 
-        std::string access_key_, secret_key_, region_, service_;
+        std::string access_key_;
+        std::string secret_key_;
+        std::string region_;
+        std::string service_;
 
-        std::string generate_key(Date date) const {
+        [[nodiscard]] std::string generate_key(Date date) const {
 
-            const std::string kDate = Crypto::hash::hmac_sha256("AWS4"+secret_key_, date.to_iso8601('\0',false,"utc"));
-            const std::string kRegion = Crypto::hash::hmac_sha256(kDate, region_);
-            const std::string kService = Crypto::hash::hmac_sha256(kRegion, service_);
-            const std::string kSigning = Crypto::hash::hmac_sha256(kService, "aws4_request");
+            std::string kDate = Crypto::hash::hmac_sha256(std::string("AWS4"+secret_key_), date.to_iso8601('\0',false,"utc"));
+            std::string kRegion = Crypto::hash::hmac_sha256(kDate, region_);
+            std::string kService = Crypto::hash::hmac_sha256(kRegion, service_);
+            std::string kSigning = Crypto::hash::hmac_sha256(kService, "aws4_request");
 
             return kSigning;
         }
 
-        std::string generate_string_to_sign(Date& date, std::string& canonical_request) const {
+        std::string generate_string_to_sign(Date& date, std::string const& canonical_request) const {
 
-            const std::string string_to_sign =
+            std::string string_to_sign =
 
                 std::string("AWS4-HMAC-SHA256\n")+
                 date.to_iso8601('\0',true,"utc")+"\n"+
@@ -60,7 +65,7 @@ public:
             return string_to_sign;
         }
 
-        std::string sign_string(Date date, std::string& canonical_request) {
+        std::string sign_string(Date date, std::string const& canonical_request) {
 
             std::string key = generate_key(date);
             std::string string_to_sign = generate_string_to_sign(date, canonical_request);
@@ -75,12 +80,12 @@ public:
 
         public:
 
-        MultipartUpload(std::string& bucket, std::string& region, std::string& access_key, std::string& secret_key, const std::string& file_path) :
+        MultipartUpload(std::string& bucket, std::string& region, std::string& access_key, std::string& secret_key, std::string  file_path) :
             bucket_(bucket),
             region_(region),
             access_key_(access_key),
             secret_key_(secret_key),
-            file_path_(file_path)
+            file_path_(std::move(file_path))
         {
             url = bucket+".s3-"+region+".amazonaws.com";
             awsv4 = std::make_unique<AWSV4>(access_key, secret_key, region, "s3");
@@ -137,58 +142,65 @@ public:
         ~MultipartUpload() = default;
 
         private:
-        std::string bucket_, region_, access_key_, secret_key_, file_path_, filename;
+        std::string bucket_;
+        std::string region_;
+        std::string access_key_;
+        std::string secret_key_;
+        std::string file_path_;
+        std::string filename;
         unsigned int parts;
 
         const std::string content_type = "application/x-compressed-tar";
         const size_t buffer_size = 10<<20; // 10 Megabytes -> with a max of 10.000 parts allows a file of up to 100GiB
 
-        std::string upload_id = "";
+        std::string upload_id;
 
         std::string url;
         std::unique_ptr<AWSV4> awsv4{};
         std::unique_ptr<httplib::Client> cli{};
 
         struct MPUPart {
-            unsigned int part_id;
+            unsigned int part_id{};
             std::string ETag;
         };
         std::unique_ptr<MPUPart[]> parts_list; // TODO: request list of parts to S3 and form XML body to complete from the response
 
         bool initiate_upload() {
 
-            LOG_INFO("[____AWS] Inititiating upload of {0}", file_path_);
+            LOG_INFO(fmt::format("[____AWS] Inititiating upload of {0}", file_path_));
 
-            std::string payload = "";
+            std::string payload;
             auto res = request("POST", "/"+filename,"uploads=",payload, content_type);
 
             if ( res.error() != httplib::Error::Success || !HttpStatus::isSuccessful(res->status) ) {
-                LOG_ERROR("[____AWS] Failed initiating upload {0}", filename);
+                LOG_ERROR(fmt::format("[____AWS] Failed initiating upload {0}", filename));
                 return HttpStatus::isSuccessful(res->status);
             }
 
             upload_id = XML::get_element_value(res->body, "UploadId");
 
-            LOG_INFO("[____AWS] Upload initiated with upload id {0}", upload_id);
+            LOG_INFO(fmt::format("[____AWS] Upload initiated with upload id {0}", upload_id));
             return HttpStatus::isSuccessful(res->status);
         }
 
         bool abort_upload() {
 
-            LOG_WARNING("[____AWS] Aborting multipart upload for file: {0}; and upload id: {1}", file_path_, upload_id);
+            LOG_WARNING(fmt::format("[____AWS] Aborting multipart upload for file: {0}; and upload id: {1}", file_path_, upload_id));
 
-            std::string payload = "";
+            std::string payload;
             auto res = request("DELETE", "/"+filename,"uploadId="+upload_id,payload,"text/plain");
 
             if ( res.error() != httplib::Error::Success || !HttpStatus::isSuccessful(res->status) ) {
-                LOG_ERROR("[____AWS] Failed aborting upload id {0}", upload_id);
+                LOG_ERROR(fmt::format("[____AWS] Failed aborting upload id {0}", upload_id));
             }
 
             return HttpStatus::isSuccessful(res->status);
         }
 
         bool upload_parts() {
-            std::string payload_hash, canonical_request, auth_header;
+            std::string payload_hash;
+            std::string canonical_request;
+            std::string auth_header;
             httplib::Headers headers;
             Date date;
 
@@ -205,13 +217,13 @@ public:
 
                 date = Date();
 
-                LOG_INFO("[____AWS] Multipart upload of {0}; Uploading part {1} out of {2}", filename, std::to_string(i), std::to_string(parts));
+                LOG_INFO(fmt::format("[____AWS] Multipart upload of {0}; Uploading part {1} out of {2}", filename, std::to_string(i), std::to_string(parts)));
 
                 auto res = request("PUT","/"+filename,
                     "partNumber="+std::to_string(i)+"&uploadId="+upload_id,buffer,buffer_size,content_type);
 
                 if ( res.error() != httplib::Error::Success || !HttpStatus::isSuccessful(res->status) ) {
-                    LOG_ERROR("[____AWS] Failed Multipart upload {0}; Part {1} out of {2}", filename, std::to_string(i), std::to_string(parts));
+                    LOG_ERROR(fmt::format("[____AWS] Failed Multipart upload {0}; Part {1} out of {2}", filename, std::to_string(i), std::to_string(parts)));
                     return HttpStatus::isSuccessful(res->status);
                 }
 
@@ -220,7 +232,7 @@ public:
             }
 
             // Upload last part
-            LOG_INFO("[____AWS] Multipart upload of {0}; Uploading part {1} out of {2}", filename, std::to_string(parts), std::to_string(parts));
+            LOG_INFO(fmt::format("[____AWS] Multipart upload of {0}; Uploading part {1} out of {2}", filename, std::to_string(parts), std::to_string(parts)));
 
             file.read(buffer, buffer_size);
 
@@ -228,7 +240,7 @@ public:
                 "partNumber="+std::to_string(parts)+"&uploadId="+upload_id,buffer,last_part_size,content_type);
 
             if ( res.error() != httplib::Error::Success || !HttpStatus::isSuccessful(res->status) ) {
-                LOG_ERROR("[____AWS] Failed Multipart upload {0}; Part {1} out of {2}", filename, std::to_string(parts), std::to_string(parts));
+                LOG_ERROR(fmt::format("[____AWS] Failed Multipart upload {0}; Part {1} out of {2}", filename, std::to_string(parts), std::to_string(parts)));
                 return HttpStatus::isSuccessful(res->status);
             }
 
@@ -241,7 +253,7 @@ public:
 
             std::string complete_xml = generate_xml_complete_mpu();
 
-            LOG_INFO("[____AWS] Finishing upload of {0}", file_path_);
+            LOG_INFO(fmt::format("[____AWS] Finishing upload of {0}", file_path_));
 
             return request("POST","/"+filename,"uploadId="+upload_id,complete_xml, "text/xml");
         }
@@ -250,7 +262,7 @@ public:
           const std::string& method,
           const std::string& path,
           const std::string& query_parameters,
-          std::string& payload,
+          std::string const& payload,
           const std::string& c_type)
         {
             return request(method,path,query_parameters,payload.c_str(),payload.size(),c_type);
@@ -261,14 +273,16 @@ public:
           const std::string& path,
           const std::string& query_parameters,
           const char *buffer,
-          const size_t buffer_size,
+          const size_t buffer_size_req,
           const std::string& c_type)
         {
-            std::string payload_hash, canonical_request, auth_header;
+            std::string payload_hash;
+            std::string canonical_request;
+            std::string auth_header;
             httplib::Headers headers;
             auto date = Date();
 
-            payload_hash = Crypto::hash::sha256(buffer,buffer_size);
+            payload_hash = Crypto::hash::sha256(buffer, buffer_size_req);
 
             canonical_request = generate_canonical_request(method,path,query_parameters,payload_hash,date);
             auth_header = awsv4->get_auth_header(date, canonical_request);
@@ -280,24 +294,24 @@ public:
             };
 
             if (method == "POST") {
-                return cli->Post((path+"?"+query_parameters).c_str(),headers,buffer,buffer_size,c_type.c_str());
+                return cli->Post(path+"?"+query_parameters, headers, buffer, buffer_size_req, c_type);
             } else if (method == "PUT") {
-                return cli->Put((path+"?"+query_parameters).c_str(),headers,buffer,buffer_size,c_type.c_str());
+                return cli->Put(path+"?"+query_parameters, headers, buffer, buffer_size_req, c_type);
             }
 
             return httplib::Result{nullptr, httplib::Error::Unknown};;
 
         }
 
-        std::string generate_canonical_request(
+        [[nodiscard]] std::string generate_canonical_request(
           const std::string& method,
           const std::string& path,
           const std::string& query_parameters,
-          std::string& payload_hash,
+          std::string const& payload_hash,
           Date date) const
         {
 
-            const std::string canonical_request =
+            std::string canonical_request =
                 method+"\n"+
                 path+"\n"+
                 query_parameters+"\n"+
@@ -310,7 +324,7 @@ public:
             return canonical_request;
         }
 
-        std::string generate_xml_complete_mpu() const {
+        [[nodiscard]] std::string generate_xml_complete_mpu() const {
 
             std::string xml_res = "<CompleteMultipartUpload>\n";
             for (int i=0; i < parts; i++) {
