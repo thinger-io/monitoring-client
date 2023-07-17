@@ -1,13 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [1.0.0] - 2023-06-28
+## [0.0.9] - 2023-07-17
 ### Fix
 - Format logs before calling log macro
 - Don't fail when backing up and restoring plugins without docker images
-
-### Security
-- Switched to boost random in device credentials generator due to weak cryptography
 
 ## [0.0.8] - 2023-06-26
 ### Fix

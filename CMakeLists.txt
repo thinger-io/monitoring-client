@@ -132,14 +132,14 @@ FetchContent_MakeAvailable(httplib)
 list(APPEND ADDITIONAL_LIBS httplib::httplib)
 
 FetchContent_Declare(
-  thinger
+  thinger-iotmp
   GIT_REPOSITORY https://github.com/thinger-io/IOTMP-Linux.git
   #add_definitions(-DTHINGER_SERVER="iot.thinger.io")
   #add_definitions(-DTHINGER_ENABLE_STREAM_LISTENER)
   GIT_TAG origin/develop
 )
-FetchContent_MakeAvailable(thinger)
-list(APPEND ADDITIONAL_LIBS thinger)
+FetchContent_MakeAvailable(thinger-iotmp)
+list(APPEND ADDITIONAL_LIBS thinger-iotmp)
 
 # libarchive
 find_package(LibArchive REQUIRED)
