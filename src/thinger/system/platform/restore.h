@@ -264,7 +264,7 @@ private:
 
                 // Parse plugin.json to check if plugins are docker
                 nlohmann::json j;
-                std::filesystem::path f(p2.path().filename().string() + "/files/plugin.json");
+                std::filesystem::path f(p2.path().string() + "/files/plugin.json");
 
                 if (std::filesystem::exists(f)) {
                   std::ifstream config_file(f.string());
