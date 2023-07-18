@@ -115,7 +115,7 @@ All notable changes to this project will be documented in this file.
 - Module configuration
 - Execution of commands
 
-[1.0.0]: https://github.com/thinger-io/monitoring-client/compare/0.0.8...1.0.0
+[0.0.9]: https://github.com/thinger-io/monitoring-client/compare/0.0.8...0.0.9
 [0.0.8]: https://github.com/thinger-io/monitoring-client/compare/0.0.7...0.0.8
 [0.0.7]: https://github.com/thinger-io/monitoring-client/compare/0.0.6...0.0.7
 [0.0.6]: https://github.com/thinger-io/monitoring-client/compare/0.0.5...0.0.6
