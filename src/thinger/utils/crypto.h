@@ -1,4 +1,11 @@
-#pragma once
+#ifndef THINGER_MONITOR_CRYPTO_H
+#define THINGER_MONITOR_CRYPTO_H
+//#pragma once
+
+#include <sstream>
+#include <iomanip>
+#include <memory>
+#include <cstring>
 
 // base64
 #include <string>
@@ -96,7 +103,7 @@ namespace Crypto {
             unsigned int accumulator = 0;
 
             for (auto i = ascdata.begin(); i != last; ++i) {
-                auto c = static_cast<int>(std::distance( ascdata.begin(), i ));
+                const int c = *i;
                 if (::std::isspace(c) || c == '=') {
                     // Skip whitespace and padding. Be liberal in what you accept.
                     continue;
@@ -195,3 +202,5 @@ namespace Crypto {
     };
 
 };
+
+#endif // THINGER_MONITOR_CRYPTO_H

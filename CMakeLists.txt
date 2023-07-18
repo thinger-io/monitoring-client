@@ -36,7 +36,7 @@ OPTION(STATIC "Enable cross compilation and static linking" OFF)
 OPTION(BIN_EXTENSION "Set binary file extension" OFF)
 OPTION(ASIO_CLIENT "Enable ASIO CLIENT" ON)
 
-SET(ARCH "x86_64" CACHE STRING "Compiler architecure")
+SET(ARCH "x86_64" CACHE STRING "Compiler architecture")
 
 set(Boost_USE_MULTITHREADED      ON)
 set(Boost_USE_STATIC_LIBS        ON)
@@ -134,8 +134,6 @@ list(APPEND ADDITIONAL_LIBS httplib::httplib)
 FetchContent_Declare(
   thinger-iotmp
   GIT_REPOSITORY https://github.com/thinger-io/IOTMP-Linux.git
-  #add_definitions(-DTHINGER_SERVER="iot.thinger.io")
-  #add_definitions(-DTHINGER_ENABLE_STREAM_LISTENER)
   GIT_TAG origin/develop
 )
 FetchContent_MakeAvailable(thinger-iotmp)
@@ -178,8 +176,17 @@ FetchContent_Declare(
   GIT_TAG         v3.3.2
 )
 FetchContent_MakeAvailable(Catch2)
-add_executable(tests test/thinger/config.cpp)
-#target_link_libraries(tests PRIVATE Catch2::Catch2WithMain)
+
+# Source files
+file(GLOB_RECURSE TEST_FILES
+        "test/*.hpp"
+        "test/*.h"
+        "test/*.cpp"
+        "test/*.cc"
+        "test/*.c"
+    )
+
+add_executable(tests ${TEST_FILES})
 list(APPEND ADDITIONAL_LIBS Catch2::Catch2WithMain)
 target_link_libraries(tests ${ADDITIONAL_LIBS})
 
