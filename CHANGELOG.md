@@ -1,7 +1,7 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [0.0.9] - 2023-07-17
+## [0.0.9] - 2023-07-18
 ### Fix
 - Format logs before calling log macro
 - Don't fail when backing up and restoring plugins without docker images
