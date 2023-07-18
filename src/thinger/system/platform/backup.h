@@ -19,6 +19,7 @@ public:
     PlatformBackup(thinger::monitor::Config& config, const std::string& hostname, const std::string& tag)
       : ThingerMonitorBackup(config,hostname, tag) {
 
+        backups_folder = this->config().get_data_path()+"/backups";
         storage = this->config().get_storage();
         bucket = this->config().get_bucket(storage);
         region = this->config().get_region(storage);
@@ -33,8 +34,8 @@ public:
 
         json data;
         data["operation"] = {};
-        data["operation"]["create_backup_folder"] = create_backup_folder();
-        if (!data["operation"]["create_backup_folder"]["status"].get<bool>()) {
+        data["operation"]["create_backups_folder"] = create_backups_folder();
+        if (!data["operation"]["create_backups_folder"]["status"].get<bool>()) {
             data["status"] = false;
             return data;
         }
@@ -63,7 +64,7 @@ public:
 
         if ( storage == "S3" ) {
             data["operation"]["upload_s3"] = {};
-            if (AWS::multipart_upload_to_s3(backup_folder + "/" + file_to_upload, bucket, region, access_key,
+            if (AWS::multipart_upload_to_s3(backups_folder + "/" + file_to_upload, bucket, region, access_key,
                                           secret_key)) {
                 data["operation"]["upload_s3"]["status"] = true;
             } else {
@@ -93,8 +94,8 @@ public:
     }
 
 private:
-    const std::string backup_folder = "/data/thinger_backup";
 
+    std::string backups_folder;
     std::string storage;
     std::string bucket;
     std::string region;
@@ -103,11 +104,11 @@ private:
 
     std::string file_to_upload;
 
-    [[nodiscard]] json create_backup_folder() const {
+    [[nodiscard]] json create_backups_folder() const {
         json data;
 
-        std::filesystem::remove_all(backup_folder+"/"+tag());
-        if (!std::filesystem::create_directories(backup_folder+"/"+tag())) {
+        std::filesystem::remove_all(backups_folder+"/"+tag());
+        if (!std::filesystem::create_directories(backups_folder+"/"+tag())) {
           data["status"]  = false;
           data["error"].push_back("Failed to create backup directory");
         } else
@@ -122,7 +123,7 @@ private:
         // With tar creation instead of copying to folder we maintain ownership and permissions
         data["status"] = true;
         if (std::filesystem::exists(config().get_data_path()+"/thinger/users"))
-            data["status"] = Tar::create(config().get_data_path()+"/thinger/users", backup_folder+"/"+tag()+"/thinger-"+tag()+".tar");
+            data["status"] = Tar::create(config().get_data_path()+"/thinger/users", backups_folder+"/"+tag()+"/thinger-"+tag()+".tar");
 
         return data;
     }
@@ -149,7 +150,7 @@ private:
             return data;
         }
 
-        if (!Docker::Container::copy_from_container("mongodb", "/dump", backup_folder+"/"+tag()+"/mongodbdump-"+tag()+".tar")) {
+        if (!Docker::Container::copy_from_container("mongodb", "/dump", backups_folder+"/"+tag()+"/mongodbdump-"+tag()+".tar")) {
             data["status"]  = false;
             data["error"].push_back("Failed copying mongodb backup from container");
             return data;
@@ -184,7 +185,7 @@ private:
                 data["error"].push_back("Failed executing influxdb2 backup");
                 return data;
             }
-            if (!Docker::Container::copy_from_container("influxdb2", "/dump", backup_folder+"/"+tag()+"/influxdb2dump-"+tag()+".tar")) {
+            if (!Docker::Container::copy_from_container("influxdb2", "/dump", backups_folder+"/"+tag()+"/influxdb2dump-"+tag()+".tar")) {
                 data["status"]  = false;
                 data["error"].push_back("Failed copying influxdb2 backup from container");
                 return data;
@@ -195,7 +196,7 @@ private:
                 data["error"].push_back("Failed executing influxdb backup");
                 return data;
             }
-            if (!Docker::Container::copy_from_container("influxdb", "/dump", backup_folder+"/"+tag()+"/influxdbdump-"+tag()+".tar")) {
+            if (!Docker::Container::copy_from_container("influxdb", "/dump", backups_folder+"/"+tag()+"/influxdbdump-"+tag()+".tar")) {
                 data["status"]  = false;
                 data["error"].push_back("Failed copying influxdb backup from container");
                 return data;
@@ -212,15 +213,15 @@ private:
 
         json data;
 
-        if (!std::filesystem::create_directories(backup_folder+"/"+tag()+"/plugins")) {
-            data["status"]  = false;
-            data["error"].push_back("Failed creating plugins directory in backup folder");
-            return data;
-        }
-
         if (! std::filesystem::exists(config().get_data_path()+"/thinger/users")) {
             data["status"] = true;
             data["msg"].push_back("Platform has no users folder");
+            return data;
+        }
+
+        if (!std::filesystem::create_directories(backups_folder+"/"+tag()+"/plugins")) {
+            data["status"]  = false;
+            data["error"].push_back("Failed creating plugins directory in backup folder");
             return data;
         }
 
@@ -230,7 +231,7 @@ private:
             std::string user = p1.path().filename().string();
 
             // backups networks
-            if ( Docker::Network::inspect(user, backup_folder+"/"+tag()+"/plugins") ) {
+            if ( Docker::Network::inspect(user, backups_folder+"/"+tag()+"/plugins") ) {
                 data["msg"].push_back("Backed up "+user+" docker network");
             } else {
                 data["error"].push_back("Failed backing up "+user+" docker network");
@@ -251,7 +252,7 @@ private:
 
                 if ( thinger::monitor::config::get(j, "/task/type"_json_pointer, std::string("")) == "docker" ) {
 
-                    if (Docker::Container::inspect(container_name, backup_folder + "/" + tag() + "/plugins")) {
+                    if (Docker::Container::inspect(container_name, backups_folder + "/" + tag() + "/plugins")) {
                         data["msg"].push_back("Backed up " + container_name + " docker container");
                     } else {
                       data["error"].push_back("Failed backing up " + container_name + " docker container");
@@ -274,15 +275,15 @@ private:
     [[nodiscard]] json compress_backup() const {
         json data;
 
-        data["status"] = Tar::create(backup_folder+"/"+tag(), backup_folder+"/"+file_to_upload);
+        data["status"] = Tar::create(backups_folder+"/"+tag(), backups_folder+"/"+file_to_upload);
 
         return data;
     }
 
     [[nodiscard]] bool clean_backup() const {
-        std::filesystem::remove_all(backup_folder+"/"+tag());
-        std::filesystem::remove_all(backup_folder+"/"+file_to_upload);
-        std::filesystem::remove_all(backup_folder);
+        std::filesystem::remove_all(backups_folder+"/"+tag());
+        std::filesystem::remove_all(backups_folder+"/"+file_to_upload);
+        std::filesystem::remove_all(backups_folder);
         bool status = Docker::Container::exec("mongodb", "rm -rf /dump");
 
         std::string influxdb_version = Platform::Utils::InfluxDB::get_version();
