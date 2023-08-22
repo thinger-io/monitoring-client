@@ -13,7 +13,7 @@ set(VERSION_PATCH "0" CACHE STRING "Patch version number")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
 if(NOT BUILD_VERSION)
-  add_definitions( -DBUILD_VERSION="develop" )
+  add_definitions( -DBUILD_VERSION=develop )
   message(STATUS "The program version is develop")
 else()
   add_definitions( -DBUILD_VERSION=${BUILD_VERSION} )
@@ -134,7 +134,7 @@ list(APPEND ADDITIONAL_LIBS httplib::httplib)
 FetchContent_Declare(
   thinger-iotmp
   GIT_REPOSITORY https://github.com/thinger-io/IOTMP-Linux.git
-  GIT_TAG origin/develop
+  GIT_TAG 1.1.0
 )
 FetchContent_MakeAvailable(thinger-iotmp)
 list(APPEND ADDITIONAL_LIBS thinger-iotmp)
