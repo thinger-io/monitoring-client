@@ -175,7 +175,7 @@ namespace thinger::monitor {
         }
 
         [[nodiscard]] unsigned short get_svr_port() const {
-          return config::get(config_remote_, "/resources/server/port"_json_pointer, (unsigned short) 2222);
+          return config::get(config_remote_, "/resources/server/port"_json_pointer, (unsigned short) 7890);
         }
 
         [[nodiscard]] std::string get_storage() const {

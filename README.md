@@ -4,20 +4,13 @@ The Linux Monitoring Client is a software module based on the Thinger.io Linux C
 
 ## Getting Started
 
-Documentation regarding this software can be found [here](https://docs.thinger.io/others/linux-monitoring-client).
+Documentation regarding this software can be found [here](https://docs.thinger.io/others/other-software/server-monitoring-client).
 
 ### Prerequisites
 
-There is no additional requirements for the monitoring client besides the ones needed for the Linux Client.
+There is no additional requirements for the monitoring client besides the ones needed for the Linux IOTMP Client.
 
 Note that the compiler must be at least of version C++20.
-
-## Backups
-
-The software contains the ability to backup and restore backups for different environments. Currently the following are available:
-- Thinger.io Platform
-
-This backup and restore capabilities can be executed in standalone mode by executing the bash scripts directly or through the thinger monitor client
 
 ## License
 

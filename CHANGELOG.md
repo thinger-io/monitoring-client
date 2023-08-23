@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [1.0.0] - 2023-08-22
+### Changed
+- Set thinger-iotmp dependency as production version 1.1.0
+
 ## [0.0.9] - 2023-07-18
 ### Fix
 - Format logs before calling log macro
