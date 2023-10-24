@@ -90,6 +90,7 @@ namespace AWS {
         auto res = cli.Get("/"+filename,
           [&file](const char *data, size_t data_length) {
             file.write(data, static_cast<int>(data_length));
+            file.flush(); // synchronize with underlying storage
             return true;
           });
 

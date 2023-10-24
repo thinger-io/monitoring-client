@@ -57,6 +57,11 @@ namespace thinger::monitor {
             config_(config)
         {
 
+            /*if ( ! config_.get_backup().empty() ) {
+              resources_.insert( {"backup", client["backup"]});
+              resources_.insert( {"restore", client["restore"]});
+            }*/
+
             // Executed only once
             system::retrieve_hostname(hostname);
             system::retrieve_os_version(os_version);
@@ -126,112 +131,122 @@ namespace thinger::monitor {
                 };
             }
 
-            resources_.at("backup") = [this, &client](iotmp::input& in, iotmp::output& out) {
+            //if ( ! config_.get_backup().empty() ) {
+              resources_.at("backup") = [this, &client](iotmp::input &in, iotmp::output &out) {
 
                 if (!config_.get_backup().empty()) {
 
-                    std::string tag = in["tag"];
-                    std::string endpoint = in["endpoint"];
+                  std::string tag = in["tag"];
+                  std::string endpoint = in["endpoint"];
 
-                    auto today = Date();
-                    in["tag"] = today.to_iso8601();
-                    in["endpoint"] = "backup_finished";
+                  auto today = Date();
+                  in["tag"] = today.to_iso8601();
+                  in["endpoint"] = "backup_finished";
 
-                    if ( f1.future.valid() && f1.future.wait_for(std::chrono::seconds(0))  != std::future_status::ready ) {
-                        if ( f1.task == "backup" )
-                            out["status"] = "Already executing";
-                        else
-                            out["status"] = ("Executing: "+f1.task).c_str();
-                        return;
-                    }
+                  if (f1.future.valid() && f1.future.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+                    if (f1.task == "backup")
+                      out["status"] = "Already executing";
+                    else
+                      out["status"] = ("Executing: " + f1.task).c_str();
+                    return;
+                  }
 
-                    // future from a packaged_task
-                    std::packaged_task<void(std::string,std::string)> task([this, &client](const std::string& task_tag, const std::string& task_endpoint) {
+                  // future from a packaged_task
+                  std::packaged_task<void(std::string, std::string)> task(
+                      [this, &client](const std::string &task_tag, const std::string &task_endpoint) {
 
                         std::unique_ptr<ThingerMonitorBackup> backup{}; // as nullptr
                         // Add new possible options for backup systems
                         if (config_.get_backup() == "platform") {
-                            backup = std::make_unique<PlatformBackup>(config_, hostname, task_tag);
+                          backup = std::make_unique<PlatformBackup>(config_, hostname, task_tag);
                         }
 
                         json data;
-                        data["device"]    = config_.get_id();
-                        data["hostname"]  = hostname;
-                        data["backup"]    = {};
+                        data["device"] = config_.get_id();
+                        data["hostname"] = hostname;
+                        data["backup"] = {};
                         data["backup"]["operations"] = {};
 
                         LOG_INFO("[_BACKUP] Creating backup");
                         data["backup"]["operations"]["backup"] = backup->backup();
                         LOG_INFO("[_BACKUP] Uploading backup");
                         data["backup"]["operations"]["upload"] = backup->upload();
-                        LOG_INFO("[_BACKUP] Cleaning backup temporary files");
-                        data["backup"]["operations"]["clean"] = backup->clean();
+
+                        // Clean if upload succeded
+                        if ( data["backup"]["operations"]["upload"].get<bool>() ) {
+                          LOG_INFO("[_BACKUP] Cleaning backup temporary files");
+                          data["backup"]["operations"]["clean"] = backup->clean();
+                        } else {
+                          LOG_WARNING("[_BACKUP] Left local copy of backup due to failed upload");
+                        }
 
                         data["backup"]["status"] = true;
-                        for (auto& element : data["backup"]["operations"]) {
-                            if (!element["status"].get<bool>()) {
-                                data["backup"]["status"] = false;
-                                break;
-                            }
+                        for (auto &element: data["backup"]["operations"]) {
+                          if (!element["status"].get<bool>()) {
+                            data["backup"]["status"] = false;
+                            break;
+                          }
                         }
 
                         //LOG_LEVEL(1, "[_BACKUP] Backup status: {0}", data.dump());
                         LOG_LEVEL(1, "[_BACKUP] Backup status: %s", data.dump());
                         if (!task_endpoint.empty()) {
-                            protoson::pson payload;
-                            protoson::json_decoder::parse(data, payload);
-                            client.call_endpoint(task_endpoint.c_str(), payload);
+                          protoson::pson payload;
+                          protoson::json_decoder::parse(data, payload);
+                          client.call_endpoint(task_endpoint.c_str(), payload);
                         }
 
-                    });
+                      });
 
-                    if (!tag.empty()) {
-                        out["status"] = "Launched";
-                        f1.task = "backup";
-                        f1.future = task.get_future();  // get a future
-                        std::thread thread(std::move(task), tag, endpoint);
-                        thread.detach();
-                    }
+                  if (!tag.empty()) {
+                    out["status"] = "Launched";
+                    f1.task = "backup";
+                    f1.future = task.get_future();  // get a future
+                    std::thread thread(std::move(task), tag, endpoint);
+                    thread.detach();
+                  }
 
-                    out["status"] = "Ready to be launched";
+                  out["status"] = "Ready to be launched";
 
                 } else {
-                    out["status"] = "ERROR";
-                    out["error"] = "Can't launch backup. Set backups property.";
+                  out["status"] = "ERROR";
+                  out["error"] = "Can't launch backup. Set backups property.";
                 }
-            };
+              };
 
-            resources_.at("restore") = [this, &client](iotmp::input& in, iotmp::output& out) {
+              resources_.at("restore") = [this, &client](iotmp::input &in, iotmp::output &out) {
 
                 if (!config_.get_backup().empty()) {
 
-                    std::string tag = in["tag"];
-                    std::string endpoint = in["endpoint"];
+                  std::string tag = in["tag"];
+                  std::string endpoint = in["endpoint"];
 
-                    auto today = Date();
-                    in["tag"] = today.to_iso8601();
-                    in["endpoint"] = "restore_finished";
+                  auto today = Date();
+                  in["tag"] = today.to_iso8601();
+                  in["endpoint"] = "restore_finished";
 
-                    if ( f1.future.valid() && f1.future.wait_for(std::chrono::seconds(0))  != std::future_status::ready ) {
-                        if ( f1.task == "restore" )
-                            out["status"] = "Already executing";
-                        else
-                            out["status"] = ("Executing: "+f1.task).c_str();
-                        return;
-                    }
+                  if (f1.future.valid() && f1.future.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+                    if (f1.task == "restore")
+                      out["status"] = "Already executing";
+                    else
+                      out["status"] = ("Executing: " + f1.task).c_str();
+                    return;
+                  }
 
-                    std::packaged_task<void(std::string, std::string)> task([this, &client](const std::string& task_tag, const std::string& task_endpoint) {
+                  // TODO: Catch exception in thread
+                  std::packaged_task<void(std::string, std::string)> task(
+                      [this, &client](const std::string &task_tag, const std::string &task_endpoint) {
 
                         std::unique_ptr<ThingerMonitorRestore> restore{};
                         // Add new possible options for backup systems
                         if (config_.get_backup() == "platform") {
-                            restore = std::make_unique<PlatformRestore>(config_, hostname, task_tag);
+                          restore = std::make_unique<PlatformRestore>(config_, hostname, task_tag);
                         }
 
                         json data;
-                        data["device"]    = config_.get_id();
-                        data["hostname"]  = hostname;
-                        data["restore"]   = {};
+                        data["device"] = config_.get_id();
+                        data["hostname"] = hostname;
+                        data["restore"] = {};
                         data["restore"]["operations"] = {};
 
                         LOG_INFO("[___RSTR] Downloading backup");
@@ -243,28 +258,29 @@ namespace thinger::monitor {
                         //LOG_LEVEL(1, "[___RSTR] Restore status: {0}", data.dump());
                         LOG_LEVEL(1, "[___RSTR] Restore status: %s", data.dump());
                         if (!task_endpoint.empty()) {
-                            protoson::pson payload;
-                            protoson::json_decoder::parse(data, payload);
-                            client.call_endpoint(task_endpoint.c_str(), payload);
+                          protoson::pson payload;
+                          protoson::json_decoder::parse(data, payload);
+                          client.call_endpoint(task_endpoint.c_str(), payload);
                         }
 
-                    });
+                      });
 
-                    if (!tag.empty()) {
-                        out["status"] = "Launched";
-                        f1.task = "restore";
-                        f1.future = task.get_future();
-                        std::thread thread(std::move(task), tag, endpoint);
-                        thread.detach();
-                    }
+                  if (!tag.empty()) {
+                    out["status"] = "Launched";
+                    f1.task = "restore";
+                    f1.future = task.get_future();
+                    std::thread thread(std::move(task), tag, endpoint);
+                    thread.detach();
+                  }
 
-                    out["status"] = "Ready to be launched";
+                  out["status"] = "Ready to be launched";
 
                 } else {
-                    out["status"] = "ERROR";
-                    out["error"] = "Can't launch restore. Set backups property.";
+                  out["status"] = "ERROR";
+                  out["error"] = "Can't launch restore. Set backups property.";
                 }
-            };
+              };
+            //}
 
             resources_.at("monitor") = [this](iotmp::output& out) {
 

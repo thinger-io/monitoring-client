@@ -20,7 +20,7 @@ case `uname -m` in
 esac
 
 usage() {
-    echo "usage: install_$_monitor.sh [-h] [-t TOKEN] [-s SERVER] [-k] [-u]"
+    echo "usage: install_$_module.sh [-h] [-t TOKEN] [-s SERVER] [-k] [-u]"
     echo
     echo "Installs and runs $_module binary"
     echo
