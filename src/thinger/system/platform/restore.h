@@ -268,7 +268,7 @@ private:
         return data;
       }
 
-      Docker::Container::exec("mongodb", "chown 1000:1000 /data/db/", true);
+      Docker::Container::exec("mongodb", "chown 1000:1000 /data/db/");
 
       // Remove file
       std::filesystem::remove( file );
