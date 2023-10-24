@@ -260,11 +260,7 @@ private:
         }
       }
 
-      Docker::Container::exec("mongodb", "chown 999:999 /data/db/", true);
-
-      utils::docker::Client cli;
-
-      cli.
+      Docker::Container::exec("mongodb", "chown 999:999 /data/db/");
 
       if ( !Docker::Container::exec("mongodb", "mongorestore --gzip --archive=/data/db/" + std::string(file.data()) + " -u thinger -p " + mongo_password) ) {
         data["status"] = false;
