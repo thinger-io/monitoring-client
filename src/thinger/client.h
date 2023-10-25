@@ -173,7 +173,7 @@ namespace thinger::monitor {
                         data["backup"]["operations"]["upload"] = backup->upload();
 
                         // Clean if upload succeded
-                        if ( data["backup"]["operations"]["upload"].get<bool>() ) {
+                        if ( data["backup"]["operations"]["upload"]["status"].get<bool>() ) {
                           LOG_INFO("[_BACKUP] Cleaning backup temporary files");
                           data["backup"]["operations"]["clean"] = backup->clean();
                         } else {
