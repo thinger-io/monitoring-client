@@ -6,7 +6,7 @@
 #include <httplib.h>
 #include <spdlog/spdlog.h>
 
-namespace Platform::Utils::InfluxDB {
+namespace platform::utils::influxdb {
 
     std::string get_version() { // I could always execute a command in the docker container¿?
         httplib::Client cli("http://localhost:8086");

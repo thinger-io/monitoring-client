@@ -1,6 +1,14 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2023-10-04
+### Changed
+- Mongodb backup is compressed in gzip by default
+- Influxdb and mongodb backups are created in default mounted directory of container
+
+### Removed
+- Backup of influxdb v1 is no longer needed
+
 ## [1.0.0] - 2023-08-22
 ### Changed
 - Set thinger-iotmp dependency as production version 1.1.0

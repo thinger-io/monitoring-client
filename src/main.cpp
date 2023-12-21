@@ -154,11 +154,17 @@ int main(int argc, char *argv[]) {
 
   thinger::monitor::Client monitor(client, config);
 
+
   // Retrieve properties on connection and any update
   for (auto const &property: config.remote_properties) {
     client.property_stream(property.c_str(), true) = [&config, &property, &monitor](iotmp::input& in) {
       LOG_INFO(fmt::format("Received property {0} update value", property));
-      config.update(property, in["value"]);
+
+      if ( in["value"].is_empty() ) {
+        config.update(property, in);
+      } else {
+        config.update(property, in["value"]);
+      }
       monitor.reload_configuration(property);
     };
   }
