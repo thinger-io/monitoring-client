@@ -34,7 +34,6 @@ endif()
 OPTION(ENABLE_OPENSSL "Enable use of OpenSSL" ON)
 OPTION(STATIC "Enable cross compilation and static linking" OFF)
 OPTION(BIN_EXTENSION "Set binary file extension" OFF)
-OPTION(ASIO_CLIENT "Enable ASIO CLIENT" ON)
 
 SET(ARCH "x86_64" CACHE STRING "Compiler architecture")
 
@@ -52,7 +51,9 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 endif()
 
 # Add atomic for 32 bit arm
-if("${ARCH}" MATCHES "^armv7m")
+if("${ARCH}" MATCHES "^armv7m" OR
+   "${ARCH}" MATCHES "^mips" OR
+   "${ARCH}" MATCHES "^x32")
   message(STATUS "Linking against libatomic")
   list(APPEND ADDITIONAL_LIBS atomic)
 endif()
@@ -94,7 +95,17 @@ else()
   SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pthread -Wno-psabi")
 endif()
 
-set(SOURCE_FILES src/main.cpp)
+#set(SOURCE_FILES src/main.cpp)
+#        src/thinger/resources/rmonitor/monitor.cpp)
+
+# Source files
+file(GLOB_RECURSE SOURCE_FILES
+  "src/*.hpp"
+  "src/*.h"
+  "src/*.cpp"
+  "src/*.cc"
+  "src/*.c"
+)
 
 include(FetchContent)
 
@@ -133,12 +144,12 @@ FetchContent_MakeAvailable(httplib)
 list(APPEND ADDITIONAL_LIBS httplib::httplib)
 
 FetchContent_Declare(
-  thinger-iotmp
+  thinger_iotmp
   GIT_REPOSITORY https://github.com/thinger-io/IOTMP-Linux.git
-  GIT_TAG 1.1.0
+  GIT_TAG 1.2.2
 )
-FetchContent_MakeAvailable(thinger-iotmp)
-list(APPEND ADDITIONAL_LIBS thinger-iotmp)
+FetchContent_MakeAvailable(thinger_iotmp)
+list(APPEND ADDITIONAL_LIBS thinger_iotmp)
 
 # libarchive
 find_package(LibArchive REQUIRED)

@@ -1,7 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [1.1.1] - 2024-05-27
+## [1.2.0] - 2024-05-28
+
+### Changed
+
+- Concern separation for metrics retrieval
+- Updated to thinger-iotmp 1.2.2
 
 ### Fix
 
