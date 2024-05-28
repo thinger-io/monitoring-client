@@ -1,10 +1,17 @@
-#include <nlohmann/json.hpp>
+
+#ifndef THINGER_MONITOR_CONFIG_HPP
+#define THINGER_MONITOR_CONFIG_HPP
+
+#include "nlohmann/json.hpp"
 
 #include <map>
 #include <iostream>
 #include <fstream>
 #include <random>
 #include <regex>
+
+#include "thinger/iotmp/core/pson.h"
+#include "thinger/util/json_decoder.hpp"
 
 constexpr std::string_view DF_CONFIG_PATH = "/etc/thinger_io/thinger_monitor.json";
 
@@ -24,26 +31,9 @@ namespace thinger::monitor::config {
 
 namespace thinger::monitor::utils {
 
-    bool is_placeholder(const std::string& value) {
-        return std::regex_match(value, std::regex("(<.*>)"));
-    }
+    bool is_placeholder(const std::string& value);
 
-    std::string generate_credentials(std::size_t length) {
-
-        const std::string CHARACTERS = "0123456789abcdefghijklmnopqrstuvwxyz!@#$%^&*()ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
-        std::random_device random_device;
-        std::mt19937 generator(random_device());
-        std::uniform_int_distribution distribution(0, static_cast<int>(CHARACTERS.size()) - 1);
-
-        std::string random_string;
-
-        for (std::size_t i = 0; i < length; ++i) {
-          random_string += CHARACTERS[distribution(generator)];
-        }
-
-        return random_string;
-    }
+    std::string generate_credentials(std::size_t length);
 
 }
 
@@ -63,7 +53,7 @@ namespace thinger::monitor {
             load_config();
         }
 
-        bool update(std::string const& property, pson& data) {
+        bool update(std::string const& property, protoson::pson& data) {
 
           nlohmann::json remote_config;
           protoson::json_decoder::to_json(data, remote_config);
@@ -214,9 +204,9 @@ namespace thinger::monitor {
             return config::get(config_remote_, "/backups/system"_json_pointer, std::string(""));
         }
 
-        [[nodiscard]] pson get(std::string const& property) const {
+        [[nodiscard]] protoson::pson get(std::string const& property) const {
 
-            pson p;
+            protoson::pson p;
 
             // only remote properties in json
             if (std::ranges::find(remote_properties.begin(), remote_properties.end(), property) == remote_properties.end())
@@ -258,3 +248,5 @@ namespace thinger::monitor {
 
     };
 }
+
+#endif //THINGER_MONITOR_CONFIG_HPP
