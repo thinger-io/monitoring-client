@@ -60,12 +60,11 @@ int main(int argc, char *argv[]) {
 
   namespace po = boost::program_options;
 
-  // Define argumens
+  // Define arguments
   po::options_description desc("options_description [options]");
   desc.add_options()
     ("help,h", "show this help")
     ("verbosity,v", po::value<int>(&verbosity_level)->default_value(1), "set verbosity level")
-    ("token,t", po::value<std::string>(), "autoprovisioning token")
     ("insecure,k", "insecure connection")
     ("config,c", po::value<std::string>()->default_value("/etc/thinger_io/thinger_monitor.json"), "configuration file path")
     ("transport,p", po::value<std::string>(&transport)->default_value(""), "connection transport, i.e., 'websocket'");
@@ -149,16 +148,18 @@ int main(int argc, char *argv[]) {
   // initialize terminal extension
   iotmp::terminal shell(client);
 
+  // initialize cmd extension
+  iotmp::cmd cmd(client);
+
   // initialize proxy extension
   iotmp::proxy proxy(client);
 
   thinger::monitor::Client monitor(client, config);
 
-
   // Retrieve properties on connection and any update
   for (auto const &property: config.remote_properties) {
     client.property_stream(property.c_str(), true) = [&config, &property, &monitor](iotmp::input& in) {
-      LOG_INFO(fmt::format("Received property {0} update value", property));
+      LOG_INFO(std::format("Received property {0} update value", property));
 
       if ( in["value"].is_empty() ) {
         config.update(property, in);

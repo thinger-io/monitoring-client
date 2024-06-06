@@ -4,7 +4,9 @@
 
 namespace thinger::monitor{
 
-  monitor::monitor(thinger::iotmp::client& client, thinger::monitor::Config& config, httplib::Server& server) : client_(client), config_(config), server_(server) {
+  monitor::monitor(iotmp::client& client, Config& config, httplib::Server& server) :
+    client_(client), config_(config), server_(server)
+  {
 
     // Executed only once
     out_["hostname"] = system::get_hostname();

@@ -38,7 +38,7 @@ namespace thinger::monitor {
   class monitor{
 
   public:
-    explicit monitor(thinger::iotmp::client& client, thinger::monitor::Config& config, httplib::Server& server);
+    explicit monitor(iotmp::client& client, Config& config, httplib::Server& server);
     virtual ~monitor() = default;
 
     void reload();
@@ -50,11 +50,16 @@ namespace thinger::monitor {
     void get_network_values();
     void get_ram_values();
 
+    template<typename T>
+    auto get(const std::string& path) -> T {
+      return out_.at(path);
+    }
+
   private:
 
 
-    thinger::iotmp::client& client_;
-    thinger::monitor::Config& config_;
+    iotmp::client& client_;
+    Config& config_;
     httplib::Server& server_;
 
     nlohmann::json out_;

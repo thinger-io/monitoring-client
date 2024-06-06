@@ -70,29 +70,21 @@ namespace thinger::monitor {
                       [this, &client](const std::string &task_tag, const std::string &task_endpoint) {
 
                         std::unique_ptr<ThingerMonitorBackup> backup{}; // as nullptr
-                        // Add new possible options for backup systems
-                        if (config_.get_backup() == "platform") {
-                          backup = std::make_unique<PlatformBackup>(config_, hostname, task_tag);
-                        }
 
                         json data;
                         data["device"] = config_.get_id();
-                        data["hostname"] = hostname;
+                        data["hostname"] = monitor_.get<std::string>("hostname");
                         data["backup"] = {};
                         data["backup"]["operations"] = {};
 
-                        LOG_INFO("[_BACKUP] Creating backup");
-                        data["backup"]["operations"]["backup"] = backup->backup();
-                        LOG_INFO("[_BACKUP] Uploading backup");
-                        data["backup"]["operations"]["upload"] = backup->upload();
-
-                        // Clean if upload succeded
-                        if ( data["backup"]["operations"]["upload"]["status"].get<bool>() ) {
-                          LOG_INFO("[_BACKUP] Cleaning backup temporary files");
-                          data["backup"]["operations"]["clean"] = backup->clean();
-                        } else {
-                          LOG_WARNING("[_BACKUP] Left local copy of backup due to failed upload");
+                        // Add new possible options for backup systems
+                        if (config_.get_backup() == "platform") {
+                          backup = std::make_unique<PlatformBackup>(config_, data["hostname"] , task_tag);
                         }
+
+                        data["backup"]["operations"]["backup"] = backup->backup();
+                        data["backup"]["operations"]["upload"] = backup->upload();
+                        data["backup"]["operations"]["clean"] = backup->clean();
 
                         data["backup"]["status"] = true;
                         for (auto &element: data["backup"]["operations"]) {
@@ -152,16 +144,17 @@ namespace thinger::monitor {
                       [this, &client](const std::string &task_tag, const std::string &task_endpoint) {
 
                         std::unique_ptr<ThingerMonitorRestore> restore{};
-                        // Add new possible options for backup systems
-                        if (config_.get_backup() == "platform") {
-                          restore = std::make_unique<PlatformRestore>(config_, hostname, task_tag);
-                        }
 
                         json data;
                         data["device"] = config_.get_id();
-                        data["hostname"] = hostname;
+                        data["hostname"] = monitor_.get<std::string>("hostname");
                         data["restore"] = {};
                         data["restore"]["operations"] = {};
+
+                        // Add new possible options for backup systems
+                        if (config_.get_backup() == "platform") {
+                          restore = std::make_unique<PlatformRestore>(config_, data["hostname"] , task_tag);
+                        }
 
                         LOG_INFO("[___RSTR] Downloading backup");
                         data["restore"]["operations"]["download"] = restore->download();
@@ -233,24 +226,6 @@ namespace thinger::monitor {
           server_.stop();
           start_local_server();
 
-    }
-
-protected:
-
-    // TODO: move this functions to ns and make them configurable or self discoverable
-    // -- SYSTEM INFO -- //
-    static std::string cmd(const char *in) {
-        std::array<char, 128> buffer{};
-        std::string result;
-        std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(in, "r"), &pclose);
-        if (!pipe) {
-            return "Failed to run command\n";
-        }
-
-        while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
-            result += std::string(buffer.data());
-        }
-        return result;
     }
 
 private:
