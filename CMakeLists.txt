@@ -191,6 +191,11 @@ FetchContent_MakeAvailable(Catch2)
 
 # Source files
 file(GLOB_RECURSE TEST_FILES
+        "src/thinger/*.hpp"
+        "src/thinger/*.h"
+        "src/thinger/*.cpp"
+        "src/thinger/*.cc"
+        "src/thinger/*.c"
         "test/*.hpp"
         "test/*.h"
         "test/*.cpp"
