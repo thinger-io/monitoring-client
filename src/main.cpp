@@ -159,7 +159,7 @@ int main(int argc, char *argv[]) {
   // Retrieve properties on connection and any update
   for (auto const &property: config.remote_properties) {
     client.property_stream(property.c_str(), true) = [&config, &property, &monitor](iotmp::input& in) {
-      LOG_INFO(std::format("Received property {0} update value", property));
+      LOG_INFO(fmt::format("Received property {0} update value", property));
 
       if ( in["value"].is_empty() ) {
         config.update(property, in);

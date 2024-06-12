@@ -24,7 +24,7 @@ namespace utils::version {
       try {
         v1.push_back(std::stoi(token));
       } catch ( std::invalid_argument& e ) {
-        LOG_WARNING(std::format("[_UTILS] Build version ({0}) does not follow semver. Assuming version is newer than {1}", VERSION, version));
+        LOG_WARNING(fmt::format("[_UTILS] Build version ({0}) does not follow semver. Assuming version is newer than {1}", VERSION, version));
         return true;
       }
     }
