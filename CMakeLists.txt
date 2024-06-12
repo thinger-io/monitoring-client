@@ -116,7 +116,7 @@ include(FetchContent)
 #  list(APPEND ADDITIONAL_LIBS fmt::fmt)
 #endif()
 # fmt
-FetchContent_Declare(fmt URL https://github.com/fmtlib/fmt/releases/download/9.1.0/fmt-9.1.0.zip)
+FetchContent_Declare(fmt URL https://github.com/fmtlib/fmt/releases/download/10.2.1/fmt-10.2.1.zip)
 FetchContent_MakeAvailable(fmt)
 list(APPEND ADDITIONAL_LIBS fmt::fmt)
 
@@ -124,7 +124,7 @@ list(APPEND ADDITIONAL_LIBS fmt::fmt)
 FetchContent_Declare(
   spdlog
   GIT_REPOSITORY  https://github.com/gabime/spdlog.git
-  GIT_TAG         v1.11.0
+  GIT_TAG         v1.14.1
 )
 add_compile_definitions(SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 FetchContent_MakeAvailable(spdlog)
@@ -138,7 +138,7 @@ list(APPEND ADDITIONAL_LIBS nlohmann_json::nlohmann_json)
 FetchContent_Declare(
   httplib
   GIT_REPOSITORY  https://github.com/yhirose/cpp-httplib.git
-  GIT_TAG         v0.12.0
+  GIT_TAG         v0.16.0
 )
 FetchContent_MakeAvailable(httplib)
 list(APPEND ADDITIONAL_LIBS httplib::httplib)
@@ -185,7 +185,7 @@ export(TARGETS spdlog
 FetchContent_Declare(
   Catch2
   GIT_REPOSITORY  https://github.com/catchorg/Catch2.git
-  GIT_TAG         v3.3.2
+  GIT_TAG         v3.6.0
 )
 FetchContent_MakeAvailable(Catch2)
 
