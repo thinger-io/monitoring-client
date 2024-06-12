@@ -2,8 +2,6 @@
 
 #include <httplib.h>
 
-#include <filesystem>
-#include <linux/kernel.h>
 #include <unistd.h>
 #include <thread>
 #include <future>
@@ -187,32 +185,30 @@ namespace thinger::monitor {
                   out["error"] = "Can't launch restore. Set backups property.";
                 }
               };
-            //}
 
             start_local_server();
 
     }
 
-    void start_local_server() {
-        svr_jthread = std::jthread( [this](const std::stop_token& stoken) {
-          if (stoken.stop_requested()) { // FIXME: the thread hangs onto the server_.listen and can never get here
-                server_.stop();
-                return;
-          }
-          THINGER_LOG("Creating local server in %s and port %hd", config_.get_svr_host(), config_.get_svr_port());
-          while ( server_.is_running() )
-            std::this_thread::sleep_for(std::chrono::milliseconds{10});
+    void stop_local_server() {
 
-          server_.listen(config_.get_svr_host(), config_.get_svr_port());
-        }
-      );
+          if ( server_.is_running() && server_.is_valid() ) {
+            THINGER_LOG("Stopping local server");
+            server_.stop();
+            svr_thread.join();
+          }
+
+    }
+
+    void start_local_server() {
+          stop_local_server();
+          THINGER_LOG("Creating local server in %s and port %hd", config_.get_svr_host(), config_.get_svr_port());
+          svr_thread = std::thread([&]() { server_.listen(config_.get_svr_host(), config_.get_svr_port()); });
     }
 
     virtual ~Client() {
         THINGER_LOG("stopping monitoring client");
-
-        // stop httplib server on shutdown
-        server_.stop();//TODO: svr_jthread.request_stop();
+        stop_local_server();
     }
 
     // Recreates and fills up structures
@@ -222,8 +218,6 @@ namespace thinger::monitor {
             monitor_.reload();
           }
 
-          // TODO: use jthread stop_token
-          server_.stop();
           start_local_server();
 
     }
@@ -234,7 +228,7 @@ private:
 
     // local server for resources
     httplib::Server server_;
-    std::jthread svr_jthread;
+    std::thread svr_thread;
 
     thinger::monitor::monitor monitor_;
 
