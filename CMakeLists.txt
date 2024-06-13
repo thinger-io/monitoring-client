@@ -146,7 +146,7 @@ list(APPEND ADDITIONAL_LIBS httplib::httplib)
 FetchContent_Declare(
   thinger_iotmp
   GIT_REPOSITORY https://github.com/thinger-io/IOTMP-Linux.git
-  GIT_TAG 1.2.2
+  GIT_TAG 1.3.0
 )
 FetchContent_MakeAvailable(thinger_iotmp)
 list(APPEND ADDITIONAL_LIBS thinger_iotmp)
@@ -173,9 +173,9 @@ export(TARGETS httplib
   NAMESPACE httplib::
   FILE ${CMAKE_CURRENT_BINARY_DIR}/httplibTargets.cmake)
 
-export(TARGETS fmt
-  NAMESPACE fmt::
-  FILE ${CMAKE_CURRENT_BINARY_DIR}/fmtTargets.cmake)
+#export(TARGETS fmt
+#  NAMESPACE fmt::
+#  FILE ${CMAKE_CURRENT_BINARY_DIR}/fmtTargets.cmake)
 
 export(TARGETS spdlog
   NAMESPACE spdlog::
