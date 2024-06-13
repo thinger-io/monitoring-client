@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 
 - Concern separation for metrics retrieval
 - Updated to thinger-iotmp 1.2.2
+- Cmd resource now based on thinger-iotmp
 
 ### Fix
 

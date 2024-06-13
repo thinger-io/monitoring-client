@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 mkdir -p build
 cd build
-cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_OPENSSL=ON -DBUILD_VERSION=0.0.7 ../
+cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_OPENSSL=ON -DSTATIC=ON -DOPENSSL_ROOT_DIR=/usr/lib/ssl -DOPENSSL_LIBRARIES=/usr/lib/ssl ../
 make -j$((`grep -c ^processor /proc/cpuinfo`+1)) thinger_monitor
 #./test
 #make thinger_monitor
