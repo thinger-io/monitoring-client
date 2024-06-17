@@ -173,6 +173,9 @@ public:
             auto res = request("POST", "/"+filename,"uploads=",payload, content_type);
 
             if ( res.error() != httplib::Error::Success || !HttpStatus::isSuccessful(res->status) ) {
+                if ( res.error() == httplib::Error::SSLServerVerification ) {
+                    LOG_ERROR(fmt::format("[____AWS] Avoid buckets containing periods (dots) in the name {0}", bucket_));
+                }
                 LOG_ERROR(fmt::format("[____AWS] Failed initiating upload {0}", filename));
                 return HttpStatus::isSuccessful(res->status);
             }
@@ -223,7 +226,7 @@ public:
                     return HttpStatus::isSuccessful(res->status);
                 }
 
-                parts_list[i] = MPUPart{i, res->get_header_value("ETag")};
+                parts_list[i-1] = MPUPart{i, res->get_header_value("ETag")};
 
             }
 
