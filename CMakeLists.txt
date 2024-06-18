@@ -34,7 +34,6 @@ endif()
 OPTION(ENABLE_OPENSSL "Enable use of OpenSSL" ON)
 OPTION(STATIC "Enable cross compilation and static linking" OFF)
 OPTION(BIN_EXTENSION "Set binary file extension" OFF)
-OPTION(ASIO_CLIENT "Enable ASIO CLIENT" ON)
 
 SET(ARCH "x86_64" CACHE STRING "Compiler architecture")
 
@@ -52,7 +51,9 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 endif()
 
 # Add atomic for 32 bit arm
-if("${ARCH}" MATCHES "^armv7m")
+if("${ARCH}" MATCHES "^armv7m" OR
+   "${ARCH}" MATCHES "^mips" OR
+   "${ARCH}" MATCHES "^x32")
   message(STATUS "Linking against libatomic")
   list(APPEND ADDITIONAL_LIBS atomic)
 endif()
@@ -94,7 +95,17 @@ else()
   SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pthread -Wno-psabi")
 endif()
 
-set(SOURCE_FILES src/main.cpp)
+#set(SOURCE_FILES src/main.cpp)
+#        src/thinger/resources/rmonitor/monitor.cpp)
+
+# Source files
+file(GLOB_RECURSE SOURCE_FILES
+  "src/*.hpp"
+  "src/*.h"
+  "src/*.cpp"
+  "src/*.cc"
+  "src/*.c"
+)
 
 include(FetchContent)
 
@@ -105,7 +116,7 @@ include(FetchContent)
 #  list(APPEND ADDITIONAL_LIBS fmt::fmt)
 #endif()
 # fmt
-FetchContent_Declare(fmt URL https://github.com/fmtlib/fmt/releases/download/9.1.0/fmt-9.1.0.zip)
+FetchContent_Declare(fmt URL https://github.com/fmtlib/fmt/releases/download/10.2.1/fmt-10.2.1.zip)
 FetchContent_MakeAvailable(fmt)
 list(APPEND ADDITIONAL_LIBS fmt::fmt)
 
@@ -113,7 +124,7 @@ list(APPEND ADDITIONAL_LIBS fmt::fmt)
 FetchContent_Declare(
   spdlog
   GIT_REPOSITORY  https://github.com/gabime/spdlog.git
-  GIT_TAG         v1.11.0
+  GIT_TAG         v1.14.1
 )
 add_compile_definitions(SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 FetchContent_MakeAvailable(spdlog)
@@ -127,18 +138,18 @@ list(APPEND ADDITIONAL_LIBS nlohmann_json::nlohmann_json)
 FetchContent_Declare(
   httplib
   GIT_REPOSITORY  https://github.com/yhirose/cpp-httplib.git
-  GIT_TAG         v0.12.0
+  GIT_TAG         v0.16.0
 )
 FetchContent_MakeAvailable(httplib)
 list(APPEND ADDITIONAL_LIBS httplib::httplib)
 
 FetchContent_Declare(
-  thinger-iotmp
+  thinger_iotmp
   GIT_REPOSITORY https://github.com/thinger-io/IOTMP-Linux.git
-  GIT_TAG 1.1.0
+  GIT_TAG 1.3.0
 )
-FetchContent_MakeAvailable(thinger-iotmp)
-list(APPEND ADDITIONAL_LIBS thinger-iotmp)
+FetchContent_MakeAvailable(thinger_iotmp)
+list(APPEND ADDITIONAL_LIBS thinger_iotmp)
 
 # libarchive
 find_package(LibArchive REQUIRED)
@@ -162,9 +173,9 @@ export(TARGETS httplib
   NAMESPACE httplib::
   FILE ${CMAKE_CURRENT_BINARY_DIR}/httplibTargets.cmake)
 
-export(TARGETS fmt
-  NAMESPACE fmt::
-  FILE ${CMAKE_CURRENT_BINARY_DIR}/fmtTargets.cmake)
+#export(TARGETS fmt
+#  NAMESPACE fmt::
+#  FILE ${CMAKE_CURRENT_BINARY_DIR}/fmtTargets.cmake)
 
 export(TARGETS spdlog
   NAMESPACE spdlog::
@@ -174,12 +185,17 @@ export(TARGETS spdlog
 FetchContent_Declare(
   Catch2
   GIT_REPOSITORY  https://github.com/catchorg/Catch2.git
-  GIT_TAG         v3.3.2
+  GIT_TAG         v3.6.0
 )
 FetchContent_MakeAvailable(Catch2)
 
 # Source files
 file(GLOB_RECURSE TEST_FILES
+        "src/thinger/*.hpp"
+        "src/thinger/*.h"
+        "src/thinger/*.cpp"
+        "src/thinger/*.cc"
+        "src/thinger/*.c"
         "test/*.hpp"
         "test/*.h"
         "test/*.cpp"

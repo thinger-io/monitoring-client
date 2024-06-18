@@ -173,6 +173,9 @@ public:
             auto res = request("POST", "/"+filename,"uploads=",payload, content_type);
 
             if ( res.error() != httplib::Error::Success || !HttpStatus::isSuccessful(res->status) ) {
+                if ( res.error() == httplib::Error::SSLServerVerification ) {
+                    LOG_ERROR(fmt::format("[____AWS] Avoid buckets containing periods (dots) in the name {0}", bucket_));
+                }
                 LOG_ERROR(fmt::format("[____AWS] Failed initiating upload {0}", filename));
                 return HttpStatus::isSuccessful(res->status);
             }
@@ -202,25 +205,21 @@ public:
             std::string canonical_request;
             std::string auth_header;
             httplib::Headers headers;
-            Date date;
 
-            auto *buffer = new char[buffer_size];
+            std::vector<char> buffer(buffer_size);
 
             // Open and calculate part size
-            std::ifstream file(file_path_);
-            auto file_size = std::filesystem::file_size(file_path_);
-            auto last_part_size = file_size % buffer_size;
+            std::ifstream file(file_path_, std::ios::binary);
 
-            for (unsigned int i = 1; i < parts; i++) { // send part by part
+            for (unsigned int i = 1; i <= parts; i++) { // send part by part
 
-                file.read(buffer, buffer_size);
-
-                date = Date();
+                file.read(buffer.data(), buffer_size);
+                std::streamsize bytes_read = file.gcount();
 
                 LOG_INFO(fmt::format("[____AWS] Multipart upload of {0}; Uploading part {1} out of {2}", filename, std::to_string(i), std::to_string(parts)));
 
                 auto res = request("PUT","/"+filename,
-                    "partNumber="+std::to_string(i)+"&uploadId="+upload_id,buffer,buffer_size,content_type);
+                    "partNumber="+std::to_string(i)+"&uploadId="+upload_id,buffer.data(),bytes_read,content_type);
 
                 if ( res.error() != httplib::Error::Success || !HttpStatus::isSuccessful(res->status) ) {
                     LOG_ERROR(fmt::format("[____AWS] Failed Multipart upload {0}; Part {1} out of {2}", filename, std::to_string(i), std::to_string(parts)));
@@ -231,21 +230,9 @@ public:
 
             }
 
-            // Upload last part
-            LOG_INFO(fmt::format("[____AWS] Multipart upload of {0}; Uploading part {1} out of {2}", filename, std::to_string(parts), std::to_string(parts)));
+            file.close();
+            return true;
 
-            file.read(buffer, buffer_size);
-
-            auto res = request("PUT","/"+filename,
-                "partNumber="+std::to_string(parts)+"&uploadId="+upload_id,buffer,last_part_size,content_type);
-
-            if ( res.error() != httplib::Error::Success || !HttpStatus::isSuccessful(res->status) ) {
-                LOG_ERROR(fmt::format("[____AWS] Failed Multipart upload {0}; Part {1} out of {2}", filename, std::to_string(parts), std::to_string(parts)));
-                return HttpStatus::isSuccessful(res->status);
-            }
-
-            parts_list[parts-1] = MPUPart{parts, res->get_header_value("ETag")};
-            return HttpStatus::isSuccessful(res->status);
         }
 
         bool complete_upload() {
