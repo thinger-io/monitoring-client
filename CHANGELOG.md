@@ -1,13 +1,14 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [1.2.0] - 2024-05-28
+## [1.2.0] - 2024-06-18
 
 ### Changed
 
 - Concern separation for metrics retrieval
-- Updated to thinger-iotmp 1.2.2
+- Updated to thinger-iotmp 1.3.0
 - Cmd resource now based on thinger-iotmp
+- Removed reboot and update resources
 
 ### Fix
 
