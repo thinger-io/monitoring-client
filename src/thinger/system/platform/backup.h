@@ -62,11 +62,9 @@ public:
     return data;
   }
 
-  json upload() override  {
   nlohmann::json upload() override  {
-    nlohmann::json data;
 
-    json data;
+    nlohmann::json data;
 
     if ( storage == "S3" ) {
       data["operation"]["upload_s3"] = {};
@@ -112,8 +110,6 @@ private:
 
   std::string file_to_upload;
 
-  [[nodiscard]] json create_backups_folder() const {
-    json data;
   [[nodiscard]] nlohmann::json create_backups_folder() const {
     nlohmann::json data;
 

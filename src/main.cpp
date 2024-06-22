@@ -91,44 +91,6 @@ int main(int argc, char *argv[]) {
   if (vm.count("config")) {
     config.set_path(vm["config"].as<std::string>());
   }
-  // If the thinger token is passed we assume the device needs to be created
-  if (vm.count("token")) {
-
-    std::string token_str = vm["token"].as<std::string>();
-    json token_json = JWT::get_payload(token_str);
-    if (token_json.contains("svr"))
-      config.set_url(token_json["svr"].get<std::string>());
-    config.set_user(token_json["usr"].get<std::string>());
-
-    config.set_device(); // checks if it's empty
-
-    // If device exists and token has been passed change credentials
-    if (Thinger::device_exists(token_str, config.get_user(), config.get_id(), config.get_url(), config.get_ssl())) {
-
-      auto status = Thinger::update_device_credentials(token_str, config.get_user(), config.get_id(),
-                                                       config.get_credentials(), config.get_url(), config.get_ssl());
-      if (status == 200) {
-        LOG_INFO("Credentials changed succesfully! Please run the program without the token");
-        return 0;
-      } else {
-        LOG_WARNING("Could not change credentials, check the token and its permissions");
-        return -1;
-      }
-
-    } else {
-      // Create device when it does not exit and token has been passed
-      auto status = Thinger::create_device(token_str, config.get_user(), config.get_id(), config.get_credentials(),
-                                           config.get_name(), config.get_url(), config.get_ssl());
-      if (status == 200) {
-        LOG_INFO("Device created succesfully! Please run the program without the token");
-        return 0;
-      } else {
-        LOG_WARNING("Could not create device, check the connection and make sure it doesn't already exist");
-        return -1;
-      }
-    }
-
-  }
 
   // run asio workers
   thinger::asio::workers.start();
