@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [1.2.1] - 2024-06-22
+
+### Changed
+
+- Auto provisioning from token to thinger product autoprovision
+
 ## [1.2.0] - 2024-06-18
 
 ### Changed
@@ -173,6 +179,8 @@ All notable changes to this project will be documented in this file.
 - Module configuration
 - Execution of commands
 
+[1.2.1]: https://github.com/thinger-io/monitoring-client/compare/1.2.0...1.2.1
+[1.2.0]: https://github.com/thinger-io/monitoring-client/compare/1.1.1...1.2.0
 [1.1.1]: https://github.com/thinger-io/monitoring-client/compare/1.1.0...1.1.1
 [1.1.0]: https://github.com/thinger-io/monitoring-client/compare/1.0.0...1.1.0
 [1.0.0]: https://github.com/thinger-io/monitoring-client/compare/0.0.9...1.0.0

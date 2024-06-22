@@ -5,7 +5,6 @@
 
 // TODO: include in parent
 #include <thinger/iotmp/client.hpp>
-#include <thinger/iotmp/core/iotmp.h>
 
 // auxiliar header files
 #include "resources/cpu.hpp"
@@ -56,7 +55,6 @@ namespace thinger::monitor {
     }
 
   private:
-
 
     iotmp::client& client_;
     Config& config_;

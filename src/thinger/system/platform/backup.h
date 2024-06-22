@@ -30,10 +30,10 @@ public:
 
   }
 
-  json backup() override {
+  nlohmann::json backup() override {
 
 
-    json data;
+    nlohmann::json data;
     data["operation"] = {};
     data["operation"]["create_backups_folder"] = create_backups_folder();
     if (!data["operation"]["create_backups_folder"]["status"].get<bool>()) {
@@ -63,6 +63,8 @@ public:
   }
 
   json upload() override  {
+  nlohmann::json upload() override  {
+    nlohmann::json data;
 
     json data;
 
@@ -88,9 +90,9 @@ public:
     return data;
   }
 
-  json clean() override {
+  nlohmann::json clean() override {
 
-    json data;
+    nlohmann::json data;
 
     clean_backup() ? data["status"] = true : data["status"] = false;
 
@@ -112,6 +114,8 @@ private:
 
   [[nodiscard]] json create_backups_folder() const {
     json data;
+  [[nodiscard]] nlohmann::json create_backups_folder() const {
+    nlohmann::json data;
 
     std::filesystem::remove_all(backups_folder+"/"+tag());
     if (!std::filesystem::create_directories(backups_folder+"/"+tag())) {
@@ -123,8 +127,8 @@ private:
     return data;
   }
 
-  [[nodiscard]] json backup_thinger() {
-    json data;
+  [[nodiscard]] nlohmann::json backup_thinger() {
+    nlohmann::json data;
 
     // Create archive
     auto thinger_archive_filename = "thinger_" + tag() + ".tar.gz";
@@ -170,9 +174,9 @@ private:
     return data;
   }
 
-  [[nodiscard]] json backup_mongodb() const {
+  [[nodiscard]] nlohmann::json backup_mongodb() {
 
-    json data;
+    nlohmann::json data;
 
     // get mongodb root password
     std::ifstream compose (config().get_compose_path()+"/docker-compose.yml", std::ifstream::in);
@@ -235,8 +239,8 @@ private:
     return data;
   }
 
-  [[nodiscard]] json backup_influxdb() const {
-    json data;
+  [[nodiscard]] nlohmann::json backup_influxdb() {
+    nlohmann::json data;
 
     // Create archive
     auto influxdb2dump_filename = "influxdb2dump_" + tag();
@@ -301,9 +305,9 @@ private:
 
   }
 
-  [[nodiscard]] json backup_plugins() const {
+  [[nodiscard]] nlohmann::json backup_plugins() {
 
-    json data;
+    nlohmann::json data;
 
     // Change path to thinger folder
     auto initial = std::filesystem::current_path(); //getting path

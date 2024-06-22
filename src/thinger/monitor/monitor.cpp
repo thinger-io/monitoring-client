@@ -1,7 +1,5 @@
 #include "monitor.hpp"
 
-#include <utility>
-
 namespace thinger::monitor{
 
   monitor::monitor(iotmp::client& client, Config& config, httplib::Server& server) :

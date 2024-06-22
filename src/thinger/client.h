@@ -6,7 +6,7 @@
 #include <thread>
 #include <future>
 
-#include "utils/thinger.h"
+#include <nlohmann/json.hpp>
 #include "utils/date.h"
 
 #include "system/platform/backup.h"
@@ -69,7 +69,7 @@ namespace thinger::monitor {
 
                         std::unique_ptr<ThingerMonitorBackup> backup{}; // as nullptr
 
-                        json data;
+                        nlohmann::json data;
                         data["device"] = config_.get_id();
                         data["hostname"] = monitor_.get<std::string>("hostname");
                         data["backup"] = {};
@@ -143,7 +143,7 @@ namespace thinger::monitor {
 
                         std::unique_ptr<ThingerMonitorRestore> restore{};
 
-                        json data;
+                        nlohmann::json data;
                         data["device"] = config_.get_id();
                         data["hostname"] = monitor_.get<std::string>("hostname");
                         data["restore"] = {};

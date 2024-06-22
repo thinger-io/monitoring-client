@@ -32,7 +32,6 @@
 #include <boost/program_options.hpp>
 
 #include "thinger/utils/jwt.h"
-#include "thinger/utils/thinger.h"
 
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
@@ -136,6 +135,7 @@ int main(int argc, char *argv[]) {
 
   // create iotmp client
   iotmp::client client(transport);
+  config.set_device();
 
   // set client credentials and host
   client.set_credentials(config.get_user(), config.get_id(), config.get_credentials());
