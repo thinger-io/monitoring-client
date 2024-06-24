@@ -36,9 +36,9 @@ public:
 
     }
 
-    json restore() override {
+    nlohmann::json restore() override {
 
-        json data;
+        nlohmann::json data;
         data["operation"] = {};
         data["operation"]["create_backups_folder"] = create_backups_folder();
         if (!data["operation"]["create_backups_folder"]["status"].get<bool>()) {
@@ -99,9 +99,9 @@ public:
         return data;
     }
 
-    json download() override {
+    nlohmann::json download() override {
 
-        json data;
+        nlohmann::json data;
 
         data["operation"]["create_backups_folder"] = create_backups_folder();
         if (!data["operation"]["create_backups_folder"]["status"].get<bool>()) {
@@ -130,9 +130,9 @@ public:
         return data;
     }
 
-    json clean() override {
+    nlohmann::json clean() override {
 
-        json data;
+        nlohmann::json data;
 
         clean_restore() ? data["status"] = true : data["status"] = false;
 
@@ -151,8 +151,8 @@ private:
 
     struct archive *archive;
 
-    [[nodiscard]] json create_backups_folder() const {
-        json data;
+    [[nodiscard]] nlohmann::json create_backups_folder() const {
+        nlohmann::json data;
 
         data["status"] = true;
         if ( !std::filesystem::exists(backups_folder+"/"+tag())
@@ -165,8 +165,8 @@ private:
         return data;
     }
 
-    [[nodiscard]] json restore_thinger( std::string_view file ) const {
-      json data;
+    [[nodiscard]] nlohmann::json restore_thinger( std::string_view file ) {
+      nlohmann::json data;
       data["status"] = true;
 
       // Remove installation directories from within docker to avoid permission issues
@@ -223,9 +223,9 @@ private:
       return data;
     }
 
-    [[nodiscard]] json restore_mongodb(std::string_view file) const {
+    [[nodiscard]] nlohmann::json restore_mongodb(std::string_view file) {
 
-      json data;
+      nlohmann::json data;
 
       // Give mongodb directories permission within docker
       if ( getuid() != 0 && ! Docker::Container::exec("mongodb", "chown 1000:1000 /data/db" ) ) {
@@ -288,9 +288,9 @@ private:
       return data;
     }
 
-    [[nodiscard]] json restore_influxdb(std::string_view file) const {
+    [[nodiscard]] nlohmann::json restore_influxdb(std::string_view file) {
 
-      json data;
+      nlohmann::json data;
 
       // Give influxdb directories permission within docker
       if ( getuid() != 0 && ! Docker::Container::exec("influxdb2", "chown 1000:1000 /var/lib/influxdb2/" ) ) {
@@ -354,9 +354,9 @@ private:
 
     }
 
-    [[nodiscard]] json restore_plugins() const {
+    [[nodiscard]] nlohmann::json restore_plugins() {
 
-        json data;
+        nlohmann::json data;
 
         // Executed after restore_thinger
         if ( ! std::filesystem::exists( config().get_data_path() + "/thinger/plugins/" ) ) {
@@ -431,8 +431,8 @@ private:
         return status;
     }
 
-    [[nodiscard]] static json restart_platform() {
-        json data;
+    [[nodiscard]] nlohmann::json restart_platform() {
+        nlohmann::json data;
 
 
         if (!Docker::Container::restart("mongodb"))

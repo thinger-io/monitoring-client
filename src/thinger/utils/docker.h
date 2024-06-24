@@ -31,7 +31,7 @@ namespace Docker {
                 return false;
             }
 
-            auto res_json = json::parse(res->body);
+            auto res_json = nlohmann::json::parse(res->body);
             file << std::setw(4) << res_json << std::endl;
             if ( ! file ) {
                 LOG_ERROR("[_DOCKER] There was an error saving result to filesystem");
@@ -54,7 +54,7 @@ namespace Docker {
         // Used only for plugins
         bool create_from_inspect(const std::string& source_path, const std::string& network_id = "") {
 
-            json inspect_json;
+            nlohmann::json inspect_json;
 
             LOG_INFO(fmt::format("[_DOCKER] Reading docker inspect json from: '{0}'", source_path));
 
@@ -87,7 +87,7 @@ namespace Docker {
                 LOG_LEVEL(1, "[_DOCKER] Error description: %s", res->body);
             }
 
-            json body = inspect_json["Config"];
+            nlohmann::json body = inspect_json["Config"];
             body["HostConfig"] = inspect_json["HostConfig"];
             body["NetworkingConfig"]["EndpointsConfig"] = inspect_json["NetworkSettings"]["Networks"];
             if (network_id != "") {
@@ -143,7 +143,7 @@ namespace Docker {
                 cmd.push_back(word);
             }
 
-            json body = {
+            nlohmann::json body = {
               {"AttachStdin", false},
               {"AttachStdout", false},
               {"AttachStderr", true}, // will keep the request blocked until it finishes. Not ideal
@@ -153,7 +153,7 @@ namespace Docker {
 
             auto res = cli.Post(("/containers/"+container_id+"/exec").c_str(), body.dump(), "application/json");
 
-            auto res_json = json::parse(res->body);
+            auto res_json = nlohmann::json::parse(res->body);
 
             exec_id = res_json["Id"].get<std::string>();
 
@@ -181,7 +181,7 @@ namespace Docker {
             // Inspect exec instance
             res = cli.Get(("/exec/"+exec_id+"/json").c_str());
 
-            res_json = json::parse(res->body);
+            res_json = nlohmann::json::parse(res->body);
 
             if (!HttpStatus::isSuccessful(res->status) || res_json["ExitCode"].get<int>() != 0) {
                 LOG_ERROR("[_DOCKER] An error occurred while executing");
@@ -369,7 +369,7 @@ namespace Docker {
                 return false;
             }
 
-            auto res_json = json::parse(res->body);
+            auto res_json = nlohmann::json::parse(res->body);
             file << std::setw(4) << res_json << std::endl;
             if ( ! file ) {
                 LOG_ERROR("[_DOCKER] There was an error saving result to filesystem");
@@ -391,7 +391,7 @@ namespace Docker {
 
         std::string create_from_inspect(const std::string source_path) {
 
-            json inspect_json;
+            nlohmann::json inspect_json;
 
             spdlog::info("[_DOCKER] Reading network inspect json from: '{0}'", source_path);
 
@@ -434,7 +434,7 @@ namespace Docker {
                 LOG_LEVEL(1, "[_DOCKER] Error description: %s", res->body);
             }
 
-            auto res_json = json::parse(res->body);
+            auto res_json = nlohmann::json::parse(res->body);
 
             return res_json["Id"].get<std::string>();
         }

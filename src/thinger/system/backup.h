@@ -20,9 +20,9 @@ private:
 
 public:
 
-    virtual json backup() = 0;
-    virtual json upload() = 0;
-    virtual json clean() = 0;
+  virtual nlohmann::json backup() = 0;
+  virtual nlohmann::json upload() = 0;
+  virtual nlohmann::json clean() = 0;
 
     virtual ~ThingerMonitorBackup() = default;
 

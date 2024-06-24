@@ -20,19 +20,19 @@ case `uname -m` in
 esac
 
 usage() {
-    echo "usage: install_$_module.sh [-h] [-t TOKEN] [-s SERVER] [-k] [-u]"
+    echo "usage: install_$_module.sh [-h] [-s SERVER] [-u USER] [-k] [-U]"
     echo
     echo "Installs and runs $_module binary"
     echo
     echo "optional arguments:"
     echo " -h, --help            show this help message and exit"
-    echo " -t TOKEN, --token TOKEN"
-    echo "                       Thinger.io Platform Access Token with create device permissions"
     echo " -s SERVER, --server SERVER"
+    echo "                       Ip or URL where the Thinger.io Platform is installed"
+    echo " -u USER, --user USER  User to run the service"
     echo "                       Ip or URL where the Thinger.io Platform is installed"
     echo " -v, --version         Version of monitoring-client to install. Default is latest published production release"
     echo " -k, --insecure        To not verify SSL certificates, specially for local deployments"
-    echo " -u, --uninstall       Uninstalls the $_module program and removes all associated files"
+    echo " -U, --uninstall       Uninstalls the $_module program and removes all associated files"
 
     exit 0
 }
@@ -75,11 +75,11 @@ uninstall() {
 
 # Parse options
 while [[ "$#" -gt 0 ]]; do case $1 in
-  -t | --token )
-    shift; token="-t $1"
-    ;;
   -s | --server )
-    shift; server="-s $1"
+    shift; server="$1"
+    ;;
+  -u | --user )
+    shift; user="$1"
     ;;
   -v | --version )
     shift; version="$1"
@@ -87,7 +87,7 @@ while [[ "$#" -gt 0 ]]; do case $1 in
   -k | --insecure )
     shift; insecure="-k"
     ;;
-  -u | --uninstall )
+  -U | --uninstall )
     uninstall
     ;;
   -h | --help )
@@ -128,12 +128,12 @@ chmod +x "$bin_dir"/"$_module"
 
 # Download config
 if [ ! -f "$config_dir"/thinger_monitor.json ]; then
-  wget -q --header="Accept: application/vnd.github.VERSION.raw" https://"$_github_api_url"/repos/thinger-io/"$_repo"/contents/config/thinger_monitor.json?ref="$version" -P "$config_dir" -O "$config_dir"/thinger_monitor.json
+  wget -q --header="Accept: application/vnd.github.VERSION.raw" https://"$_github_api_url"/repos/thinger-io/"$_repo"/contents/config/thinger_monitor.json?ref="$version" -P "$config_dir" -O "$config_dir"/thinger_monitor.json_template
 fi
 
-# First run with token for autoprovision
-if [ -n "$token" ]; then
-  "$bin_dir"/thinger_monitor -c "$config_dir"/"$_module".json $token $server $insecure
+if [ -n "${server+x}" ] && [ -n "${user+x}" ]; then
+  jq '.server.url = "'$server'" | .server.user = "'$user'"'  "$config_dir"/thinger_monitor.json_template > "$config_dir"/thinger_monitor.json
+  rm "$config_dir"/thinger_monitor.json_template
 fi
 
 # Start and enable service

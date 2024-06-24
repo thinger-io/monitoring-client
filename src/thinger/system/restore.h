@@ -20,9 +20,9 @@ private:
 
 public:
 
-    virtual json download() = 0;
-    virtual json restore() = 0;
-    virtual json clean() = 0;
+  virtual nlohmann::json download() = 0;
+  virtual nlohmann::json restore() = 0;
+  virtual nlohmann::json clean() = 0;
 
     virtual ~ThingerMonitorRestore() = default;
 

@@ -85,7 +85,7 @@ namespace thinger::monitor {
         }
 
         void set_device() {
-            // Check if device name exists, if not set it to hostname
+            // Check if device name exists, if it's not set it to hostname
             if (this->get_id().empty()) {
                 std::string hostname;
                 std::ifstream hostinfo ("/etc/hostname", std::ifstream::in);
