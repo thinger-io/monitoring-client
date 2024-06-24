@@ -76,10 +76,10 @@ uninstall() {
 # Parse options
 while [[ "$#" -gt 0 ]]; do case $1 in
   -s | --server )
-    shift; server="-s $1"
+    shift; server="$1"
     ;;
   -u | --user )
-    shift; user="-u $1"
+    shift; user="$1"
     ;;
   -v | --version )
     shift; version="$1"
@@ -133,6 +133,7 @@ fi
 
 if [ -n "${server+x}" ] && [ -n "${user+x}" ]; then
   jq '.server.url = "'$server'" | .server.user = "'$user'"'  "$config_dir"/thinger_monitor.json_template > "$config_dir"/thinger_monitor.json
+  rm "$config_dir"/thinger_monitor.json_template
 fi
 
 # Start and enable service
